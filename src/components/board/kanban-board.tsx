@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import {
   DndContext,
   DragOverlay,
-  closestCorners,
+  pointerWithin,
+  rectIntersection,
   KeyboardSensor,
   PointerSensor,
   TouchSensor,
@@ -13,6 +14,8 @@ import {
   DragStartEvent,
   DragEndEvent,
   DragOverEvent,
+  MeasuringStrategy,
+  UniqueIdentifier,
 } from "@dnd-kit/core";
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { KanbanColumn } from "./kanban-column";
@@ -44,6 +47,8 @@ const columns: { id: TaskStatus; title: string; color: string }[] = [
   { id: "done", title: "Done", color: "bg-emerald-500" },
 ];
 
+const columnIds = columns.map((c) => c.id);
+
 export const KanbanBoard = ({
   initialTasks,
   workspaceId,
@@ -51,25 +56,31 @@ export const KanbanBoard = ({
   members,
 }: KanbanBoardProps) => {
   const [tasks, setTasks] = useState<TaskWithRelations[]>(initialTasks);
-  const [activeTask, setActiveTask] = useState<TaskWithRelations | null>(null);
+  const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createDialogStatus, setCreateDialogStatus] = useState<TaskStatus>("todo");
 
+  // Optimized sensors for better responsiveness
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8,
+        distance: 3, // Start dragging after 3px movement
       },
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 200, // Small delay to distinguish from scroll
-        tolerance: 5,
+        delay: 100, // Shorter delay for touch
+        tolerance: 8,
       },
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
+  );
+
+  const activeTask = useMemo(
+    () => tasks.find((t) => t.id === activeId) || null,
+    [tasks, activeId]
   );
 
   const tasksByStatus = useMemo(() => {
@@ -95,53 +106,50 @@ export const KanbanBoard = ({
     return grouped;
   }, [tasks]);
 
-  const handleDragStart = (event: DragStartEvent) => {
-    const { active } = event;
-    const task = tasks.find((t) => t.id === active.id);
-    if (task) {
-      setActiveTask(task);
+  // Find which column a task or column ID belongs to
+  const findColumn = useCallback((id: UniqueIdentifier): TaskStatus | null => {
+    // Check if it's a column ID
+    if (columnIds.includes(id as TaskStatus)) {
+      return id as TaskStatus;
     }
-  };
+    
+    // Find which column contains this task
+    const task = tasks.find((t) => t.id === id);
+    return task?.status || null;
+  }, [tasks]);
 
-  const handleDragOver = (event: DragOverEvent) => {
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveId(event.active.id);
+  }, []);
+
+  const handleDragOver = useCallback((event: DragOverEvent) => {
     const { active, over } = event;
     if (!over) return;
 
-    const activeId = active.id as string;
-    const overId = over.id as string;
+    const activeId = active.id;
+    const overId = over.id;
 
-    const activeTask = tasks.find((t) => t.id === activeId);
-    if (!activeTask) return;
+    const activeColumn = findColumn(activeId);
+    const overColumn = findColumn(overId);
 
-    // Check if over a column
-    const overColumn = columns.find((c) => c.id === overId);
-    if (overColumn) {
-      if (activeTask.status !== overColumn.id) {
-        setTasks((prev) =>
-          prev.map((t) =>
-            t.id === activeId ? { ...t, status: overColumn.id } : t
-          )
-        );
-      }
+    if (!activeColumn || !overColumn || activeColumn === overColumn) {
       return;
     }
 
-    // Over another task
-    const overTask = tasks.find((t) => t.id === overId);
-    if (!overTask) return;
+    // Move task to new column immediately for visual feedback
+    setTasks((prev) => {
+      const activeTask = prev.find((t) => t.id === activeId);
+      if (!activeTask) return prev;
 
-    if (activeTask.status !== overTask.status) {
-      setTasks((prev) =>
-        prev.map((t) =>
-          t.id === activeId ? { ...t, status: overTask.status } : t
-        )
+      return prev.map((t) =>
+        t.id === activeId ? { ...t, status: overColumn } : t
       );
-    }
-  };
+    });
+  }, [findColumn]);
 
-  const handleDragEnd = async (event: DragEndEvent) => {
+  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
     const { active, over } = event;
-    setActiveTask(null);
+    setActiveId(null);
 
     if (!over) return;
 
@@ -151,67 +159,62 @@ export const KanbanBoard = ({
     const activeTask = tasks.find((t) => t.id === activeId);
     if (!activeTask) return;
 
-    // Get the target column
-    let targetStatus: TaskStatus;
-    const overColumn = columns.find((c) => c.id === overId);
-    if (overColumn) {
-      targetStatus = overColumn.id;
-    } else {
-      const overTask = tasks.find((t) => t.id === overId);
-      if (!overTask) return;
-      targetStatus = overTask.status;
-    }
+    // Determine target column
+    const targetColumn = findColumn(overId);
+    if (!targetColumn) return;
+
+    // Get tasks in target column (excluding the active task)
+    const columnTasks = tasks
+      .filter((t) => t.status === targetColumn && t.id !== activeId)
+      .sort((a, b) => a.orderIndex - b.orderIndex);
 
     // Calculate new order index
-    const targetTasks = tasks.filter(
-      (t) => t.status === targetStatus && t.id !== activeId
-    );
-    const overIndex = targetTasks.findIndex((t) => t.id === overId);
     let newOrderIndex: number;
-
-    if (overIndex === -1) {
-      // Moving to empty column or end
-      newOrderIndex = targetTasks.length > 0 
-        ? Math.max(...targetTasks.map((t) => t.orderIndex)) + 1 
-        : 0;
+    
+    if (columnIds.includes(overId as TaskStatus)) {
+      // Dropped on column itself - add to end
+      newOrderIndex = columnTasks.length;
     } else {
-      // Moving before/after another task
-      newOrderIndex = overIndex;
+      // Dropped on another task - insert at that position
+      const overTaskIndex = columnTasks.findIndex((t) => t.id === overId);
+      newOrderIndex = overTaskIndex >= 0 ? overTaskIndex : columnTasks.length;
     }
 
-    // Update local state
+    // Update local state with optimistic update
     setTasks((prev) => {
       const updated = prev.map((t) =>
         t.id === activeId
-          ? { ...t, status: targetStatus, orderIndex: newOrderIndex }
+          ? { ...t, status: targetColumn, orderIndex: newOrderIndex }
           : t
       );
 
-      // Reorder tasks in target column
-      const targetColumnTasks = updated
-        .filter((t) => t.status === targetStatus)
+      // Reorder all tasks in the target column
+      const columnTasksUpdated = updated
+        .filter((t) => t.status === targetColumn)
         .sort((a, b) => {
-          if (a.id === activeId) return -1;
-          if (b.id === activeId) return 1;
+          if (a.id === activeId) return newOrderIndex - 0.5;
           return a.orderIndex - b.orderIndex;
         })
-        .map((t, i) => ({ ...t, orderIndex: i }));
+        .map((t, idx) => ({ ...t, orderIndex: idx }));
 
       return updated.map((t) => {
-        const reordered = targetColumnTasks.find((rt) => rt.id === t.id);
+        const reordered = columnTasksUpdated.find((ct) => ct.id === t.id);
         return reordered || t;
       });
     });
 
     // Persist to database
     try {
-      await updateTaskStatus(activeId, targetStatus, newOrderIndex);
+      await updateTaskStatus(activeId, targetColumn, newOrderIndex);
     } catch (error) {
       toast.error("Failed to update task");
-      // Revert on error
       setTasks(initialTasks);
     }
-  };
+  }, [tasks, findColumn, initialTasks]);
+
+  const handleDragCancel = useCallback(() => {
+    setActiveId(null);
+  }, []);
 
   const handleAddTask = (status: TaskStatus) => {
     setCreateDialogStatus(status);
@@ -223,16 +226,42 @@ export const KanbanBoard = ({
     setCreateDialogOpen(false);
   };
 
+  // Custom collision detection - prioritize columns
+  const collisionDetection = useCallback((args: any) => {
+    // First check for pointer within
+    const pointerCollisions = pointerWithin(args);
+    
+    if (pointerCollisions.length > 0) {
+      // Prioritize column collisions
+      const columnCollision = pointerCollisions.find((c) => 
+        columnIds.includes(c.id as TaskStatus)
+      );
+      if (columnCollision) {
+        return [columnCollision];
+      }
+      return pointerCollisions;
+    }
+
+    // Fallback to rect intersection
+    return rectIntersection(args);
+  }, []);
+
   return (
     <>
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCorners}
+        collisionDetection={collisionDetection}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
+        measuring={{
+          droppable: {
+            strategy: MeasuringStrategy.Always,
+          },
+        }}
       >
-        <div className="flex gap-4 h-full overflow-x-auto pb-4">
+        <div className="flex gap-4 h-full overflow-x-auto pb-4 px-1">
           {columns.map((column) => (
             <KanbanColumn
               key={column.id}
@@ -247,14 +276,19 @@ export const KanbanBoard = ({
           ))}
         </div>
 
-        <DragOverlay>
+        <DragOverlay dropAnimation={{
+          duration: 200,
+          easing: "cubic-bezier(0.18, 0.67, 0.6, 1.22)",
+        }}>
           {activeTask && (
-            <TaskCard
-              task={activeTask}
-              locale={locale}
-              workspaceId={workspaceId}
-              isDragging
-            />
+            <div className="rotate-3 scale-105">
+              <TaskCard
+                task={activeTask}
+                locale={locale}
+                workspaceId={workspaceId}
+                isDragging
+              />
+            </div>
           )}
         </DragOverlay>
       </DndContext>

@@ -7,7 +7,6 @@ import {
 } from "@dnd-kit/sortable";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { TaskCard } from "./task-card";
 import { cn } from "@/lib/utils";
 import type { Task, User } from "@/lib/db/schema";
@@ -38,14 +37,24 @@ export const KanbanColumn = ({
   locale,
   workspaceId,
 }: KanbanColumnProps) => {
-  const { setNodeRef, isOver } = useDroppable({ id });
+  const { setNodeRef, isOver, active } = useDroppable({ 
+    id,
+    data: {
+      type: "column",
+      column: id,
+    },
+  });
+
+  const isDraggingOver = isOver && active?.data?.current?.type === "task";
 
   return (
     <div
       ref={setNodeRef}
       className={cn(
-        "flex flex-col w-72 min-w-72 bg-muted/30 rounded-xl border border-border transition-colors",
-        isOver && "border-primary bg-primary/5"
+        "flex flex-col w-72 min-w-72 rounded-xl border-2 transition-all duration-200",
+        isDraggingOver 
+          ? "border-primary bg-primary/5 shadow-lg" 
+          : "border-border bg-muted/30",
       )}
     >
       {/* Header */}
@@ -69,16 +78,24 @@ export const KanbanColumn = ({
         </div>
       </div>
 
-      {/* Tasks */}
-      <ScrollArea className="flex-1 p-2">
+      {/* Tasks Container */}
+      <div className="flex-1 overflow-y-auto p-2">
         <SortableContext
           items={tasks.map((t) => t.id)}
           strategy={verticalListSortingStrategy}
         >
-          <div className="space-y-2 min-h-[100px]">
+          <div className={cn(
+            "space-y-2 min-h-[120px] rounded-lg transition-colors duration-200",
+            isDraggingOver && "bg-primary/5"
+          )}>
             {tasks.length === 0 ? (
-              <div className="flex items-center justify-center h-24 text-sm text-muted-foreground">
-                Drop tasks here
+              <div className={cn(
+                "flex items-center justify-center h-28 text-sm rounded-lg border-2 border-dashed transition-all duration-200",
+                isDraggingOver 
+                  ? "border-primary text-primary bg-primary/10" 
+                  : "border-muted-foreground/20 text-muted-foreground"
+              )}>
+                {isDraggingOver ? "Drop here" : "No tasks"}
               </div>
             ) : (
               tasks.map((task) => (
@@ -92,7 +109,7 @@ export const KanbanColumn = ({
             )}
           </div>
         </SortableContext>
-      </ScrollArea>
+      </div>
     </div>
   );
 };
