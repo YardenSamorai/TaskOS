@@ -15,6 +15,13 @@
       "when": 1769444104397,
       "tag": "0001_keen_gorgon",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1769465873629,
+      "tag": "0002_sticky_warhawk",
+      "breakpoints": true
     }
   ]
 }

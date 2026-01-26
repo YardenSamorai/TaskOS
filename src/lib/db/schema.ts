@@ -47,6 +47,13 @@ export const userPlanEnum = pgEnum("user_plan", [
   "enterprise",
 ]);
 
+export const invitationStatusEnum = pgEnum("invitation_status", [
+  "pending",
+  "accepted",
+  "expired",
+  "cancelled",
+]);
+
 // Users table (synced with Clerk)
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -94,6 +101,34 @@ export const workspaceMembers = pgTable(
       table.workspaceId,
       table.userId
     ),
+  })
+);
+
+// Workspace invitations table
+export const workspaceInvitations = pgTable(
+  "workspace_invitations",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    email: varchar("email", { length: 255 }).notNull(),
+    role: workspaceRoleEnum("role").notNull().default("member"),
+    status: invitationStatusEnum("status").notNull().default("pending"),
+    invitedBy: uuid("invited_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    token: varchar("token", { length: 64 }).notNull().unique(),
+    expiresAt: timestamp("expires_at").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    workspaceEmailIdx: index("invitation_workspace_email_idx").on(
+      table.workspaceId,
+      table.email
+    ),
+    tokenIdx: index("invitation_token_idx").on(table.token),
+    statusIdx: index("invitation_status_idx").on(table.status),
   })
 );
 
@@ -372,6 +407,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   tasks: many(tasks),
   comments: many(taskComments),
   notifications: many(notifications),
+  sentInvitations: many(workspaceInvitations),
 }));
 
 export const workspacesRelations = relations(workspaces, ({ one, many }) => ({
@@ -380,6 +416,7 @@ export const workspacesRelations = relations(workspaces, ({ one, many }) => ({
     references: [users.id],
   }),
   members: many(workspaceMembers),
+  invitations: many(workspaceInvitations),
   projects: many(projects),
   tasks: many(tasks),
   tags: many(tags),
@@ -396,6 +433,20 @@ export const workspaceMembersRelations = relations(
     }),
     user: one(users, {
       fields: [workspaceMembers.userId],
+      references: [users.id],
+    }),
+  })
+);
+
+export const workspaceInvitationsRelations = relations(
+  workspaceInvitations,
+  ({ one }) => ({
+    workspace: one(workspaces, {
+      fields: [workspaceInvitations.workspaceId],
+      references: [workspaces.id],
+    }),
+    inviter: one(users, {
+      fields: [workspaceInvitations.invitedBy],
       references: [users.id],
     }),
   })
@@ -528,6 +579,8 @@ export type NewUser = typeof users.$inferInsert;
 export type Workspace = typeof workspaces.$inferSelect;
 export type NewWorkspace = typeof workspaces.$inferInsert;
 export type WorkspaceMember = typeof workspaceMembers.$inferSelect;
+export type WorkspaceInvitation = typeof workspaceInvitations.$inferSelect;
+export type NewWorkspaceInvitation = typeof workspaceInvitations.$inferInsert;
 export type Task = typeof tasks.$inferSelect;
 export type NewTask = typeof tasks.$inferInsert;
 export type TaskStage = typeof taskStages.$inferSelect;
@@ -542,3 +595,4 @@ export type WorkspaceRole = "owner" | "admin" | "member" | "viewer";
 export type TaskStatus = "backlog" | "todo" | "in_progress" | "review" | "done";
 export type TaskPriority = "low" | "medium" | "high" | "urgent";
 export type UserPlan = "free" | "pro" | "enterprise";
+export type InvitationStatus = "pending" | "accepted" | "expired" | "cancelled";
