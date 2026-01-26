@@ -12,6 +12,11 @@ export const CACHE_TAGS = {
   members: (workspaceId: string) => `members-${workspaceId}`,
 } as const;
 
+// Simple string tags for general use
+export const TASKS_TAG = "tasks";
+export const ACTIVITY_TAG = "activity";
+export const STATS_TAG = "stats";
+
 // Cache durations (in seconds)
 export const CACHE_DURATIONS = {
   short: 30,      // 30 seconds - for frequently changing data
