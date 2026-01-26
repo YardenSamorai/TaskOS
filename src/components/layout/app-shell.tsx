@@ -216,7 +216,7 @@ export const AppShell = ({ children, locale }: AppShellProps) => {
           sidebarOpen ? "translate-x-0" : "-translate-x-full rtl:translate-x-full rtl:lg:translate-x-0"
         )}
       >
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full pt-[env(safe-area-inset-top)]">
           {/* Logo */}
           <div className="flex items-center justify-between p-4 border-b border-border">
             <Link href={`/${locale}`} className="flex items-center gap-3">
@@ -321,14 +321,14 @@ export const AppShell = ({ children, locale }: AppShellProps) => {
       {/* Main content */}
       <div className="lg:ps-64">
         {/* Top bar */}
-        <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-xl border-b border-border">
+        <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-xl border-b border-border pt-[env(safe-area-inset-top)]">
           {/* Loading indicator */}
           {isNavigating && (
-            <div className="absolute top-0 left-0 right-0 h-0.5 bg-primary/20 overflow-hidden">
+            <div className="absolute top-[env(safe-area-inset-top)] left-0 right-0 h-0.5 bg-primary/20 overflow-hidden">
               <div className="h-full bg-primary animate-pulse w-full" />
             </div>
           )}
-          <div className="flex items-center justify-between h-16 px-4">
+          <div className="flex items-center justify-between h-14 px-4">
             {/* Left side */}
             <div className="flex items-center gap-4">
               <Button
@@ -390,15 +390,15 @@ export const AppShell = ({ children, locale }: AppShellProps) => {
         </header>
 
         {/* Page content */}
-        <main className="p-4 md:p-6 lg:p-8 pb-20 lg:pb-8">
+        <main className="p-4 md:p-6 lg:p-8 pb-24 lg:pb-8" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}>
           {children}
         </main>
       </div>
 
       {/* Mobile bottom nav */}
       {isInWorkspace && (
-        <nav className="fixed bottom-0 start-0 end-0 z-30 bg-card border-t border-border lg:hidden safe-area-bottom">
-          <div className="flex items-center justify-around h-16">
+        <nav className="fixed bottom-0 start-0 end-0 z-40 bg-card/95 backdrop-blur-xl border-t border-border lg:hidden pb-[env(safe-area-inset-bottom)]">
+          <div className="flex items-center justify-around h-14">
             {mobileNavItems.map((item) => {
               const href = `/${locale}/app/${workspaceId}${item.href}`;
               return (
