@@ -381,11 +381,11 @@ export const updateTask = async (formData: FormData) => {
   }
 };
 
-// Update task status (for DnD)
+// Update task status (for DnD or quick change)
 export const updateTaskStatus = async (
   taskId: string,
   status: TaskStatus,
-  orderIndex: number
+  orderIndex?: number
 ) => {
   try {
     const existingTask = await db.query.tasks.findFirst({
@@ -398,14 +398,20 @@ export const updateTaskStatus = async (
 
     const { user } = await requireWorkspaceEditor(existingTask.workspaceId);
 
+    const updateData: Record<string, unknown> = {
+      status,
+      updatedAt: new Date(),
+      updatedBy: user.id,
+    };
+    
+    // Only update orderIndex if provided
+    if (orderIndex !== undefined) {
+      updateData.orderIndex = orderIndex;
+    }
+
     const [task] = await db
       .update(tasks)
-      .set({
-        status,
-        orderIndex,
-        updatedAt: new Date(),
-        updatedBy: user.id,
-      })
+      .set(updateData)
       .where(eq(tasks.id, taskId))
       .returning();
 
