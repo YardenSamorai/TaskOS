@@ -8,7 +8,6 @@ import { checkCanAddMember, PlanLimitError } from "@/lib/auth/plan-check";
 import { and, eq, gt, or } from "drizzle-orm";
 import { z } from "zod";
 import { CACHE_TAGS } from "@/lib/cache";
-import crypto from "crypto";
 
 // Schemas
 const createInvitationSchema = z.object({
@@ -21,9 +20,14 @@ const acceptInvitationSchema = z.object({
   token: z.string().min(1),
 });
 
-// Generate secure token
+// Generate secure token (works in both Node and Edge)
 const generateToken = () => {
-  return crypto.randomBytes(32).toString("hex");
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let token = "";
+  for (let i = 0; i < 64; i++) {
+    token += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return token;
 };
 
 // Create invitation
