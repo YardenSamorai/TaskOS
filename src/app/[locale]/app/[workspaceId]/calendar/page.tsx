@@ -39,7 +39,7 @@ const CalendarPage = () => {
   const { data: tasks = [], isLoading: loading } = useTasks(workspaceId);
 
   const events = tasks
-    .filter((task) => task.dueDate)
+    .filter((task): task is typeof task & { dueDate: string } => task.dueDate !== null)
     .map((task) => ({
       id: task.id,
       title: task.title,
