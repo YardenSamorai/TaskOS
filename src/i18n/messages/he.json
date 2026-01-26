@@ -1,0 +1,284 @@
+{
+  "common": {
+    "loading": "טוען...",
+    "error": "אירעה שגיאה",
+    "save": "שמור",
+    "cancel": "ביטול",
+    "delete": "מחק",
+    "edit": "ערוך",
+    "create": "צור",
+    "search": "חיפוש",
+    "filter": "סינון",
+    "sort": "מיון",
+    "actions": "פעולות",
+    "settings": "הגדרות",
+    "profile": "פרופיל",
+    "logout": "התנתק",
+    "back": "חזרה",
+    "next": "הבא",
+    "previous": "הקודם",
+    "confirm": "אישור",
+    "close": "סגור",
+    "open": "פתח",
+    "view": "צפייה",
+    "download": "הורד",
+    "upload": "העלה",
+    "noResults": "לא נמצאו תוצאות",
+    "selectAll": "בחר הכל",
+    "deselectAll": "בטל בחירה"
+  },
+  "landing": {
+    "title": "TaskOS",
+    "subtitle": "ניהול משימות פרימיום",
+    "description": "מערכת ניהול המשימות המתקדמת ביותר. ארגנו את העבודה, שתפו פעולה עם הצוות, והשיגו יותר.",
+    "getStarted": "התחל עכשיו",
+    "signIn": "התחברות",
+    "features": {
+      "title": "כל מה שצריך לניהול משימות",
+      "workspaces": {
+        "title": "סביבות עבודה לצוות",
+        "description": "ארגנו את הצוות עם סביבות עבודה ייעודיות, תפקידים והרשאות."
+      },
+      "kanban": {
+        "title": "לוח קנבן",
+        "description": "הציגו את תהליך העבודה עם לוחות משימות בגרירה ושחרור."
+      },
+      "process": {
+        "title": "מצב תהליך",
+        "description": "פרקו משימות מורכבות לשלבים, צעדים ורשימות תיוג."
+      },
+      "calendar": {
+        "title": "תצוגת לוח שנה",
+        "description": "תכננו ותזמנו משימות עם ממשק לוח שנה אינטואיטיבי."
+      },
+      "files": {
+        "title": "קבצים מצורפים",
+        "description": "צרפו קבצים ותמונות למשימות ושלבים."
+      },
+      "activity": {
+        "title": "יומן פעילות",
+        "description": "עקבו אחר כל שינוי עם היסטוריית פעילות מפורטת."
+      }
+    },
+    "cta": {
+      "title": "מוכנים לשדרג את תהליך העבודה?",
+      "description": "התחילו לנהל משימות כמו מקצוענים. חינם להתחלה.",
+      "button": "צרו חשבון חינם"
+    }
+  },
+  "auth": {
+    "signIn": "התחברות",
+    "signUp": "הרשמה",
+    "signOut": "התנתקות",
+    "welcomeBack": "ברוכים השבים",
+    "createAccount": "צרו את החשבון שלכם"
+  },
+  "workspaces": {
+    "title": "סביבות עבודה",
+    "create": "צור סביבת עבודה",
+    "createTitle": "צור סביבת עבודה חדשה",
+    "createDescription": "סביבות עבודה עוזרות לארגן את המשימות והפרויקטים של הצוות.",
+    "name": "שם סביבת העבודה",
+    "namePlaceholder": "סביבת העבודה שלי",
+    "description": "תיאור",
+    "descriptionPlaceholder": "למה מיועדת סביבת העבודה הזו?",
+    "select": "בחר סביבת עבודה",
+    "noWorkspaces": "אין עדיין סביבות עבודה",
+    "noWorkspacesDescription": "צרו את סביבת העבודה הראשונה שלכם כדי להתחיל.",
+    "members": "חברים",
+    "settings": "הגדרות סביבת עבודה",
+    "invite": "הזמן חברים",
+    "inviteLink": "קישור הזמנה",
+    "inviteLinkDescription": "שתפו את הקישור הזה כדי להזמין אנשים לסביבת העבודה.",
+    "copyLink": "העתק קישור",
+    "linkCopied": "הקישור הועתק!",
+    "regenerateLink": "צור קישור מחדש",
+    "roles": {
+      "owner": "בעלים",
+      "admin": "מנהל",
+      "member": "חבר",
+      "viewer": "צופה"
+    },
+    "leave": "עזוב סביבת עבודה",
+    "delete": "מחק סביבת עבודה",
+    "deleteConfirm": "האם אתם בטוחים שברצונכם למחוק את סביבת העבודה הזו? פעולה זו אינה ניתנת לביטול."
+  },
+  "dashboard": {
+    "title": "לוח בקרה",
+    "welcome": "ברוכים השבים",
+    "overview": "סקירה כללית",
+    "recentTasks": "משימות אחרונות",
+    "upcomingDeadlines": "דדליינים קרובים",
+    "teamActivity": "פעילות צוות",
+    "quickActions": "פעולות מהירות",
+    "stats": {
+      "totalTasks": "סה\"כ משימות",
+      "completed": "הושלמו",
+      "inProgress": "בתהליך",
+      "overdue": "באיחור"
+    }
+  },
+  "tasks": {
+    "title": "משימות",
+    "create": "צור משימה",
+    "createTitle": "צור משימה חדשה",
+    "edit": "ערוך משימה",
+    "delete": "מחק משימה",
+    "deleteConfirm": "האם אתם בטוחים שברצונכם למחוק את המשימה הזו?",
+    "taskTitle": "כותרת",
+    "titlePlaceholder": "מה צריך לעשות?",
+    "description": "תיאור",
+    "descriptionPlaceholder": "הוסיפו פרטים נוספים על המשימה...",
+    "status": "סטטוס",
+    "priority": "עדיפות",
+    "dueDate": "תאריך יעד",
+    "startDate": "תאריך התחלה",
+    "assignees": "משויכים",
+    "tags": "תגיות",
+    "noTasks": "אין עדיין משימות",
+    "noTasksDescription": "צרו את המשימה הראשונה שלכם כדי להתחיל.",
+    "statuses": {
+      "backlog": "בקלוג",
+      "todo": "לביצוע",
+      "in_progress": "בתהליך",
+      "review": "בבדיקה",
+      "done": "הושלם"
+    },
+    "priorities": {
+      "low": "נמוכה",
+      "medium": "בינונית",
+      "high": "גבוהה",
+      "urgent": "דחוף"
+    },
+    "filters": {
+      "all": "כל המשימות",
+      "myTasks": "המשימות שלי",
+      "unassigned": "לא משויך",
+      "overdue": "באיחור",
+      "dueToday": "להיום",
+      "dueThisWeek": "השבוע"
+    }
+  },
+  "board": {
+    "title": "לוח",
+    "addColumn": "הוסף עמודה",
+    "emptyColumn": "אין משימות בעמודה זו",
+    "dragHint": "גררו משימות בין עמודות כדי לשנות את הסטטוס"
+  },
+  "calendar": {
+    "title": "לוח שנה",
+    "today": "היום",
+    "month": "חודש",
+    "week": "שבוע",
+    "day": "יום",
+    "noEvents": "אין משימות מתוכננות ליום זה"
+  },
+  "process": {
+    "title": "מצב תהליך",
+    "stages": "שלבים",
+    "addStage": "הוסף שלב",
+    "steps": "צעדים",
+    "addStep": "הוסף צעד",
+    "checklist": "רשימת תיוג",
+    "files": "קבצים",
+    "decisions": "החלטות",
+    "progress": "התקדמות",
+    "complete": "סמן כהושלם",
+    "incomplete": "סמן כלא הושלם"
+  },
+  "comments": {
+    "title": "תגובות",
+    "add": "הוסף תגובה",
+    "placeholder": "כתבו תגובה...",
+    "noComments": "אין עדיין תגובות",
+    "edited": "נערך",
+    "added": "התגובה נוספה",
+    "addError": "שגיאה בהוספת תגובה",
+    "updated": "התגובה עודכנה",
+    "updateError": "שגיאה בעדכון תגובה",
+    "deleted": "התגובה נמחקה",
+    "deleteError": "שגיאה במחיקת תגובה",
+    "edit": "ערוך",
+    "delete": "מחק",
+    "save": "שמור",
+    "cancel": "ביטול",
+    "deleteConfirmTitle": "למחוק את התגובה?",
+    "deleteConfirmDescription": "פעולה זו אינה ניתנת לביטול."
+  },
+  "files": {
+    "title": "קבצים",
+    "upload": "העלה קובץ",
+    "cancel": "ביטול",
+    "noFiles": "אין קבצים מצורפים",
+    "delete": "מחק",
+    "deleteConfirm": "האם אתה בטוח שברצונך למחוק את הקובץ?",
+    "deleted": "הקובץ נמחק",
+    "uploaded": "הקובץ הועלה",
+    "dragDrop": "גרור ושחרר קבצים כאן, או לחץ לבחירה",
+    "maxSize": "עד {count} קבצים, עד {size} כל אחד"
+  },
+  "activity": {
+    "title": "פעילות",
+    "log": "יומן פעילות",
+    "created": "יצר",
+    "updated": "עדכן",
+    "deleted": "מחק",
+    "assigned": "שייך",
+    "unassigned": "הסיר שיוך",
+    "commented": "הגיב על",
+    "attached": "צירף",
+    "completed": "השלים",
+    "moved": "העביר"
+  },
+  "notifications": {
+    "title": "התראות",
+    "markAllRead": "סמן הכל כנקרא",
+    "noNotifications": "אין התראות",
+    "settings": "הגדרות התראות"
+  },
+  "templates": {
+    "title": "תבניות",
+    "create": "צור תבנית",
+    "createFromTask": "צור תבנית ממשימה",
+    "useTemplate": "השתמש בתבנית",
+    "noTemplates": "אין עדיין תבניות",
+    "noTemplatesDescription": "צרו תבניות למשימות ותהליכים חוזרים."
+  },
+  "focus": {
+    "title": "תצוגת פוקוס",
+    "today": "משימות היום",
+    "nextSteps": "הצעדים הבאים",
+    "noTasksToday": "אין משימות להיום",
+    "allDone": "סיימתם הכל להיום!"
+  },
+  "summary": {
+    "title": "סיכום חכם",
+    "today": "סיכום היום",
+    "tasksCompleted": "משימות הושלמו",
+    "tasksCreated": "משימות נוצרו",
+    "commentsAdded": "תגובות נוספו",
+    "filesUploaded": "קבצים הועלו"
+  },
+  "settings": {
+    "title": "הגדרות",
+    "general": "כללי",
+    "appearance": "מראה",
+    "language": "שפה",
+    "theme": "ערכת נושא",
+    "themes": {
+      "light": "בהיר",
+      "dark": "כהה",
+      "system": "מערכת"
+    },
+    "notifications": "התראות",
+    "members": "חברים",
+    "danger": "אזור סכנה"
+  },
+  "errors": {
+    "notFound": "הדף לא נמצא",
+    "unauthorized": "אין לכם הרשאה לצפות בדף זה",
+    "forbidden": "אין לכם הרשאה לבצע פעולה זו",
+    "serverError": "משהו השתבש",
+    "networkError": "שגיאת רשת. אנא נסו שוב."
+  }
+}
