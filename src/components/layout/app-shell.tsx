@@ -30,6 +30,7 @@ import { useAppStore } from "@/lib/store";
 import { CommandPalette } from "@/components/search/command-palette";
 import { NotificationsDropdown } from "@/components/notifications/notifications-dropdown";
 import { CreateTaskDialog } from "@/components/tasks/create-task-dialog";
+import { InstallPrompt } from "@/components/pwa/install-prompt";
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -424,6 +425,9 @@ export const AppShell = ({ children, locale }: AppShellProps) => {
           locale={locale}
         />
       )}
+
+      {/* PWA Install Prompt */}
+      <InstallPrompt />
     </div>
   );
 };
