@@ -29,15 +29,15 @@ export const CACHE_DURATIONS = {
 export const requestCache = cache;
 
 // Create a cached function with unstable_cache
-export const createCachedFunction = <T extends (...args: never[]) => Promise<unknown>>(
+export const createCachedFunction = <T extends (...args: any[]) => Promise<any>>(
   fn: T,
   keyParts: string[],
   options: {
     revalidate?: number;
     tags?: string[];
   } = {}
-) => {
-  return unstable_cache(fn, keyParts, {
+): T => {
+  return unstable_cache(fn as any, keyParts, {
     revalidate: options.revalidate ?? CACHE_DURATIONS.medium,
     tags: options.tags ?? [],
   }) as T;

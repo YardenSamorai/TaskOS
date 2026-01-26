@@ -28,7 +28,7 @@ const FocusPage = () => {
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       {/* Smart Summary */}
-      <SmartSummary stats={stats} activity={activity} />
+      <SmartSummary stats={stats ?? null} activity={activity} />
 
       {/* Focus View */}
       <FocusView tasks={tasks} locale={locale} workspaceId={workspaceId} />

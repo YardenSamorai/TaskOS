@@ -73,12 +73,12 @@ export const createAttachment = async (formData: FormData) => {
     const [attachment] = await db
       .insert(attachments)
       .values({
-        taskId: data.taskId,
+        taskId: data.taskId!,
         stageId: data.stageId,
         name: data.name,
         url: data.url,
-        fileType: data.fileType,
-        fileSize: data.fileSize,
+        type: data.fileType,
+        size: data.fileSize,
         uploadedBy: user.id,
       })
       .returning();
@@ -125,7 +125,7 @@ export const getTaskAttachments = async (taskId: string) => {
     const taskAttachments = await db.query.attachments.findMany({
       where: eq(attachments.taskId, taskId),
       with: {
-        uploadedBy: true,
+        uploader: true,
       },
       orderBy: (attachments, { desc }) => [desc(attachments.createdAt)],
     });

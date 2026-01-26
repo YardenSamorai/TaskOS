@@ -36,7 +36,7 @@ const JoinWorkspacePage = () => {
         }
         // Redirect to the workspace after a short delay
         setTimeout(() => {
-          router.push(`/${locale}/app/${res.workspace.id}/dashboard`);
+          router.push(`/${locale}/app/${res.workspace?.id}/dashboard`);
         }, 1500);
       } else {
         toast.error(res.error || "Failed to join workspace");

@@ -47,8 +47,8 @@ export const TaskAttachments = ({ task }: TaskAttachmentsProps) => {
     id: a.id,
     name: a.name,
     url: a.url,
-    fileType: a.fileType,
-    fileSize: a.fileSize,
+    fileType: a.type,
+    fileSize: a.size,
     createdAt: a.createdAt,
     uploadedBy: a.uploader
       ? {
