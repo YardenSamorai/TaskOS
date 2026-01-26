@@ -46,6 +46,7 @@ interface CreateTaskDialogProps {
   workspaceName?: string;
   locale: string;
   defaultStatus?: TaskStatus;
+  defaultDueDate?: Date;
   members?: (WorkspaceMember & { user: User })[];
   onSuccess?: (task: any) => void;
 }
@@ -66,6 +67,7 @@ export const CreateTaskDialog = ({
   workspaceName,
   locale,
   defaultStatus = "todo",
+  defaultDueDate,
   members: propMembers,
   onSuccess,
 }: CreateTaskDialogProps) => {
@@ -74,7 +76,7 @@ export const CreateTaskDialog = ({
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState<TaskStatus>(defaultStatus);
   const [priority, setPriority] = useState<string>("low");
-  const [dueDate, setDueDate] = useState<Date>();
+  const [dueDate, setDueDate] = useState<Date | undefined>(defaultDueDate);
   const [assigneeId, setAssigneeId] = useState<string>("");
   const [steps, setSteps] = useState<string[]>([]);
   const [acceptanceCriteria, setAcceptanceCriteria] = useState<string[]>([]);
@@ -87,9 +89,13 @@ export const CreateTaskDialog = ({
   const { data: workspaceData } = useWorkspace(workspaceId);
   const members = propMembers || workspaceData?.members || [];
 
-  // Reset form when dialog closes
+  // Reset form when dialog opens/closes
   useEffect(() => {
-    if (!open) {
+    if (open) {
+      // Set default values when opening
+      setDueDate(defaultDueDate);
+    } else {
+      // Reset form when closing
       setTitle("");
       setDescription("");
       setStatus(defaultStatus);
@@ -99,7 +105,7 @@ export const CreateTaskDialog = ({
       setSteps([]);
       setAcceptanceCriteria([]);
     }
-  }, [open, defaultStatus]);
+  }, [open, defaultStatus, defaultDueDate]);
 
   const handleApplyEnhancement = (enhanced: EnhancedTask) => {
     setTitle(enhanced.title);
