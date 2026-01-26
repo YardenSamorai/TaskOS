@@ -18,11 +18,12 @@ export const metadata: Metadata = {
 
 interface RootLayoutProps {
   children: React.ReactNode;
-  params: Promise<{ locale: Locale }>;
+  params: Promise<{ locale: string }>;
 }
 
 const RootLayout = async ({ children, params }: RootLayoutProps) => {
-  const { locale } = await params;
+  const { locale: localeParam } = await params;
+  const locale = localeParam as Locale;
   const messages = await getMessages();
   const direction = localeDirection[locale] || "ltr";
 
