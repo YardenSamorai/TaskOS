@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { useWorkspace, useWorkspaceMembers } from "@/lib/hooks/use-workspaces";
+import { useWorkspace } from "@/lib/hooks/use-workspaces";
 import { useWorkspaceStats, useTasks, useRecentActivity } from "@/lib/hooks/use-tasks";
 import { ProjectAnalyticsChart } from "@/components/dashboard/project-analytics-chart";
 import { TimeTracker } from "@/components/dashboard/time-tracker";
@@ -24,10 +24,9 @@ const DashboardPage = () => {
   const { data: stats } = useWorkspaceStats(workspaceId);
   const { data: tasks = [] } = useTasks(workspaceId);
   const { data: activity = [] } = useRecentActivity(workspaceId);
-  const { data: membersData } = useWorkspaceMembers(workspaceId);
   
   const workspace = data?.workspace;
-  const members = membersData?.members || [];
+  const members = data?.members || [];
 
   if (isLoading) {
     return (
