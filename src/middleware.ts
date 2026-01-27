@@ -16,6 +16,7 @@ const publicPaths = [
   "/sign-in",
   "/sign-up",
   "/forgot-password",
+  "/reset-password",
   "/api/auth",
   "/api/webhooks",
 ];
