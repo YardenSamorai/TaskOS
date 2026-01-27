@@ -495,10 +495,10 @@ const DashboardPage = () => {
               <CardTitle className="text-base">Quick Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Link href={`/${locale}/app/my-day`} className="block">
+              <Link href={`/${locale}/app/workspaces`} className="block">
                 <Button variant="outline" className="w-full justify-start gap-2">
                   <Zap className="w-4 h-4" style={{ color: "var(--accent-color)" }} />
-                  My Day
+                  Focus Mode
                 </Button>
               </Link>
               <Link href={`/${locale}/app/${workspaceId}/board`} className="block">

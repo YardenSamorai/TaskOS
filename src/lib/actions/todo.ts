@@ -191,7 +191,7 @@ export async function createTodo(data: z.infer<typeof createTodoSchema>) {
     })
     .returning();
 
-  revalidatePath("/[locale]/app/my-day", "page");
+  revalidatePath("/[locale]/app/workspaces", "page");
   revalidatePath("/[locale]/app/workspaces", "page");
   return { success: true, todo };
 }
@@ -221,7 +221,7 @@ export async function updateTodo(todoId: string, data: z.infer<typeof updateTodo
     .where(eq(todos.id, todoId))
     .returning();
 
-  revalidatePath("/[locale]/app/my-day", "page");
+  revalidatePath("/[locale]/app/workspaces", "page");
   return updated;
 }
 
@@ -248,7 +248,7 @@ export async function toggleTodo(todoId: string) {
     .where(eq(todos.id, todoId))
     .returning();
 
-  revalidatePath("/[locale]/app/my-day", "page");
+  revalidatePath("/[locale]/app/workspaces", "page");
   return updated;
 }
 
@@ -268,7 +268,7 @@ export async function deleteTodo(todoId: string) {
 
   await db.delete(todos).where(eq(todos.id, todoId));
 
-  revalidatePath("/[locale]/app/my-day", "page");
+  revalidatePath("/[locale]/app/workspaces", "page");
   return { success: true };
 }
 
@@ -313,7 +313,7 @@ export async function convertTodoToTask(
   // Delete the todo (or link it)
   await db.delete(todos).where(eq(todos.id, todoId));
 
-  revalidatePath("/[locale]/app/my-day", "page");
+  revalidatePath("/[locale]/app/workspaces", "page");
   return task;
 }
 
@@ -333,7 +333,7 @@ export async function reorderTodos(todoIds: string[]) {
     )
   );
 
-  revalidatePath("/[locale]/app/my-day", "page");
+  revalidatePath("/[locale]/app/workspaces", "page");
   return { success: true };
 }
 
@@ -347,6 +347,6 @@ export async function clearCompletedTodos() {
     .delete(todos)
     .where(and(eq(todos.userId, user.id), eq(todos.completed, true)));
 
-  revalidatePath("/[locale]/app/my-day", "page");
+  revalidatePath("/[locale]/app/workspaces", "page");
   return { success: true };
 }

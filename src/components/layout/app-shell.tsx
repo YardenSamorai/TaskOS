@@ -20,7 +20,6 @@ import {
   Target,
   Plus,
   Users,
-  Sun,
   ChevronRight,
   Home,
 } from "lucide-react";
@@ -46,7 +45,6 @@ interface NavItem {
 }
 
 const mainNavItems: NavItem[] = [
-  { icon: Sun, labelKey: "myDay", href: "/app/my-day" },
   { icon: FolderKanban, labelKey: "workspaces", href: "/app/workspaces" },
 ];
 
@@ -250,12 +248,6 @@ export const AppShell = ({ children, locale }: AppShellProps) => {
           icon: pageLabels[lastSegment].icon,
         });
       }
-    } else if (pathname.includes("/my-day")) {
-      crumbs.push({
-        label: "My Day",
-        href: `/${locale}/app/my-day`,
-        icon: Sun,
-      });
     } else if (pathname.includes("/account")) {
       crumbs.push({
         label: t("common.profile"),
