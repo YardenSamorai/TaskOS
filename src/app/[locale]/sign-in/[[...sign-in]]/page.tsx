@@ -82,16 +82,19 @@ const SignInPage = async ({ params }: SignInPageProps) => {
       </div>
       
       {/* Right Side - Sign In Form */}
-      <div className="w-full lg:w-1/2 bg-white flex items-center justify-center p-6 sm:p-12">
+      <div className="w-full lg:w-1/2 bg-zinc-50 flex items-center justify-center p-6 sm:p-12 min-h-screen">
         <div className="w-full max-w-md">
-          {/* Mobile logo */}
-          <div className="lg:hidden flex items-center justify-center gap-3 mb-10">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
-              <Zap className="w-5 h-5 text-white" />
+          {/* Mobile header */}
+          <div className="lg:hidden mb-10">
+            <div className="flex items-center justify-center gap-3 mb-6">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                <Zap className="w-6 h-6 text-white" />
+              </div>
             </div>
-            <span className="text-xl font-bold text-zinc-900">
+            <h1 className="text-2xl font-bold text-zinc-900 text-center">
               Task<span className="text-indigo-600">OS</span>
-            </span>
+            </h1>
+            <p className="text-zinc-500 text-center text-sm mt-1">Project Management Made Simple</p>
           </div>
           
           <div className="mb-8">
