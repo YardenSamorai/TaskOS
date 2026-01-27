@@ -1,17 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { signIn } from "next-auth/react";
 import { Zap, CheckCircle2, Loader2, Mail, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { loginUser, loginWithGoogle } from "@/lib/actions/auth";
 import { toast } from "sonner";
 
 export default function SignInPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get("callbackUrl");
+  
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -26,21 +29,31 @@ export default function SignInPage() {
     setIsLoading(true);
     setShowGooglePrompt(false);
 
-    const form = new FormData();
-    form.append("email", formData.email);
-    form.append("password", formData.password);
+    try {
+      const result = await signIn("credentials", {
+        email: formData.email,
+        password: formData.password,
+        redirect: false,
+      });
 
-    const result = await loginUser(form);
-
-    if (result.success) {
-      toast.success("Welcome back!");
-      router.push("/en/app/workspaces");
-      router.refresh();
-    } else if (result.errorCode === "GOOGLE_ACCOUNT") {
-      // User has a Google account but no password
-      setShowGooglePrompt(true);
-    } else {
-      toast.error(result.error || "Failed to sign in");
+      if (result?.error) {
+        // Handle specific errors
+        if (result.error.includes("GOOGLE_ACCOUNT")) {
+          setShowGooglePrompt(true);
+        } else if (result.error.includes("No account")) {
+          toast.error("No account found with this email");
+        } else if (result.error.includes("Invalid password")) {
+          toast.error("Invalid password");
+        } else {
+          toast.error("Invalid email or password");
+        }
+      } else if (result?.ok) {
+        toast.success("Welcome back!");
+        // Redirect after successful login
+        window.location.href = callbackUrl || "/en/app/workspaces";
+      }
+    } catch (error) {
+      toast.error("Failed to sign in");
     }
 
     setIsLoading(false);
@@ -48,7 +61,10 @@ export default function SignInPage() {
 
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
-    await loginWithGoogle();
+    // Use client-side signIn for Google
+    await signIn("google", { 
+      callbackUrl: callbackUrl || "/en/app/workspaces" 
+    });
   };
 
   return (
@@ -281,7 +297,10 @@ export default function SignInPage() {
 
           <p className="text-center text-zinc-500 text-sm mt-6">
             Don&apos;t have an account?{" "}
-            <Link href="/en/sign-up" className="text-indigo-600 hover:text-indigo-700 font-medium">
+            <Link 
+              href={callbackUrl ? `/en/sign-up?callbackUrl=${encodeURIComponent(callbackUrl)}` : "/en/sign-up"} 
+              className="text-indigo-600 hover:text-indigo-700 font-medium"
+            >
               Sign up
             </Link>
           </p>

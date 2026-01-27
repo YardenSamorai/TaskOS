@@ -73,6 +73,31 @@ export async function loginUser(formData: FormData) {
       password: formData.get("password"),
     });
 
+    // Check if user exists and has a password
+    const user = await db.query.users.findFirst({
+      where: eq(users.email, data.email.toLowerCase()),
+    });
+
+    if (!user) {
+      return { success: false, error: "No account found with this email" };
+    }
+
+    if (!user.password) {
+      // User exists but signed up with Google
+      return { 
+        success: false, 
+        error: "This account uses Google Sign-In",
+        errorCode: "GOOGLE_ACCOUNT" 
+      };
+    }
+
+    // Verify password
+    const passwordMatch = await bcrypt.compare(data.password, user.password);
+    if (!passwordMatch) {
+      return { success: false, error: "Invalid password" };
+    }
+
+    // Now sign in - this should work since we validated
     await signIn("credentials", {
       email: data.email,
       password: data.password,
@@ -81,42 +106,23 @@ export async function loginUser(formData: FormData) {
 
     return { success: true };
   } catch (error: any) {
-    // Check for specific error messages from the authorize function
-    const errorMessage = error?.cause?.err?.message || error?.message || "";
+    console.error("Login error:", error);
     
-    if (errorMessage === "GOOGLE_ACCOUNT_EXISTS") {
-      return { 
-        success: false, 
-        error: "This account uses Google Sign-In",
-        errorCode: "GOOGLE_ACCOUNT" 
-      };
+    // Check for NEXT_REDIRECT - this means signIn succeeded and is trying to redirect
+    if (error?.digest?.includes("NEXT_REDIRECT")) {
+      return { success: true };
     }
 
-    if (error instanceof AuthError) {
-      switch (error.type) {
-        case "CredentialsSignin":
-          // Check for custom error messages
-          if (errorMessage.includes("No account found")) {
-            return { success: false, error: "No account found with this email" };
-          }
-          if (errorMessage.includes("Invalid password")) {
-            return { success: false, error: "Invalid password" };
-          }
-          return { success: false, error: "Invalid email or password" };
-        default:
-          return { success: false, error: "Something went wrong" };
-      }
-    }
     if (error instanceof z.ZodError) {
       return { success: false, error: error.errors[0].message };
     }
-    console.error("Login error:", error);
+    
     return { success: false, error: "Failed to sign in" };
   }
 }
 
-export async function loginWithGoogle() {
-  await signIn("google", { redirectTo: "/en/app/workspaces" });
+export async function loginWithGoogle(callbackUrl?: string) {
+  await signIn("google", { redirectTo: callbackUrl || "/en/app/workspaces" });
 }
 
 export async function logoutUser() {

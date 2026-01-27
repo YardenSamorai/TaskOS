@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSession, signOut } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { 
   User, 
@@ -85,6 +85,11 @@ import {
 } from "@/components/ui/select";
 import { PLAN_INFO, PLAN_LIMITS } from "@/lib/plans";
 import { setPassword, changePassword, checkHasPassword } from "@/lib/actions/auth";
+import { 
+  getNotificationPreferences, 
+  updateNotificationPreferences,
+  type NotificationPreferencesInput 
+} from "@/lib/actions/notification-preferences";
 import { toast } from "sonner";
 import type { User as DBUser, UserPlan } from "@/lib/db/schema";
 
@@ -236,13 +241,31 @@ export const AccountSettings = ({ user, usageStats }: AccountSettingsProps) => {
   const planInfo = PLAN_INFO[plan];
   const limits = usageStats.limits;
 
-  // Load preferences from localStorage
+  // Load preferences from database and localStorage
   useEffect(() => {
-    const savedNotifications = localStorage.getItem("taskos-notifications");
+    // Load notification preferences from database
+    getNotificationPreferences().then((result) => {
+      if (result.success && result.preferences) {
+        setNotifications({
+          emailNotifications: result.preferences.emailNotifications,
+          pushNotifications: result.preferences.pushNotifications,
+          taskAssigned: result.preferences.taskAssigned,
+          taskCompleted: result.preferences.taskCompleted,
+          taskDueSoon: result.preferences.taskDueSoon,
+          mentions: result.preferences.mentions,
+          comments: result.preferences.comments,
+          weeklyDigest: result.preferences.weeklyDigest,
+          marketingEmails: result.preferences.marketingEmails,
+          soundEnabled: result.preferences.soundEnabled,
+          desktopNotifications: result.preferences.desktopNotifications,
+        });
+      }
+    });
+
+    // Load appearance and language from localStorage (client-side only)
     const savedAppearance = localStorage.getItem("taskos-appearance");
     const savedLanguage = localStorage.getItem("taskos-language");
     
-    if (savedNotifications) setNotifications(JSON.parse(savedNotifications));
     if (savedAppearance) {
       const parsed = JSON.parse(savedAppearance);
       setAppearance(parsed);
@@ -254,11 +277,30 @@ export const AccountSettings = ({ user, usageStats }: AccountSettingsProps) => {
     checkHasPassword().then(result => setHasPassword(result.hasPassword));
   }, [setTheme]);
 
-  // Save preferences
-  const saveNotifications = (newPrefs: NotificationPreferences) => {
+  // Save notification preferences to database
+  const saveNotifications = async (newPrefs: NotificationPreferences) => {
     setNotifications(newPrefs);
-    localStorage.setItem("taskos-notifications", JSON.stringify(newPrefs));
-    toast.success("Notification settings saved");
+    
+    // Save to database
+    const result = await updateNotificationPreferences({
+      emailNotifications: newPrefs.emailNotifications,
+      pushNotifications: newPrefs.pushNotifications,
+      taskAssigned: newPrefs.taskAssigned,
+      taskCompleted: newPrefs.taskCompleted,
+      taskDueSoon: newPrefs.taskDueSoon,
+      mentions: newPrefs.mentions,
+      comments: newPrefs.comments,
+      weeklyDigest: newPrefs.weeklyDigest,
+      marketingEmails: newPrefs.marketingEmails,
+      soundEnabled: newPrefs.soundEnabled,
+      desktopNotifications: newPrefs.desktopNotifications,
+    });
+
+    if (result.success) {
+      toast.success("Notification settings saved");
+    } else {
+      toast.error("Failed to save notification settings");
+    }
   };
 
   const saveAppearance = (newPrefs: AppearancePreferences) => {
@@ -674,11 +716,71 @@ const NotificationsTab = ({ preferences, onSave, isPro }: {
   isPro: boolean;
 }) => {
   const [local, setLocal] = useState(preferences);
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>("default");
 
-  const updatePref = (key: keyof NotificationPreferences, value: boolean) => {
+  // Check notification permission on mount
+  useEffect(() => {
+    if (typeof window !== "undefined" && "Notification" in window) {
+      setNotificationPermission(Notification.permission);
+    }
+  }, []);
+
+  const updatePref = async (key: keyof NotificationPreferences, value: boolean) => {
+    // Request notification permission when enabling desktop notifications
+    if (key === "desktopNotifications" && value && notificationPermission !== "granted") {
+      const permission = await requestNotificationPermission();
+      if (!permission) {
+        toast.error("Notification permission denied. Please enable notifications in your browser settings.");
+        return;
+      }
+    }
+    
     const updated = { ...local, [key]: value };
     setLocal(updated);
     onSave(updated);
+  };
+
+  const requestNotificationPermission = async (): Promise<boolean> => {
+    if (!("Notification" in window)) {
+      toast.error("This browser doesn't support notifications");
+      return false;
+    }
+    
+    const permission = await Notification.requestPermission();
+    setNotificationPermission(permission);
+    return permission === "granted";
+  };
+
+  const testNotification = () => {
+    if (notificationPermission !== "granted") {
+      toast.error("Please enable notifications first");
+      return;
+    }
+    
+    new Notification("Test Notification 🎉", {
+      body: "Great! Your notifications are working correctly.",
+      icon: "/icons/icon.svg",
+    });
+    
+    if (local.soundEnabled) {
+      // Play a simple notification sound
+      try {
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        oscillator.frequency.value = 800;
+        oscillator.type = "sine";
+        gainNode.gain.value = 0.1;
+        oscillator.start();
+        oscillator.stop(audioContext.currentTime + 0.1);
+      } catch (e) {
+        console.warn("Could not play notification sound");
+      }
+    }
+    
+    toast.success("Test notification sent!");
   };
 
   return (
@@ -771,12 +873,57 @@ const NotificationsTab = ({ preferences, onSave, isPro }: {
         </CardHeader>
         {local.pushNotifications && (
           <CardContent className="space-y-4">
+            {/* Permission Status */}
+            <div className="p-3 rounded-lg border flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${notificationPermission === "granted" ? "bg-emerald-500/10" : notificationPermission === "denied" ? "bg-red-500/10" : "bg-amber-500/10"}`}>
+                  {notificationPermission === "granted" ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                  ) : notificationPermission === "denied" ? (
+                    <BellOff className="w-4 h-4 text-red-500" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 text-amber-500" />
+                  )}
+                </div>
+                <div>
+                  <p className="font-medium text-sm">
+                    {notificationPermission === "granted" 
+                      ? "Notifications Enabled" 
+                      : notificationPermission === "denied"
+                      ? "Notifications Blocked"
+                      : "Permission Required"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {notificationPermission === "denied" 
+                      ? "Please enable in browser settings"
+                      : notificationPermission === "granted"
+                      ? "You'll receive desktop notifications"
+                      : "Click to enable notifications"}
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                {notificationPermission === "granted" && (
+                  <Button variant="outline" size="sm" onClick={testNotification}>
+                    <Bell className="w-3 h-3 me-1" />
+                    Test
+                  </Button>
+                )}
+                {notificationPermission === "default" && (
+                  <Button variant="outline" size="sm" onClick={requestNotificationPermission}>
+                    Enable
+                  </Button>
+                )}
+              </div>
+            </div>
+
             <NotificationToggle
               icon={Laptop}
               title="Desktop Notifications"
               description="Show notifications on your desktop"
               checked={local.desktopNotifications}
               onChange={(v) => updatePref("desktopNotifications", v)}
+              disabled={notificationPermission !== "granted"}
             />
             <NotificationToggle
               icon={Volume2}
@@ -844,10 +991,42 @@ const AppearanceTab = ({ preferences, onSave, theme, setTheme }: {
 }) => {
   const [local, setLocal] = useState(preferences);
 
+  // Apply appearance settings to DOM
+  const applyAppearance = useCallback((prefs: AppearancePreferences) => {
+    const root = document.documentElement;
+    
+    // Accent color
+    root.style.setProperty("--accent-color", prefs.accentColor);
+    const hexToRgb = (hex: string) => {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      if (!result) return "99, 102, 241";
+      return `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}`;
+    };
+    root.style.setProperty("--accent-color-rgb", hexToRgb(prefs.accentColor));
+    
+    // Font size
+    const fontSizes = { small: "14px", medium: "16px", large: "18px" };
+    root.style.fontSize = fontSizes[prefs.fontSize];
+    root.classList.remove("font-small", "font-medium", "font-large");
+    root.classList.add(`font-${prefs.fontSize}`);
+    
+    // Compact mode
+    root.classList.toggle("compact-mode", prefs.compactMode);
+    
+    // Reduced motion
+    root.classList.toggle("reduce-motion", prefs.reducedMotion);
+  }, []);
+
+  // Apply on mount and when preferences change
+  useEffect(() => {
+    applyAppearance(local);
+  }, [local, applyAppearance]);
+
   const updatePref = <K extends keyof AppearancePreferences>(key: K, value: AppearancePreferences[K]) => {
     const updated = { ...local, [key]: value };
     setLocal(updated);
     onSave(updated);
+    applyAppearance(updated);
   };
 
   return (
@@ -988,11 +1167,57 @@ const LanguageTab = ({ preferences, onSave }: {
   onSave: (prefs: LanguagePreferences) => void;
 }) => {
   const [local, setLocal] = useState(preferences);
+  const router = useRouter();
+  const pathname = usePathname();
+  const [isChangingLanguage, setIsChangingLanguage] = useState(false);
 
   const updatePref = <K extends keyof LanguagePreferences>(key: K, value: LanguagePreferences[K]) => {
     const updated = { ...local, [key]: value };
     setLocal(updated);
     onSave(updated);
+  };
+
+  // Handle language change with actual navigation
+  const handleLanguageChange = (langCode: string) => {
+    if (langCode === local.language) return;
+    
+    setIsChangingLanguage(true);
+    updatePref("language", langCode);
+    
+    // Navigate to the new locale
+    // The pathname looks like /en/app/account, we need to replace /en with the new locale
+    const pathParts = pathname.split('/');
+    if (pathParts.length > 1) {
+      pathParts[1] = langCode;
+    }
+    const newPath = pathParts.join('/');
+    
+    // Use setTimeout to show the toast before navigation
+    setTimeout(() => {
+      router.push(newPath);
+    }, 500);
+  };
+
+  // Preview current date/time with selected format
+  const previewDate = new Date();
+  const formatPreviewDate = (format: string) => {
+    switch (format) {
+      case "DD/MM/YYYY":
+        return previewDate.toLocaleDateString("en-GB");
+      case "YYYY-MM-DD":
+        return previewDate.toLocaleDateString("en-CA");
+      case "MM/DD/YYYY":
+      default:
+        return previewDate.toLocaleDateString("en-US");
+    }
+  };
+
+  const formatPreviewTime = (format: "12h" | "24h") => {
+    return previewDate.toLocaleTimeString(format === "24h" ? "en-GB" : "en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: format === "12h",
+    });
   };
 
   return (
@@ -1004,25 +1229,40 @@ const LanguageTab = ({ preferences, onSave }: {
             <Languages className="w-5 h-5 text-blue-500" />
             Language
           </CardTitle>
-          <CardDescription>Select your preferred language</CardDescription>
+          <CardDescription>Select your preferred language - the page will reload</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {LANGUAGES.map((lang) => (
               <button
                 key={lang.code}
-                onClick={() => updatePref("language", lang.code)}
-                className={`p-4 rounded-xl border-2 transition-all text-center ${
+                onClick={() => ["en", "he"].includes(lang.code) ? handleLanguageChange(lang.code) : null}
+                disabled={isChangingLanguage || !["en", "he"].includes(lang.code)}
+                className={`p-4 rounded-xl border-2 transition-all text-center relative ${
                   local.language === lang.code 
                     ? "border-blue-500 bg-blue-500/5" 
+                    : !["en", "he"].includes(lang.code)
+                    ? "border-transparent bg-muted/30 opacity-50 cursor-not-allowed"
                     : "border-transparent bg-muted/50 hover:bg-muted"
-                }`}
+                } ${isChangingLanguage ? "opacity-50 cursor-not-allowed" : ""}`}
               >
-                <span className="text-2xl mb-2 block">{lang.flag}</span>
-                <p className="font-medium text-sm">{lang.name}</p>
+                {isChangingLanguage && local.language === lang.code && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-xl">
+                    <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+                  </div>
+                )}
+                <span className={`text-2xl mb-2 block ${!["en", "he"].includes(lang.code) ? "grayscale" : ""}`}>{lang.flag}</span>
+                <p className={`font-medium text-sm ${!["en", "he"].includes(lang.code) ? "text-muted-foreground" : ""}`}>{lang.name}</p>
+                {!["en", "he"].includes(lang.code) && (
+                  <Badge variant="outline" className="mt-1 text-xs bg-muted/50">Coming Soon</Badge>
+                )}
               </button>
             ))}
           </div>
+          <p className="text-xs text-muted-foreground mt-3 flex items-center gap-1">
+            <Info className="w-3 h-3" />
+            Only English and Hebrew are fully supported. Other languages are coming soon.
+          </p>
         </CardContent>
       </Card>
 
@@ -1046,9 +1286,20 @@ const LanguageTab = ({ preferences, onSave }: {
               ))}
             </SelectContent>
           </Select>
-          <p className="text-sm text-muted-foreground mt-2">
-            Current time: {new Date().toLocaleTimeString("en-US", { timeZone: local.timezone })}
-          </p>
+          <div className="mt-3 p-3 rounded-lg bg-muted/50 flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Current time in {local.timezone.split('/').pop()?.replace('_', ' ')}</p>
+              <p className="text-xs text-muted-foreground">Updates when you change timezone</p>
+            </div>
+            <div className="text-right">
+              <p className="text-lg font-mono font-bold">
+                {formatPreviewTime(local.timeFormat)}
+              </p>
+              <p className="text-xs text-muted-foreground font-mono">
+                {formatPreviewDate(local.dateFormat)}
+              </p>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -1526,8 +1777,8 @@ const QuickAction = ({ icon: Icon, label, onClick, badge, disabled }: any) => (
   </button>
 );
 
-const NotificationToggle = ({ icon: Icon, title, description, checked, onChange }: any) => (
-  <div className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors">
+const NotificationToggle = ({ icon: Icon, title, description, checked, onChange, disabled }: any) => (
+  <div className={`flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors ${disabled ? "opacity-50" : ""}`}>
     <div className="flex items-center gap-3">
       <Icon className="w-4 h-4 text-muted-foreground" />
       <div>
@@ -1535,6 +1786,6 @@ const NotificationToggle = ({ icon: Icon, title, description, checked, onChange 
         <p className="text-xs text-muted-foreground">{description}</p>
       </div>
     </div>
-    <Switch checked={checked} onCheckedChange={onChange} />
+    <Switch checked={checked} onCheckedChange={onChange} disabled={disabled} />
   </div>
 );

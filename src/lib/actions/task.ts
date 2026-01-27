@@ -11,6 +11,8 @@ import {
   taskTags,
   activityLogs,
   users,
+  workspaces,
+  notifications,
 } from "@/lib/db/schema";
 import {
   getCurrentUser,
@@ -22,6 +24,10 @@ import { z } from "zod";
 import type { TaskStatus, TaskPriority } from "@/lib/db/schema";
 import { CACHE_TAGS } from "@/lib/cache";
 import { getCachedWorkspaceTasks, getCachedWorkspaceStats, getCachedRecentActivity } from "./cached";
+import { sendTaskAssignedEmail, sendTaskCompletedEmail } from "@/lib/email";
+import { pusherServer, getUserChannel, PUSHER_EVENTS } from "@/lib/pusher";
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://task-os.app";
 
 // Schemas
 const createTaskSchema = z.object({
@@ -112,7 +118,7 @@ export const createTask = async (formData: FormData) => {
       })
       .returning();
 
-    // Add assignees
+    // Add assignees and send notifications
     if (data.assigneeIds && data.assigneeIds.length > 0) {
       await db.insert(taskAssignees).values(
         data.assigneeIds.map((userId) => ({
@@ -121,6 +127,50 @@ export const createTask = async (formData: FormData) => {
           assignedBy: user.id,
         }))
       );
+
+      // Get workspace name for notifications
+      const workspace = await db.query.workspaces.findFirst({
+        where: eq(workspaces.id, workspaceId),
+      });
+
+      // Get assigned users for notifications
+      const assignedUsers = await db.query.users.findMany({
+        where: inArray(users.id, data.assigneeIds),
+      });
+
+      // Send notifications to assigned users (excluding the creator)
+      for (const assignedUser of assignedUsers) {
+        if (assignedUser.id !== user.id) {
+          // Create in-app notification
+          const [notification] = await db.insert(notifications).values({
+            userId: assignedUser.id,
+            workspaceId: workspaceId,
+            taskId: task.id,
+            type: "task_assigned",
+            title: `${user.name || user.email} assigned you a task`,
+            message: task.title,
+          }).returning();
+
+          // Send real-time notification via Pusher
+          pusherServer.trigger(getUserChannel(assignedUser.id), PUSHER_EVENTS.NOTIFICATION_NEW, {
+            notification,
+          }).catch(console.error);
+
+          // Send email notification
+          if (assignedUser.email) {
+            sendTaskAssignedEmail({
+              userId: assignedUser.id,
+              to: assignedUser.email,
+              userName: assignedUser.name || "there",
+              taskTitle: task.title,
+              workspaceName: workspace?.name || "Workspace",
+              assignedBy: user.name || user.email || "Someone",
+              taskLink: `${APP_URL}/en/app/${workspaceId}/tasks/${task.id}`,
+              dueDate: data.dueDate || undefined,
+            }).catch(console.error);
+          }
+        }
+      }
     }
 
     // Add steps (checklist items)
@@ -390,6 +440,13 @@ export const updateTaskStatus = async (
   try {
     const existingTask = await db.query.tasks.findFirst({
       where: eq(tasks.id, taskId),
+      with: {
+        assignees: {
+          with: {
+            user: true,
+          },
+        },
+      },
     });
 
     if (!existingTask) {
@@ -425,6 +482,28 @@ export const updateTaskStatus = async (
         taskId,
         { from: existingTask.status, to: status }
       );
+
+      // Send email when task is completed
+      if (status === "done" && existingTask.status !== "done") {
+        const workspace = await db.query.workspaces.findFirst({
+          where: eq(workspaces.id, existingTask.workspaceId),
+        });
+
+        // Notify all assignees (except the person who completed it)
+        for (const assignee of existingTask.assignees || []) {
+          if (assignee.user && assignee.user.id !== user.id && assignee.user.email) {
+            sendTaskCompletedEmail({
+              userId: assignee.user.id,
+              to: assignee.user.email,
+              userName: assignee.user.name || "there",
+              taskTitle: existingTask.title,
+              workspaceName: workspace?.name || "Workspace",
+              completedBy: user.name || user.email || "Someone",
+              taskLink: `${APP_URL}/en/app/${existingTask.workspaceId}/tasks/${taskId}`,
+            }).catch(console.error);
+          }
+        }
+      }
     }
 
     // Invalidate caches
@@ -513,6 +592,11 @@ export const addAssignee = async (taskId: string, userId: string) => {
       where: eq(users.id, userId),
     });
 
+    // Get workspace name for email
+    const workspace = await db.query.workspaces.findFirst({
+      where: eq(workspaces.id, existingTask.workspaceId),
+    });
+
     await logActivity(
       existingTask.workspaceId,
       user.id,
@@ -522,6 +606,38 @@ export const addAssignee = async (taskId: string, userId: string) => {
       taskId,
       { assignee: assignedUser?.name || assignedUser?.email }
     );
+
+    // Send notifications to the assigned user (if not assigning to self)
+    if (assignedUser && assignedUser.id !== user.id) {
+      // Create in-app notification
+      const [notification] = await db.insert(notifications).values({
+        userId: assignedUser.id,
+        workspaceId: existingTask.workspaceId,
+        taskId: taskId,
+        type: "task_assigned",
+        title: `${user.name || user.email} assigned you a task`,
+        message: existingTask.title,
+      }).returning();
+
+      // Send real-time notification via Pusher
+      pusherServer.trigger(getUserChannel(assignedUser.id), PUSHER_EVENTS.NOTIFICATION_NEW, {
+        notification,
+      }).catch(console.error);
+
+      // Send email notification
+      if (assignedUser.email) {
+        sendTaskAssignedEmail({
+          userId: assignedUser.id,
+          to: assignedUser.email,
+          userName: assignedUser.name || "there",
+          taskTitle: existingTask.title,
+          workspaceName: workspace?.name || "Workspace",
+          assignedBy: user.name || user.email || "Someone",
+          taskLink: `${APP_URL}/en/app/${existingTask.workspaceId}/tasks/${taskId}`,
+          dueDate: existingTask.dueDate || undefined,
+        }).catch(console.error);
+      }
+    }
 
     revalidatePath(`/app/${existingTask.workspaceId}`);
 

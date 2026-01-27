@@ -444,6 +444,31 @@ export const notifications = pgTable(
   })
 );
 
+// User Notification Preferences
+export const userNotificationPreferences = pgTable("user_notification_preferences", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .unique()
+    .references(() => users.id, { onDelete: "cascade" }),
+  // Email notifications
+  emailNotifications: boolean("email_notifications").notNull().default(true),
+  taskAssigned: boolean("task_assigned").notNull().default(true),
+  taskCompleted: boolean("task_completed").notNull().default(true),
+  taskDueSoon: boolean("task_due_soon").notNull().default(true),
+  mentions: boolean("mentions").notNull().default(true),
+  comments: boolean("comments").notNull().default(true),
+  weeklyDigest: boolean("weekly_digest").notNull().default(true),
+  marketingEmails: boolean("marketing_emails").notNull().default(false),
+  // Push notifications
+  pushNotifications: boolean("push_notifications").notNull().default(true),
+  desktopNotifications: boolean("desktop_notifications").notNull().default(true),
+  soundEnabled: boolean("sound_enabled").notNull().default(true),
+  // Timestamps
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Templates
 export const templates = pgTable("templates", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -461,7 +486,7 @@ export const templates = pgTable("templates", {
 });
 
 // Relations
-export const usersRelations = relations(users, ({ many }) => ({
+export const usersRelations = relations(users, ({ one, many }) => ({
   accounts: many(accounts),
   sessions: many(sessions),
   workspaceMembers: many(workspaceMembers),
@@ -470,6 +495,14 @@ export const usersRelations = relations(users, ({ many }) => ({
   comments: many(taskComments),
   notifications: many(notifications),
   sentInvitations: many(workspaceInvitations),
+  notificationPreferences: one(userNotificationPreferences),
+}));
+
+export const userNotificationPreferencesRelations = relations(userNotificationPreferences, ({ one }) => ({
+  user: one(users, {
+    fields: [userNotificationPreferences.userId],
+    references: [users.id],
+  }),
 }));
 
 export const accountsRelations = relations(accounts, ({ one }) => ({
@@ -670,6 +703,8 @@ export type Tag = typeof tags.$inferSelect;
 export type ActivityLog = typeof activityLogs.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
 export type Template = typeof templates.$inferSelect;
+export type UserNotificationPreferences = typeof userNotificationPreferences.$inferSelect;
+export type NewUserNotificationPreferences = typeof userNotificationPreferences.$inferInsert;
 export type WorkspaceRole = "owner" | "admin" | "member" | "viewer";
 export type TaskStatus = "backlog" | "todo" | "in_progress" | "review" | "done";
 export type TaskPriority = "low" | "medium" | "high" | "urgent";

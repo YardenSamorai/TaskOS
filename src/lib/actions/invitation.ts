@@ -104,8 +104,8 @@ export const createInvitation = async (formData: FormData) => {
       })
       .returning();
 
-    // Send invitation email
-    const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL || "https://task-os.app"}/en/app/invite/${token}`;
+    // Send invitation email (public invite page, not inside /app)
+    const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL || "https://task-os.app"}/en/invite/${token}`;
     const roleLabels: Record<string, string> = {
       admin: "Admin",
       member: "Member",

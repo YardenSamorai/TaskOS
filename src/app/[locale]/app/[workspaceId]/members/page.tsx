@@ -229,7 +229,7 @@ const MembersPage = () => {
   };
 
   const copyInviteLink = async (token: string) => {
-    const link = `${window.location.origin}/${locale}/app/invite/${token}`;
+    const link = `${window.location.origin}/${locale}/invite/${token}`;
     await navigator.clipboard.writeText(link);
     setCopiedToken(token);
     toast.success("Invite link copied!");

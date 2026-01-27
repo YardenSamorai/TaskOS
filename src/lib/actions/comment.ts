@@ -9,6 +9,8 @@ import {
   activityLogs,
   notifications,
   workspaceMembers,
+  workspaces,
+  taskAssignees,
 } from "@/lib/db/schema";
 import {
   getCurrentUser,
@@ -18,6 +20,10 @@ import {
 import { eq, desc, and, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { TASKS_TAG, ACTIVITY_TAG } from "@/lib/cache";
+import { sendMentionEmail, sendNewCommentEmail } from "@/lib/email";
+import { pusherServer, getTaskChannel, getUserChannel, PUSHER_EVENTS } from "@/lib/pusher";
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://task-os.app";
 
 // Schema
 const createCommentSchema = z.object({
@@ -51,9 +57,16 @@ export const createComment = async (formData: FormData) => {
       content: formData.get("content"),
     });
 
-    // Get task for workspace ID
+    // Get task for workspace ID with assignees
     const task = await db.query.tasks.findFirst({
       where: eq(tasks.id, data.taskId),
+      with: {
+        assignees: {
+          with: {
+            user: true,
+          },
+        },
+      },
     });
 
     if (!task) {
@@ -61,6 +74,11 @@ export const createComment = async (formData: FormData) => {
     }
 
     await requireWorkspaceMember(task.workspaceId);
+
+    // Get workspace name for emails
+    const workspace = await db.query.workspaces.findFirst({
+      where: eq(workspaces.id, task.workspaceId),
+    });
 
     // Create comment
     const [comment] = await db
@@ -72,8 +90,15 @@ export const createComment = async (formData: FormData) => {
       })
       .returning();
 
+    // Strip HTML and mentions for email preview
+    const plainTextContent = data.content
+      .replace(/<[^>]*>/g, '')
+      .replace(/@\[([^\]]+)\]\([^)]+\)/g, '@$1');
+
     // Extract and process mentions
     const mentionedUserIds = extractMentions(data.content);
+    const notifiedUserIds = new Set<string>(); // Track who we've notified to avoid duplicates
+
     if (mentionedUserIds.length > 0) {
       // Verify users are workspace members
       const members = await db.query.workspaceMembers.findMany({
@@ -81,22 +106,80 @@ export const createComment = async (formData: FormData) => {
           eq(workspaceMembers.workspaceId, task.workspaceId),
           inArray(workspaceMembers.userId, mentionedUserIds)
         ),
+        with: {
+          user: true,
+        },
       });
 
-      const validUserIds = members.map((m) => m.userId);
-
-      // Create notifications for mentioned users
-      for (const userId of validUserIds) {
-        if (userId !== user.id) {
-          // Don't notify self
-          await db.insert(notifications).values({
-            userId,
+      // Create notifications and send emails for mentioned users
+      for (const member of members) {
+        if (member.userId !== user.id) {
+          notifiedUserIds.add(member.userId);
+          
+          // Create in-app notification
+          const [notification] = await db.insert(notifications).values({
+            userId: member.userId,
             workspaceId: task.workspaceId,
             taskId: task.id,
             type: "mention",
             title: `${user.name || user.email} mentioned you`,
             message: `In task: ${task.title}`,
-          });
+          }).returning();
+
+          // Send real-time notification via Pusher
+          pusherServer.trigger(getUserChannel(member.userId), PUSHER_EVENTS.NOTIFICATION_NEW, {
+            notification,
+          }).catch(console.error);
+
+          // Send mention email
+          if (member.user?.email) {
+            sendMentionEmail({
+              userId: member.userId,
+              to: member.user.email,
+              userName: member.user.name || "there",
+              taskTitle: task.title,
+              workspaceName: workspace?.name || "Workspace",
+              mentionedBy: user.name || user.email || "Someone",
+              commentText: plainTextContent,
+              taskLink: `${APP_URL}/en/app/${task.workspaceId}/tasks/${task.id}`,
+            }).catch(console.error);
+          }
+        }
+      }
+    }
+
+    // Notify task assignees about new comment (if not already notified via mention)
+    for (const assignee of task.assignees || []) {
+      if (assignee.user && assignee.user.id !== user.id && !notifiedUserIds.has(assignee.user.id)) {
+        notifiedUserIds.add(assignee.user.id);
+        
+        // Create in-app notification
+        const [notification] = await db.insert(notifications).values({
+          userId: assignee.user.id,
+          workspaceId: task.workspaceId,
+          taskId: task.id,
+          type: "comment",
+          title: `${user.name || user.email} commented`,
+          message: `On task: ${task.title}`,
+        }).returning();
+
+        // Send real-time notification via Pusher
+        pusherServer.trigger(getUserChannel(assignee.user.id), PUSHER_EVENTS.NOTIFICATION_NEW, {
+          notification,
+        }).catch(console.error);
+
+        // Send email notification
+        if (assignee.user.email) {
+          sendNewCommentEmail({
+            userId: assignee.user.id,
+            to: assignee.user.email,
+            userName: assignee.user.name || "there",
+            taskTitle: task.title,
+            workspaceName: workspace?.name || "Workspace",
+            commenterName: user.name || user.email || "Someone",
+            commentText: plainTextContent,
+            taskLink: `${APP_URL}/en/app/${task.workspaceId}/tasks/${task.id}`,
+          }).catch(console.error);
         }
       }
     }
@@ -121,6 +204,18 @@ export const createComment = async (formData: FormData) => {
         user: true,
       },
     });
+
+    // Broadcast real-time event via Pusher
+    const channel = getTaskChannel(data.taskId);
+    console.log("[Pusher Server] Triggering event on channel:", channel);
+    try {
+      await pusherServer.trigger(channel, PUSHER_EVENTS.COMMENT_CREATED, {
+        comment: commentWithUser,
+      });
+      console.log("[Pusher Server] ✅ Event triggered successfully");
+    } catch (pusherError) {
+      console.error("[Pusher Server] ❌ Error triggering event:", pusherError);
+    }
 
     return { success: true, comment: commentWithUser };
   } catch (error) {
@@ -203,6 +298,11 @@ export const updateComment = async (formData: FormData) => {
       },
     });
 
+    // Broadcast real-time event via Pusher
+    await pusherServer.trigger(getTaskChannel(comment.task.id), PUSHER_EVENTS.COMMENT_UPDATED, {
+      comment: commentWithUser,
+    });
+
     revalidateTag(TASKS_TAG);
 
     return { success: true, comment: commentWithUser };
@@ -235,7 +335,14 @@ export const deleteComment = async (commentId: string) => {
       return { success: false, error: "Not authorized to delete this comment" };
     }
 
+    const taskId = comment.task.id;
+    
     await db.delete(taskComments).where(eq(taskComments.id, commentId));
+
+    // Broadcast real-time event via Pusher
+    await pusherServer.trigger(getTaskChannel(taskId), PUSHER_EVENTS.COMMENT_DELETED, {
+      commentId: commentId,
+    });
 
     revalidateTag(TASKS_TAG);
     revalidateTag(ACTIVITY_TAG);

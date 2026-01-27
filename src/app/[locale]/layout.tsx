@@ -5,6 +5,7 @@ import { getMessages } from "next-intl/server";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { SessionProvider } from "@/components/providers/session-provider";
+import { PreferencesProvider, preferencesInitScript } from "@/components/providers/preferences-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { localeDirection, type Locale } from "@/i18n/config";
 import "../globals.css";
@@ -100,6 +101,9 @@ const RootLayout = async ({ children, params }: RootLayoutProps) => {
   return (
     <html lang={locale} dir={direction} suppressHydrationWarning>
       <head>
+        {/* Initialize user preferences before page renders to prevent flash */}
+        <script dangerouslySetInnerHTML={{ __html: preferencesInitScript }} />
+        
         {/* PWA Meta Tags */}
         <link rel="manifest" href="/manifest.json" />
         
@@ -136,7 +140,9 @@ const RootLayout = async ({ children, params }: RootLayoutProps) => {
           >
             <NextIntlClientProvider messages={messages}>
               <QueryProvider>
-                {children}
+                <PreferencesProvider>
+                  {children}
+                </PreferencesProvider>
                 <Toaster position={direction === "rtl" ? "top-left" : "top-right"} />
               </QueryProvider>
             </NextIntlClientProvider>

@@ -17,6 +17,7 @@ const publicPaths = [
   "/sign-up",
   "/forgot-password",
   "/reset-password",
+  "/invite", // Public invitation page
   "/api/auth",
   "/api/webhooks",
 ];

@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { formatDistanceToNow } from "date-fns";
+import PusherClient from "pusher-js";
 import {
   MessageSquare,
   Send,
@@ -15,6 +15,8 @@ import {
   Check,
   Image as ImageIcon,
   Paperclip,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -43,6 +45,8 @@ import {
 import { toast } from "sonner";
 import { createComment, updateComment, deleteComment } from "@/lib/actions/comment";
 import type { Task, TaskComment, User } from "@/lib/db/schema";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 interface CommentWithUser extends TaskComment {
   user: User;
@@ -73,9 +77,90 @@ export const TaskComments = ({ task, currentUserId }: TaskCommentsProps) => {
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const router = useRouter();
+  const pusherRef = useRef<PusherClient | null>(null);
   const t = useTranslations("comments");
+
+  // Pusher real-time subscription
+  useEffect(() => {
+    const key = process.env.NEXT_PUBLIC_PUSHER_KEY;
+    const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
+
+    console.log("[TaskComments] Pusher ENV - key:", key, "cluster:", cluster);
+
+    if (!key || !cluster) {
+      console.error("[TaskComments] Missing Pusher env vars!");
+      return;
+    }
+
+    // Enable Pusher logging
+    PusherClient.logToConsole = true;
+
+    // Create or reuse Pusher client
+    if (!pusherRef.current) {
+      console.log("[TaskComments] Creating Pusher client...");
+      pusherRef.current = new PusherClient(key, { cluster });
+    }
+
+    const pusher = pusherRef.current;
+    const channelName = `task-${task.id}`;
+
+    console.log("[TaskComments] Subscribing to:", channelName);
+    const channel = pusher.subscribe(channelName);
+
+    channel.bind("pusher:subscription_succeeded", () => {
+      console.log("[TaskComments] ✅ Subscribed to:", channelName);
+      setIsConnected(true);
+    });
+
+    channel.bind("pusher:subscription_error", (error: any) => {
+      console.error("[TaskComments] ❌ Subscription error:", error);
+      setIsConnected(false);
+    });
+
+    // Listen for new comments
+    channel.bind("comment:created", (data: { comment: CommentWithUser }) => {
+      console.log("[TaskComments] 📩 New comment received:", data.comment.id);
+      setComments((prev) => {
+        // Avoid duplicates
+        if (prev.some((c) => c.id === data.comment.id)) {
+          return prev;
+        }
+        return [data.comment, ...prev];
+      });
+    });
+
+    // Listen for updated comments
+    channel.bind("comment:updated", (data: { comment: CommentWithUser }) => {
+      console.log("[TaskComments] 📝 Comment updated:", data.comment.id);
+      setComments((prev) =>
+        prev.map((c) => (c.id === data.comment.id ? data.comment : c))
+      );
+    });
+
+    // Listen for deleted comments
+    channel.bind("comment:deleted", (data: { commentId: string }) => {
+      console.log("[TaskComments] 🗑️ Comment deleted:", data.commentId);
+      setComments((prev) => prev.filter((c) => c.id !== data.commentId));
+    });
+
+    // Connection state handlers
+    pusher.connection.bind("connected", () => {
+      console.log("[TaskComments] 🔗 Pusher connected");
+      setIsConnected(true);
+    });
+    pusher.connection.bind("disconnected", () => {
+      console.log("[TaskComments] 🔌 Pusher disconnected");
+      setIsConnected(false);
+    });
+
+    return () => {
+      console.log("[TaskComments] 🧹 Cleanup:", channelName);
+      channel.unbind_all();
+      pusher.unsubscribe(channelName);
+    };
+  }, [task.id]);
 
   // Convert file to base64
   const fileToBase64 = (file: File): Promise<string> => {
@@ -162,11 +247,11 @@ export const TaskComments = ({ task, currentUserId }: TaskCommentsProps) => {
       const result = await createComment(formData);
 
       if (result.success && result.comment) {
-        setComments((prev) => [result.comment as CommentWithUser, ...prev]);
+        // Don't add locally - Pusher will handle it
+        // Just clear the form
         setContent("");
         setPendingImages([]);
         toast.success(t("added"));
-        router.refresh();
       } else {
         toast.error(result.error || t("addError"));
       }
@@ -200,11 +285,7 @@ export const TaskComments = ({ task, currentUserId }: TaskCommentsProps) => {
       const result = await updateComment(formData);
 
       if (result.success && result.comment) {
-        setComments((prev) =>
-          prev.map((c) =>
-            c.id === commentId ? (result.comment as CommentWithUser) : c
-          )
-        );
+        // Don't update locally - Pusher will handle it
         setEditingId(null);
         setEditContent("");
         toast.success(t("updated"));
@@ -225,9 +306,8 @@ export const TaskComments = ({ task, currentUserId }: TaskCommentsProps) => {
       const result = await deleteComment(commentId);
 
       if (result.success) {
-        setComments((prev) => prev.filter((c) => c.id !== commentId));
+        // Don't update locally - Pusher will handle it
         toast.success(t("deleted"));
-        router.refresh();
       } else {
         toast.error(result.error || t("deleteError"));
       }
@@ -276,14 +356,37 @@ export const TaskComments = ({ task, currentUserId }: TaskCommentsProps) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <MessageSquare className="w-5 h-5" />
-          {t("title")}
-          {comments.length > 0 && (
-            <span className="text-sm text-muted-foreground font-normal">
-              ({comments.length})
-            </span>
-          )}
+        <CardTitle className="flex items-center justify-between text-lg">
+          <div className="flex items-center gap-2">
+            <MessageSquare className="w-5 h-5" />
+            {t("title")}
+            {comments.length > 0 && (
+              <span className="text-sm text-muted-foreground font-normal">
+                ({comments.length})
+              </span>
+            )}
+          </div>
+          <Badge 
+            variant="outline" 
+            className={cn(
+              "text-xs gap-1 font-normal",
+              isConnected 
+                ? "text-green-600 border-green-200 bg-green-50 dark:bg-green-950 dark:border-green-800" 
+                : "text-amber-600 border-amber-200 bg-amber-50 dark:bg-amber-950 dark:border-amber-800"
+            )}
+          >
+            {isConnected ? (
+              <>
+                <Wifi className="w-3 h-3" />
+                <span>Live</span>
+              </>
+            ) : (
+              <>
+                <WifiOff className="w-3 h-3" />
+                <span>Connecting...</span>
+              </>
+            )}
+          </Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">

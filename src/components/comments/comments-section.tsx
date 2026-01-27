@@ -11,6 +11,8 @@ import {
   MessageSquare,
   AtSign,
   X,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -41,6 +43,8 @@ import {
   getMentionSuggestions,
 } from "@/lib/actions/comment";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import PusherClient from "pusher-js";
 
 interface User {
   id: string;
@@ -100,6 +104,9 @@ export const CommentsSection = ({
   currentUserId,
   currentUserRole,
 }: CommentsSectionProps) => {
+  // DEBUG - This should appear in console
+  console.log("🔴🔴🔴 CommentsSection RENDERED 🔴🔴🔴", { taskId });
+  
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -107,6 +114,7 @@ export const CommentsSection = ({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
 
   // Mention states
   const [showMentions, setShowMentions] = useState(false);
@@ -118,7 +126,8 @@ export const CommentsSection = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const mentionTriggerPos = useRef<number | null>(null);
 
-  const fetchComments = async () => {
+  // Fetch comments
+  const fetchComments = useCallback(async () => {
     setLoading(true);
     try {
       const result = await getTaskComments(taskId);
@@ -130,7 +139,7 @@ export const CommentsSection = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [taskId]);
 
   const fetchMentionSuggestions = useCallback(async (search: string) => {
     const result = await getMentionSuggestions(workspaceId, search);
@@ -139,9 +148,98 @@ export const CommentsSection = ({
     }
   }, [workspaceId]);
 
+  // Pusher client ref (singleton)
+  const pusherRef = useRef<PusherClient | null>(null);
+
+  // Initial fetch and Pusher subscription
   useEffect(() => {
+    console.log("[CommentsSection] useEffect running for taskId:", taskId);
     fetchComments();
-  }, [taskId]);
+
+    // Set up Pusher
+    const key = process.env.NEXT_PUBLIC_PUSHER_KEY;
+    const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
+
+    console.log("[Pusher] ENV vars - key:", key, "cluster:", cluster);
+
+    if (!key || !cluster) {
+      console.error("[Pusher] ❌ Missing env vars!");
+      return;
+    }
+
+    // Enable Pusher logging
+    PusherClient.logToConsole = true;
+
+    // Create or reuse Pusher client
+    if (!pusherRef.current) {
+      console.log("[Pusher] Creating new client...");
+      pusherRef.current = new PusherClient(key, { cluster });
+    }
+
+    const pusher = pusherRef.current;
+    const channelName = `task-${taskId}`;
+
+    console.log("[Pusher] Subscribing to channel:", channelName);
+    const channel = pusher.subscribe(channelName);
+
+    channel.bind("pusher:subscription_succeeded", () => {
+      console.log("[Pusher] ✅ Subscription succeeded for:", channelName);
+      setIsConnected(true);
+    });
+
+    channel.bind("pusher:subscription_error", (error: any) => {
+      console.error("[Pusher] ❌ Subscription error:", error);
+      setIsConnected(false);
+    });
+
+    // Listen for new comments
+    channel.bind("comment:created", (data: { comment: Comment }) => {
+      console.log("[Pusher] 📩 Received new comment:", data);
+      setComments((prev) => {
+        // Avoid duplicates
+        if (prev.some((c) => c.id === data.comment.id)) {
+          console.log("[Pusher] Comment already exists, skipping");
+          return prev;
+        }
+        return [data.comment, ...prev];
+      });
+    });
+
+    // Listen for updated comments
+    channel.bind("comment:updated", (data: { comment: Comment }) => {
+      console.log("[Pusher] 📝 Received updated comment:", data);
+      setComments((prev) =>
+        prev.map((c) => (c.id === data.comment.id ? data.comment : c))
+      );
+    });
+
+    // Listen for deleted comments
+    channel.bind("comment:deleted", (data: { commentId: string }) => {
+      console.log("[Pusher] 🗑️ Received deleted comment:", data);
+      setComments((prev) => prev.filter((c) => c.id !== data.commentId));
+    });
+
+    // Connection state
+    pusher.connection.bind("connected", () => {
+      console.log("[Pusher] 🔗 Connected to Pusher");
+      setIsConnected(true);
+    });
+    pusher.connection.bind("disconnected", () => {
+      console.log("[Pusher] 🔌 Disconnected from Pusher");
+      setIsConnected(false);
+    });
+    pusher.connection.bind("error", (error: any) => {
+      console.error("[Pusher] ❌ Connection error:", error);
+      setIsConnected(false);
+    });
+
+    // Cleanup function
+    return () => {
+      console.log("[Pusher] 🧹 Cleaning up channel:", channelName);
+      channel.unbind_all();
+      pusher.unsubscribe(channelName);
+    };
+  }, [taskId, fetchComments]);
 
   useEffect(() => {
     if (showMentions) {
@@ -220,22 +318,34 @@ export const CommentsSection = ({
 
     if (!content.trim()) return;
 
+    const commentContent = content;
+    setContent(""); // Clear immediately for better UX
     setSubmitting(true);
+    
     try {
       const formData = new FormData();
       formData.append("taskId", taskId);
-      formData.append("content", content);
+      formData.append("content", commentContent);
 
       const result = await createComment(formData);
 
       if (result.success && result.comment) {
-        setComments((prev) => [result.comment as Comment, ...prev]);
-        setContent("");
+        // Comment will be added via Pusher, but add optimistically if not connected
+        if (!isConnected) {
+          setComments((prev) => {
+            if (prev.some(c => c.id === (result.comment as Comment).id)) {
+              return prev;
+            }
+            return [result.comment as Comment, ...prev];
+          });
+        }
         toast.success("Comment added");
       } else {
+        setContent(commentContent); // Restore content on error
         toast.error(result.error || "Failed to add comment");
       }
     } catch (error) {
+      setContent(commentContent); // Restore content on error
       toast.error("Failed to add comment");
     } finally {
       setSubmitting(false);
@@ -293,10 +403,33 @@ export const CommentsSection = ({
 
   return (
     <div className="space-y-4">
-      <h3 className="font-semibold flex items-center gap-2">
-        <MessageSquare className="w-4 h-4" />
-        Comments ({comments.length})
-      </h3>
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold flex items-center gap-2">
+          <MessageSquare className="w-4 h-4" />
+          Comments ({comments.length})
+        </h3>
+        <Badge 
+          variant="outline" 
+          className={cn(
+            "text-xs gap-1",
+            isConnected 
+              ? "text-green-600 border-green-200 bg-green-50 dark:bg-green-950 dark:border-green-800" 
+              : "text-amber-600 border-amber-200 bg-amber-50 dark:bg-amber-950 dark:border-amber-800"
+          )}
+        >
+          {isConnected ? (
+            <>
+              <Wifi className="w-3 h-3" />
+              <span>Live</span>
+            </>
+          ) : (
+            <>
+              <WifiOff className="w-3 h-3" />
+              <span>Connecting...</span>
+            </>
+          )}
+        </Badge>
+      </div>
 
       {/* New comment form */}
       <form onSubmit={handleSubmit} className="relative">

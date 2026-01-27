@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { formatDistanceToNow } from "date-fns";
+import PusherClient from "pusher-js";
 import {
   Bell,
   Check,
@@ -38,6 +40,7 @@ const notificationIcons: Record<string, React.ElementType> = {
   task_assigned: UserPlus,
   task_updated: FileText,
   task_commented: MessageSquare,
+  comment: MessageSquare,
   mention: MessageSquare,
   due_reminder: AlertCircle,
   default: Bell,
@@ -47,6 +50,7 @@ const notificationColors: Record<string, string> = {
   task_assigned: "text-blue-500 bg-blue-500/10",
   task_updated: "text-orange-500 bg-orange-500/10",
   task_commented: "text-violet-500 bg-violet-500/10",
+  comment: "text-violet-500 bg-violet-500/10",
   mention: "text-emerald-500 bg-emerald-500/10",
   due_reminder: "text-red-500 bg-red-500/10",
   default: "text-muted-foreground bg-muted",
@@ -68,11 +72,42 @@ export const NotificationsDropdown = () => {
   const router = useRouter();
   const params = useParams();
   const locale = (params.locale as string) || "en";
+  const { data: session } = useSession();
 
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
+  const pusherRef = useRef<PusherClient | null>(null);
+
+  // Pusher subscription for real-time notifications
+  useEffect(() => {
+    if (!session?.user?.id) return;
+
+    const key = process.env.NEXT_PUBLIC_PUSHER_KEY;
+    const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
+
+    if (!key || !cluster) return;
+
+    if (!pusherRef.current) {
+      pusherRef.current = new PusherClient(key, { cluster });
+    }
+
+    const pusher = pusherRef.current;
+    const channelName = `user-${session.user.id}`;
+    const channel = pusher.subscribe(channelName);
+
+    channel.bind("notification:new", (data: { notification: Notification }) => {
+      console.log("[Notifications] New notification received:", data.notification);
+      setNotifications((prev) => [data.notification, ...prev]);
+      setUnreadCount((prev) => prev + 1);
+    });
+
+    return () => {
+      channel.unbind_all();
+      pusher.unsubscribe(channelName);
+    };
+  }, [session?.user?.id]);
 
   const fetchNotifications = async () => {
     try {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Zap, Sparkles, Users, Kanban, Calendar, Loader2, Mail, Lock, Eye, EyeOff, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,9 @@ import { toast } from "sonner";
 
 export default function SignUpPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get("callbackUrl");
+  
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -34,7 +37,11 @@ export default function SignUpPage() {
 
     if (result.success) {
       toast.success("Account created! Please sign in.");
-      router.push("/en/sign-in");
+      // Redirect to sign-in with callbackUrl preserved
+      const signInUrl = callbackUrl 
+        ? `/en/sign-in?callbackUrl=${encodeURIComponent(callbackUrl)}`
+        : "/en/sign-in";
+      router.push(signInUrl);
     } else {
       toast.error(result.error || "Failed to create account");
     }
@@ -44,7 +51,8 @@ export default function SignUpPage() {
 
   const handleGoogleSignUp = async () => {
     setIsGoogleLoading(true);
-    await loginWithGoogle();
+    // Pass callbackUrl to Google sign-in
+    await loginWithGoogle(callbackUrl || undefined);
   };
 
   const passwordRequirements = [
@@ -290,7 +298,10 @@ export default function SignUpPage() {
 
           <p className="text-center text-zinc-500 text-sm mt-6">
             Already have an account?{" "}
-            <Link href="/en/sign-in" className="text-indigo-600 hover:text-indigo-700 font-medium">
+            <Link 
+              href={callbackUrl ? `/en/sign-in?callbackUrl=${encodeURIComponent(callbackUrl)}` : "/en/sign-in"} 
+              className="text-indigo-600 hover:text-indigo-700 font-medium"
+            >
               Sign in
             </Link>
           </p>

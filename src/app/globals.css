@@ -234,3 +234,179 @@
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
 }
+
+/* ============================================ */
+/* User Preferences - Appearance Settings      */
+/* ============================================ */
+
+/* Custom accent color support */
+:root {
+  --accent-color: #6366f1;
+  --accent-color-rgb: 99, 102, 241;
+  --base-font-size: 16px;
+}
+
+/* Accent color utilities */
+.accent-bg {
+  background-color: var(--accent-color);
+}
+
+.accent-text {
+  color: var(--accent-color);
+}
+
+.accent-border {
+  border-color: var(--accent-color);
+}
+
+.accent-ring {
+  --tw-ring-color: var(--accent-color);
+}
+
+.accent-gradient {
+  background: linear-gradient(135deg, var(--accent-color), color-mix(in srgb, var(--accent-color) 80%, #000));
+}
+
+.accent-glow {
+  box-shadow: 0 4px 20px rgba(var(--accent-color-rgb), 0.35);
+}
+
+/* Reduced Motion Preferences */
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Compact Mode */
+.compact-mode {
+  --spacing-scale: 0.75;
+}
+
+.compact-mode .card,
+.compact-mode [class*="CardContent"],
+.compact-mode [class*="CardHeader"] {
+  padding: calc(var(--spacing-scale) * 1rem);
+}
+
+.compact-mode .gap-4 {
+  gap: calc(var(--spacing-scale) * 1rem);
+}
+
+.compact-mode .gap-6 {
+  gap: calc(var(--spacing-scale) * 1.5rem);
+}
+
+.compact-mode .p-4 {
+  padding: calc(var(--spacing-scale) * 1rem);
+}
+
+.compact-mode .p-6 {
+  padding: calc(var(--spacing-scale) * 1.5rem);
+}
+
+.compact-mode .py-4 {
+  padding-top: calc(var(--spacing-scale) * 1rem);
+  padding-bottom: calc(var(--spacing-scale) * 1rem);
+}
+
+.compact-mode .py-6 {
+  padding-top: calc(var(--spacing-scale) * 1.5rem);
+  padding-bottom: calc(var(--spacing-scale) * 1.5rem);
+}
+
+.compact-mode .mb-4 {
+  margin-bottom: calc(var(--spacing-scale) * 1rem);
+}
+
+.compact-mode .mb-6 {
+  margin-bottom: calc(var(--spacing-scale) * 1.5rem);
+}
+
+.compact-mode .space-y-4 > * + * {
+  margin-top: calc(var(--spacing-scale) * 1rem);
+}
+
+.compact-mode .space-y-6 > * + * {
+  margin-top: calc(var(--spacing-scale) * 1.5rem);
+}
+
+.compact-mode h1 {
+  font-size: 1.75rem;
+}
+
+.compact-mode h2 {
+  font-size: 1.25rem;
+}
+
+.compact-mode h3 {
+  font-size: 1rem;
+}
+
+/* Font size classes */
+html.font-small {
+  font-size: 14px;
+}
+
+html.font-medium {
+  font-size: 16px;
+}
+
+html.font-large {
+  font-size: 18px;
+}
+
+/* Sidebar position for RTL/LTR */
+.sidebar-right .app-shell {
+  flex-direction: row-reverse;
+}
+
+/* Custom button with accent color */
+.btn-accent {
+  background-color: var(--accent-color);
+  color: white;
+  transition: all 0.2s ease;
+}
+
+.btn-accent:hover {
+  background-color: color-mix(in srgb, var(--accent-color) 90%, #000);
+  box-shadow: 0 4px 12px rgba(var(--accent-color-rgb), 0.3);
+}
+
+/* Focus ring with accent color */
+.focus-accent:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
+/* Selection color */
+::selection {
+  background-color: rgba(var(--accent-color-rgb), 0.2);
+}
+
+/* Progress bar with accent */
+.progress-accent [data-state="complete"],
+.progress-accent > div {
+  background-color: var(--accent-color);
+}
+
+/* Badge accent variant */
+.badge-accent {
+  background-color: rgba(var(--accent-color-rgb), 0.1);
+  color: var(--accent-color);
+  border-color: rgba(var(--accent-color-rgb), 0.3);
+}
