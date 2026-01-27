@@ -21,6 +21,8 @@ import {
   Plus,
   Users,
   Sun,
+  ChevronRight,
+  Home,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -206,6 +208,62 @@ export const AppShell = ({ children, locale }: AppShellProps) => {
     return pathname === href || pathname.startsWith(href + "/");
   }, [pathname]);
 
+  // Compute breadcrumbs based on current path
+  const breadcrumbs = useMemo(() => {
+    const crumbs: { label: string; href: string; icon?: React.ElementType }[] = [];
+    
+    // Always start with Workspaces
+    crumbs.push({
+      label: t("workspaces.title"),
+      href: `/${locale}/app/workspaces`,
+      icon: FolderKanban,
+    });
+
+    // If in a workspace, add the workspace name
+    if (isInWorkspace && workspaceName) {
+      crumbs.push({
+        label: workspaceName,
+        href: `/${locale}/app/${workspaceId}/dashboard`,
+      });
+
+      // Find current page
+      const pathSegments = pathname.split("/");
+      const lastSegment = pathSegments[pathSegments.length - 1];
+      
+      // Map segment to label
+      const pageLabels: Record<string, { label: string; icon?: React.ElementType }> = {
+        dashboard: { label: navLabels.dashboard, icon: LayoutDashboard },
+        board: { label: navLabels.board, icon: Kanban },
+        tasks: { label: navLabels.tasks, icon: ListTodo },
+        calendar: { label: navLabels.calendar, icon: Calendar },
+        focus: { label: navLabels.focus, icon: Target },
+        members: { label: navLabels.members, icon: Users },
+        settings: { label: navLabels.settings, icon: Settings },
+      };
+
+      if (pageLabels[lastSegment]) {
+        crumbs.push({
+          label: pageLabels[lastSegment].label,
+          href: `/${locale}/app/${workspaceId}/${lastSegment}`,
+          icon: pageLabels[lastSegment].icon,
+        });
+      }
+    } else if (pathname.includes("/my-day")) {
+      crumbs.push({
+        label: "My Day",
+        href: `/${locale}/app/my-day`,
+        icon: Sun,
+      });
+    } else if (pathname.includes("/account")) {
+      crumbs.push({
+        label: t("common.profile"),
+        href: `/${locale}/app/account`,
+      });
+    }
+
+    return crumbs;
+  }, [pathname, locale, isInWorkspace, workspaceName, workspaceId, navLabels, t]);
+
   return (
     <div className="min-h-screen bg-background">
       <CommandPalette />
@@ -374,6 +432,29 @@ export const AppShell = ({ children, locale }: AppShellProps) => {
                   ⌘K
                 </kbd>
               </button>
+
+              {/* Breadcrumbs */}
+              <nav className="hidden md:flex items-center gap-1 text-sm">
+                {breadcrumbs.map((crumb, index) => (
+                  <div key={crumb.href} className="flex items-center gap-1">
+                    {index > 0 && (
+                      <ChevronRight className="w-4 h-4 text-muted-foreground/50" />
+                    )}
+                    <Link
+                      href={crumb.href}
+                      className={cn(
+                        "flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors",
+                        index === breadcrumbs.length - 1
+                          ? "text-foreground font-medium bg-muted/50"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                      )}
+                    >
+                      {crumb.icon && <crumb.icon className="w-3.5 h-3.5" />}
+                      <span className="max-w-[120px] truncate">{crumb.label}</span>
+                    </Link>
+                  </div>
+                ))}
+              </nav>
             </div>
 
             {/* Right side */}
