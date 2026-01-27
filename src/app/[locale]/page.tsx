@@ -41,27 +41,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-// Animated counter component
-const AnimatedNumber = ({ value, duration = 2000 }: { value: number; duration?: number }) => {
-  const [count, setCount] = useState(0);
-  
-  useEffect(() => {
-    let start = 0;
-    const end = value;
-    const incrementTime = duration / end;
-    
-    const timer = setInterval(() => {
-      start += 1;
-      setCount(start);
-      if (start >= end) clearInterval(timer);
-    }, incrementTime);
-    
-    return () => clearInterval(timer);
-  }, [value, duration]);
-  
-  return <span>{count.toLocaleString()}</span>;
-};
-
 // Feature card with hover effect
 const FeatureCard = ({ 
   icon: Icon, 
@@ -468,26 +447,6 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="relative z-10 py-20 border-t border-white/5">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
-            {[
-              { value: 10000, suffix: "+", label: "Active Users" },
-              { value: 50000, suffix: "+", label: "Tasks Completed" },
-              { value: 99.9, suffix: "%", label: "Uptime" },
-              { value: 4.9, suffix: "/5", label: "User Rating" },
-            ].map((stat, i) => (
-              <div key={i} className="text-center">
-                <div className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent mb-2">
-                  {stat.value < 100 ? stat.value : <AnimatedNumber value={stat.value} />}{stat.suffix}
-                </div>
-                <div className="text-slate-400">{stat.label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* Features Section */}
       <section id="features" className="relative z-10 py-32">
