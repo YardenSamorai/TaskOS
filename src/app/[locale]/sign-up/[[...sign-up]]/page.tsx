@@ -212,14 +212,14 @@ export default function SignUpPage() {
                 Full name
               </Label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400" />
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400 pointer-events-none" />
                 <Input
                   id="name"
                   type="text"
                   placeholder="John Doe"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="h-12 pl-10 rounded-xl border-zinc-200 bg-white focus:border-indigo-500 focus:ring-indigo-500/20"
+                  className="h-12 pl-10 rounded-xl border-zinc-200 bg-white text-zinc-900 focus:border-indigo-500 focus:ring-indigo-500/20 [&:-webkit-autofill]:bg-white [&:-webkit-autofill]:text-zinc-900 [&:-webkit-autofill]:[-webkit-text-fill-color:theme(colors.zinc.900)] [&:-webkit-autofill]:shadow-[inset_0_0_0px_1000px_white]"
                   required
                 />
               </div>
@@ -230,14 +230,14 @@ export default function SignUpPage() {
                 Email address
               </Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400 pointer-events-none" />
                 <Input
                   id="email"
                   type="email"
                   placeholder="you@example.com"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="h-12 pl-10 rounded-xl border-zinc-200 bg-white focus:border-indigo-500 focus:ring-indigo-500/20"
+                  className="h-12 pl-10 rounded-xl border-zinc-200 bg-white text-zinc-900 focus:border-indigo-500 focus:ring-indigo-500/20 [&:-webkit-autofill]:bg-white [&:-webkit-autofill]:text-zinc-900 [&:-webkit-autofill]:[-webkit-text-fill-color:theme(colors.zinc.900)] [&:-webkit-autofill]:shadow-[inset_0_0_0px_1000px_white]"
                   required
                 />
               </div>
@@ -248,14 +248,14 @@ export default function SignUpPage() {
                 Password
               </Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400 pointer-events-none" />
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="h-12 pl-10 pr-10 rounded-xl border-zinc-200 bg-white focus:border-indigo-500 focus:ring-indigo-500/20"
+                  className="h-12 pl-10 pr-10 rounded-xl border-zinc-200 bg-white text-zinc-900 focus:border-indigo-500 focus:ring-indigo-500/20 [&:-webkit-autofill]:bg-white [&:-webkit-autofill]:text-zinc-900 [&:-webkit-autofill]:[-webkit-text-fill-color:theme(colors.zinc.900)] [&:-webkit-autofill]:shadow-[inset_0_0_0px_1000px_white]"
                   required
                 />
                 <button
