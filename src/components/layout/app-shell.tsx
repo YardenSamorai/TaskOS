@@ -20,6 +20,7 @@ import {
   Target,
   Plus,
   Users,
+  Sun,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -42,6 +43,7 @@ interface NavItem {
 }
 
 const mainNavItems: NavItem[] = [
+  { icon: Sun, labelKey: "myDay", href: "/app/my-day" },
   { icon: FolderKanban, labelKey: "workspaces", href: "/app/workspaces" },
 ];
 
@@ -176,6 +178,7 @@ export const AppShell = ({ children, locale }: AppShellProps) => {
   }, [workspaceId, locale, router]);
 
   const navLabels = useMemo(() => ({
+    myDay: "My Day",
     workspaces: t("workspaces.title"),
     dashboard: t("dashboard.title"),
     board: t("board.title"),

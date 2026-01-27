@@ -557,12 +557,20 @@ export const AccountSettings = ({ user, usageStats }: AccountSettingsProps) => {
 
 interface OverviewTabProps {
   user: { name?: string | null; email?: string | null; image?: string | null };
-  usageStats: { workspaces: number; tasks: number; collaborators: number };
+  usageStats: {
+    plan: string;
+    limits: any;
+    usage: {
+      workspaces: number;
+      workspacesLimit: number;
+      workspacesRemaining: number;
+    };
+  };
   plan: string;
-  planInfo: { name: string; price: string; period: string };
-  limits: { workspaces: number; tasks: number; collaborators: number };
+  planInfo: { name: string; price: string; description: string };
+  limits: any;
   workspaceUsagePercent: number;
-  onTabChange: (tab: string) => void;
+  onTabChange: React.Dispatch<React.SetStateAction<TabType>>;
 }
 
 const OverviewTab = ({ 
@@ -696,7 +704,7 @@ const OverviewTab = ({
           <QuickAction icon={Globe} label="Language & Region" onClick={() => onTabChange("language")} />
           <QuickAction icon={Palette} label="Appearance" onClick={() => onTabChange("appearance")} />
           <QuickAction icon={Shield} label="Security" onClick={() => onTabChange("security")} />
-          <QuickAction icon={Download} label="Export Data" badge="Pro" disabled={plan === "free"} />
+          <QuickAction icon={Download} label="Export Data" badge="Pro" disabled={plan === "free"} onClick={() => {}} />
         </CardContent>
       </Card>
 
@@ -810,7 +818,7 @@ const NotificationsTab = ({ preferences, onSave, isPro }: {
             </div>
             <Switch 
               checked={local.emailNotifications} 
-              onCheckedChange={(v) => updatePref("emailNotifications", v)} 
+              onCheckedChange={(v: boolean) => updatePref("emailNotifications", v)} 
             />
           </div>
         </CardHeader>
@@ -877,7 +885,7 @@ const NotificationsTab = ({ preferences, onSave, isPro }: {
             </div>
             <Switch 
               checked={local.pushNotifications} 
-              onCheckedChange={(v) => updatePref("pushNotifications", v)} 
+              onCheckedChange={(v: boolean) => updatePref("pushNotifications", v)} 
             />
           </div>
         </CardHeader>
@@ -961,7 +969,7 @@ const NotificationsTab = ({ preferences, onSave, isPro }: {
             </div>
             <Switch 
               checked={local.marketingEmails} 
-              onCheckedChange={(v) => updatePref("marketingEmails", v)} 
+              onCheckedChange={(v: boolean) => updatePref("marketingEmails", v)} 
             />
           </div>
         </CardHeader>
@@ -1187,7 +1195,7 @@ const AppearanceTab = ({ preferences, onSave, theme, setTheme }: {
                 <p className="text-sm text-muted-foreground">Minimize animations</p>
               </div>
             </div>
-            <Switch checked={local.reducedMotion} onCheckedChange={(v) => updatePref("reducedMotion", v)} />
+            <Switch checked={local.reducedMotion} onCheckedChange={(v: boolean) => updatePref("reducedMotion", v)} />
           </div>
           <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
             <div className="flex items-center gap-3">
@@ -1197,7 +1205,7 @@ const AppearanceTab = ({ preferences, onSave, theme, setTheme }: {
                 <p className="text-sm text-muted-foreground">Show more content with less spacing</p>
               </div>
             </div>
-            <Switch checked={local.compactMode} onCheckedChange={(v) => updatePref("compactMode", v)} />
+            <Switch checked={local.compactMode} onCheckedChange={(v: boolean) => updatePref("compactMode", v)} />
           </div>
         </CardContent>
       </Card>
@@ -1319,7 +1327,7 @@ const LanguageTab = ({ preferences, onSave }: {
           <CardDescription>Set your local timezone for accurate scheduling</CardDescription>
         </CardHeader>
         <CardContent>
-          <Select value={local.timezone} onValueChange={(v) => updatePref("timezone", v)}>
+          <Select value={local.timezone} onValueChange={(v: string) => updatePref("timezone", v)}>
             <SelectTrigger className="w-full">
               <SelectValue />
             </SelectTrigger>
@@ -1430,13 +1438,13 @@ const LanguageTab = ({ preferences, onSave }: {
 
 interface SecurityTabProps {
   user: { name?: string | null; email?: string | null; image?: string | null };
-  hasPassword: boolean;
+  hasPassword: boolean | null;
   showPasswordForm: boolean;
   setShowPasswordForm: (show: boolean) => void;
   passwordData: { current: string; new: string; confirm: string };
-  setPasswordData: (data: { current: string; new: string; confirm: string }) => void;
-  showPassword: { current: boolean; new: boolean; confirm: boolean };
-  setShowPassword: (data: { current: boolean; new: boolean; confirm: boolean }) => void;
+  setPasswordData: React.Dispatch<React.SetStateAction<{ current: string; new: string; confirm: string }>>;
+  showPassword: boolean;
+  setShowPassword: React.Dispatch<React.SetStateAction<boolean>>;
   isChangingPassword: boolean;
   onPasswordChange: () => void;
 }
@@ -1507,7 +1515,7 @@ const SecurityTab = ({
                     <Input
                       type={showPassword ? "text" : "password"}
                       value={passwordData.current}
-                      onChange={(e) => setPasswordData({ ...passwordData, current: e.target.value })}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPasswordData({ ...passwordData, current: e.target.value })}
                       placeholder="Enter current password"
                     />
                   </div>
@@ -1519,7 +1527,7 @@ const SecurityTab = ({
                   <Input
                     type={showPassword ? "text" : "password"}
                     value={passwordData.new}
-                    onChange={(e) => setPasswordData({ ...passwordData, new: e.target.value })}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPasswordData({ ...passwordData, new: e.target.value })}
                     placeholder="Enter new password"
                   />
                   <button
@@ -1546,7 +1554,7 @@ const SecurityTab = ({
                 <Input
                   type={showPassword ? "text" : "password"}
                   value={passwordData.confirm}
-                  onChange={(e) => setPasswordData({ ...passwordData, confirm: e.target.value })}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPasswordData({ ...passwordData, confirm: e.target.value })}
                   placeholder="Confirm new password"
                 />
                 {passwordData.confirm && passwordData.new !== passwordData.confirm && (
@@ -1763,7 +1771,7 @@ const BillingTab = ({ plan, planInfo }: { plan: UserPlan; planInfo: any }) => (
 
 // ============== HELPER COMPONENTS ==============
 
-const QuickStatCard = ({ icon: Icon, label, value, limit, color }: { icon: React.ElementType; label: string; value: number; limit?: string; color: string }) => {
+const QuickStatCard = ({ icon: Icon, label, value, limit, color }: { icon: React.ElementType; label: string; value: string | number; limit?: string; color: string }) => {
   const colorClasses: Record<string, string> = {
     blue: "from-blue-500/20 to-blue-600/20 text-blue-500",
     violet: "from-violet-500/20 to-violet-600/20 text-violet-500",

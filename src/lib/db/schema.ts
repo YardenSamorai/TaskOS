@@ -682,7 +682,45 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
   tasks: many(tasks),
 }));
 
+// ============== PERSONAL TO-DOS ==============
+// Quick personal to-do items (separate from workspace tasks)
+export const todos = pgTable("todos", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 500 }).notNull(),
+  description: text("description"),
+  completed: boolean("completed").notNull().default(false),
+  priority: taskPriorityEnum("priority").default("medium"),
+  dueDate: date("due_date"),
+  dueTime: varchar("due_time", { length: 5 }), // HH:MM format
+  linkedTaskId: uuid("linked_task_id").references(() => tasks.id, {
+    onDelete: "set null",
+  }),
+  orderIndex: integer("order_index").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+export const todosRelations = relations(todos, ({ one }) => ({
+  user: one(users, {
+    fields: [todos.userId],
+    references: [users.id],
+  }),
+  linkedTask: one(tasks, {
+    fields: [todos.linkedTaskId],
+    references: [tasks.id],
+  }),
+}));
+
 // Type exports
+export type Todo = typeof todos.$inferSelect;
+export type NewTodo = typeof todos.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Account = typeof accounts.$inferSelect;
