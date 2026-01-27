@@ -19,7 +19,7 @@ export const sendInvitationEmail = async ({
 }: SendInvitationEmailParams) => {
   try {
     const { data, error } = await resend.emails.send({
-      from: "TaskOS <onboarding@resend.dev>",
+      from: "TaskOS <noreply@task-os.app>",
       to: [to],
       subject: `You're invited to join ${workspaceName} on TaskOS`,
       html: `
