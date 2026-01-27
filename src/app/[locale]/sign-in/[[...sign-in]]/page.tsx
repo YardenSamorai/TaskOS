@@ -36,8 +36,6 @@ export default function SignInPage() {
         redirect: false,
       });
 
-      console.log("Sign in result:", result);
-
       if (result?.error) {
         // Handle specific errors
         if (result.error.includes("GOOGLE_ACCOUNT")) {
@@ -49,23 +47,23 @@ export default function SignInPage() {
         } else {
           toast.error(result.error || "Invalid email or password");
         }
-      } else {
-        // Success - redirect regardless of result.ok
-        toast.success("Welcome back!");
-        // Use setTimeout to ensure toast shows before redirect
-        setTimeout(() => {
-          const redirectUrl = callbackUrl || "/en/app/workspaces";
-          console.log("Redirecting to:", redirectUrl);
-          window.location.replace(redirectUrl);
-        }, 500);
-        return; // Don't set isLoading to false
+        setIsLoading(false);
+        return;
       }
+      
+      // Success - show toast and redirect
+      toast.success("Welcome back!");
+      const redirectUrl = callbackUrl || "/en/app/workspaces";
+      
+      // Use direct location assignment for reliable redirect
+      window.location.href = redirectUrl;
+      // Keep loading state - page will change
+      
     } catch (error) {
       console.error("Sign in error:", error);
       toast.error("Failed to sign in");
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
   const handleGoogleSignIn = async () => {
