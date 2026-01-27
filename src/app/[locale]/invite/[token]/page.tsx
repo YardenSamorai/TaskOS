@@ -68,10 +68,16 @@ const PublicInvitePage = () => {
   const [invitation, setInvitation] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [accepted, setAccepted] = useState(false);
+  const [emailMismatch, setEmailMismatch] = useState(false);
   const hasAutoAccepted = useRef(false);
 
   const isAuthenticated = status === "authenticated";
   const isAuthLoading = status === "loading";
+  
+  // Check if user's email matches invitation email
+  const userEmail = session?.user?.email?.toLowerCase();
+  const invitationEmail = invitation?.email?.toLowerCase();
+  const isEmailMatch = !userEmail || !invitationEmail || userEmail === invitationEmail;
 
   // Load invitation details (public - no auth required)
   useEffect(() => {
@@ -97,18 +103,27 @@ const PublicInvitePage = () => {
   // This triggers when the user was redirected to login and comes back authenticated
   useEffect(() => {
     const autoAccept = async () => {
+      // Check for email mismatch first - don't attempt if emails don't match
+      if (isAuthenticated && invitation?.email && userEmail && userEmail !== invitationEmail) {
+        setEmailMismatch(true);
+        return; // Don't attempt auto-accept
+      }
+
       // Only auto-accept if:
       // - User is authenticated
       // - Invitation is loaded and valid
       // - Not already accepting or accepted
       // - Haven't already tried auto-accept
+      // - Emails match
       if (
         isAuthenticated && 
         invitation?.isValid && 
         !isAccepting && 
         !accepted && 
         !error &&
-        !hasAutoAccepted.current
+        !emailMismatch &&
+        !hasAutoAccepted.current &&
+        isEmailMatch
       ) {
         hasAutoAccepted.current = true;
         setIsAccepting(true);
@@ -123,9 +138,13 @@ const PublicInvitePage = () => {
               toast.success("Successfully joined the workspace!");
             }
           } else {
-            // Show error but don't set error state - let user try manually
-            toast.error(result.error || "Failed to accept invitation");
-            hasAutoAccepted.current = false; // Allow retry
+            // Check if it's an email mismatch error
+            if (result.error?.includes("sent to") || result.error?.includes("sign in with")) {
+              setEmailMismatch(true);
+            } else {
+              toast.error(result.error || "Failed to accept invitation");
+              hasAutoAccepted.current = false; // Allow retry for other errors
+            }
           }
         } catch (err) {
           toast.error("An error occurred");
@@ -137,7 +156,7 @@ const PublicInvitePage = () => {
     };
 
     autoAccept();
-  }, [isAuthenticated, invitation, isAccepting, accepted, error, token]);
+  }, [isAuthenticated, invitation, isAccepting, accepted, error, token, emailMismatch, isEmailMatch, userEmail, invitationEmail]);
 
   const handleAccept = async () => {
     if (!isAuthenticated) {
@@ -259,6 +278,59 @@ const PublicInvitePage = () => {
                 <Link href={`/${locale}/sign-in`}>Sign In</Link>
               </Button>
             )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Email mismatch - user signed in with wrong email
+  if (emailMismatch && isAuthenticated && invitation) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-amber-50 via-white to-orange-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="mx-auto w-16 h-16 rounded-2xl bg-amber-500/10 flex items-center justify-center mb-4">
+              <Mail className="w-8 h-8 text-amber-500" />
+            </div>
+            <CardTitle>Wrong Email Address</CardTitle>
+            <CardDescription>
+              You're signed in with a different email than the invitation
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="space-y-3">
+              <div className="p-4 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900">
+                <p className="text-xs text-red-600 dark:text-red-400 font-medium mb-1">You're signed in as:</p>
+                <p className="font-semibold text-red-700 dark:text-red-300">{session?.user?.email}</p>
+              </div>
+              <div className="p-4 rounded-xl bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900">
+                <p className="text-xs text-green-600 dark:text-green-400 font-medium mb-1">Invitation sent to:</p>
+                <p className="font-semibold text-green-700 dark:text-green-300">{invitation.email}</p>
+              </div>
+            </div>
+            
+            <div className="p-4 rounded-xl bg-muted/50 text-center">
+              <p className="text-sm text-muted-foreground">
+                To accept this invitation, please sign out and sign in with <strong>{invitation.email}</strong>
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Button 
+                className="w-full gap-2" 
+                onClick={() => {
+                  // Sign out and redirect back to this page
+                  window.location.href = `/${locale}/sign-in?callbackUrl=${encodeURIComponent(`/${locale}/invite/${token}`)}`;
+                }}
+              >
+                <LogIn className="w-4 h-4" />
+                Sign in with {invitation.email}
+              </Button>
+              <Button variant="outline" className="w-full" onClick={goToWorkspaces}>
+                Go to My Workspaces
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -504,15 +576,6 @@ const PublicInvitePage = () => {
               </CardContent>
             </Card>
 
-            {/* Email match notice for authenticated users */}
-            {isAuthenticated && session?.user?.email && invitation?.email && 
-             session.user.email.toLowerCase() !== invitation.email.toLowerCase() && (
-              <div className="mt-4 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-sm">
-                <p className="text-amber-700 dark:text-amber-400">
-                  ⚠️ This invitation was sent to <strong>{invitation.email}</strong>, but you're signed in as <strong>{session.user.email}</strong>. Make sure you're using the correct account.
-                </p>
-              </div>
-            )}
           </div>
         </div>
 
