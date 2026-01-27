@@ -343,7 +343,7 @@ const LandingPage = () => {
                   </Button>
                 </Link>
               </SignedIn>
-              <Button size="lg" variant="outline" className="w-full sm:w-auto border-white/20 text-white hover:bg-white/10 text-lg px-8 h-14 backdrop-blur-sm">
+              <Button size="lg" className="w-full sm:w-auto bg-transparent border border-white/20 text-white hover:bg-white/10 text-lg px-8 h-14 backdrop-blur-sm">
                 <Play className="w-5 h-5 me-2 fill-current" />
                 Watch Demo
               </Button>
