@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/lib/auth";
 import { AppShell } from "@/components/layout/app-shell";
 
 interface AppLayoutProps {
@@ -9,9 +9,9 @@ interface AppLayoutProps {
 
 const AppLayout = async ({ children, params }: AppLayoutProps) => {
   const { locale } = await params;
-  const { userId } = await auth();
+  const session = await auth();
 
-  if (!userId) {
+  if (!session?.user) {
     redirect(`/${locale}/sign-in`);
   }
 

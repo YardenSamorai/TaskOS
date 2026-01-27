@@ -29,7 +29,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useClerk } from "@clerk/nextjs";
+import { signOut } from "next-auth/react";
 import { useWorkspaces } from "@/lib/hooks/use-workspaces";
 import { useTasks } from "@/lib/hooks/use-tasks";
 import { Badge } from "@/components/ui/badge";
@@ -48,7 +48,6 @@ export const CommandPalette = () => {
   const router = useRouter();
   const params = useParams();
   const { theme, setTheme } = useTheme();
-  const { signOut } = useClerk();
 
   // Prevent hydration mismatch
   useEffect(() => {
@@ -237,7 +236,7 @@ export const CommandPalette = () => {
             <span>Toggle Theme</span>
           </CommandItem>
           <CommandItem
-            onSelect={() => runCommand(() => signOut())}
+            onSelect={() => runCommand(() => signOut({ callbackUrl: "/" }))}
           >
             <LogOut className="mr-2 h-4 w-4" />
             <span>Sign Out</span>

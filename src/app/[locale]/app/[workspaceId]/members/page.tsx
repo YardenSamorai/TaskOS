@@ -91,7 +91,7 @@ interface PendingInvitation {
     id: string;
     name: string | null;
     email: string;
-    imageUrl: string | null;
+    image: string | null;
   } | null;
 }
 

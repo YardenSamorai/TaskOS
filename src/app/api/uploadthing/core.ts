@@ -1,24 +1,15 @@
 import { createUploadthing, type FileRouter } from "uploadthing/next";
-import { auth } from "@clerk/nextjs/server";
-import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { auth } from "@/lib/auth";
 
 const f = createUploadthing();
 
 // Middleware to check auth
 const authMiddleware = async () => {
-  const { userId: clerkId } = await auth();
+  const session = await auth();
   
-  if (!clerkId) throw new Error("Unauthorized");
+  if (!session?.user?.id) throw new Error("Unauthorized");
 
-  const user = await db.query.users.findFirst({
-    where: eq(users.clerkId, clerkId),
-  });
-
-  if (!user) throw new Error("User not found");
-
-  return { userId: user.id };
+  return { userId: session.user.id };
 };
 
 // FileRouter for your app

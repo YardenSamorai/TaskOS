@@ -142,17 +142,17 @@ export const TaskComments = ({ task, currentUserId }: TaskCommentsProps) => {
       let finalContent = content;
       
       if (pendingImages.length > 0) {
-        const imageUrls: string[] = [];
+        const images: string[] = [];
         for (const img of pendingImages) {
           const base64 = await fileToBase64(img.file);
-          imageUrls.push(base64);
+          images.push(base64);
         }
         
         // Append images as markdown-like syntax
         if (finalContent) {
           finalContent += "\n\n";
         }
-        finalContent += imageUrls.map((url) => `[image]${url}[/image]`).join("\n");
+        finalContent += images.map((url) => `[image]${url}[/image]`).join("\n");
       }
 
       const formData = new FormData();
@@ -371,7 +371,7 @@ export const TaskComments = ({ task, currentUserId }: TaskCommentsProps) => {
             {comments.map((comment) => (
               <div key={comment.id} className="flex gap-3 group">
                 <Avatar className="w-8 h-8 flex-shrink-0">
-                  <AvatarImage src={comment.user.imageUrl || undefined} />
+                  <AvatarImage src={comment.user.image || undefined} />
                   <AvatarFallback className="text-xs">
                     {comment.user.name?.[0] || comment.user.email[0]}
                   </AvatarFallback>

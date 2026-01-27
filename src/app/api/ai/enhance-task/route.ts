@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Groq from "groq-sdk";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -39,14 +39,14 @@ Respond ONLY with valid JSON, no markdown or explanation.`;
 export async function POST(request: NextRequest) {
   try {
     // Check authentication
-    const { userId } = await auth();
-    if (!userId) {
+    const session = await auth();
+    if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Get user's plan and check feature access
     const user = await db.query.users.findFirst({
-      where: eq(users.clerkId, userId),
+      where: eq(users.id, session.user.id),
     });
 
     const userPlan = (user?.plan as UserPlan) || "free";

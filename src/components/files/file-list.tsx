@@ -44,7 +44,7 @@ interface Attachment {
   uploadedBy?: {
     id: string;
     name: string | null;
-    imageUrl: string | null;
+    image: string | null;
   };
 }
 

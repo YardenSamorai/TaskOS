@@ -46,7 +46,7 @@ interface User {
   id: string;
   name: string | null;
   email: string;
-  imageUrl: string | null;
+  image: string | null;
 }
 
 interface Comment {
@@ -63,7 +63,7 @@ interface MentionSuggestion {
   id: string;
   name: string;
   email: string;
-  imageUrl: string | null;
+  image: string | null;
 }
 
 interface CommentsSectionProps {
@@ -336,7 +336,7 @@ export const CommentsSection = ({
                 )}
               >
                 <Avatar className="w-6 h-6">
-                  <AvatarImage src={suggestion.imageUrl || undefined} />
+                  <AvatarImage src={suggestion.image || undefined} />
                   <AvatarFallback className="text-[10px]">
                     {suggestion.name.charAt(0)}
                   </AvatarFallback>
@@ -372,7 +372,7 @@ export const CommentsSection = ({
               className="flex gap-3 p-3 rounded-lg bg-muted/30 group"
             >
               <Avatar className="w-8 h-8 flex-shrink-0">
-                <AvatarImage src={comment.user.imageUrl || undefined} />
+                <AvatarImage src={comment.user.image || undefined} />
                 <AvatarFallback className="text-xs">
                   {comment.user.name?.charAt(0) || comment.user.email.charAt(0)}
                 </AvatarFallback>

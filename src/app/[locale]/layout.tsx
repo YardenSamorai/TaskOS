@@ -1,10 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
-import { ClerkProvider } from "@clerk/nextjs";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages } from "next-intl/server";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
+import { SessionProvider } from "@/components/providers/session-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { localeDirection, type Locale } from "@/i18n/config";
 import "../globals.css";
@@ -98,36 +98,36 @@ const RootLayout = async ({ children, params }: RootLayoutProps) => {
   const direction = localeDirection[locale] || "ltr";
 
   return (
-    <ClerkProvider>
-      <html lang={locale} dir={direction} suppressHydrationWarning>
-        <head>
-          {/* PWA Meta Tags */}
-          <link rel="manifest" href="/manifest.json" />
-          
-          {/* Apple Touch Icons */}
-          <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
-          <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png" />
-          <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192x192.png" />
-          <link rel="apple-touch-icon" sizes="167x167" href="/icons/icon-192x192.png" />
-          
-          {/* Favicon */}
-          <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
-          <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-96x96.png" />
-          <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-72x72.png" />
-          
-          {/* iOS Specific */}
-          <meta name="apple-mobile-web-app-capable" content="yes" />
-          <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-          <meta name="apple-mobile-web-app-title" content="TaskOS" />
-          
-          {/* Android */}
-          <meta name="mobile-web-app-capable" content="yes" />
-          
-          {/* Microsoft */}
-          <meta name="msapplication-TileColor" content="#2563eb" />
-          <meta name="msapplication-tap-highlight" content="no" />
-        </head>
-        <body className={inter.className}>
+    <html lang={locale} dir={direction} suppressHydrationWarning>
+      <head>
+        {/* PWA Meta Tags */}
+        <link rel="manifest" href="/manifest.json" />
+        
+        {/* Apple Touch Icons */}
+        <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+        <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192x192.png" />
+        <link rel="apple-touch-icon" sizes="167x167" href="/icons/icon-192x192.png" />
+        
+        {/* Favicon */}
+        <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-96x96.png" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-72x72.png" />
+        
+        {/* iOS Specific */}
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="TaskOS" />
+        
+        {/* Android */}
+        <meta name="mobile-web-app-capable" content="yes" />
+        
+        {/* Microsoft */}
+        <meta name="msapplication-TileColor" content="#2563eb" />
+        <meta name="msapplication-tap-highlight" content="no" />
+      </head>
+      <body className={inter.className}>
+        <SessionProvider>
           <ThemeProvider
             attribute="class"
             defaultTheme="system"
@@ -141,29 +141,29 @@ const RootLayout = async ({ children, params }: RootLayoutProps) => {
               </QueryProvider>
             </NextIntlClientProvider>
           </ThemeProvider>
-          
-          {/* Service Worker Registration */}
-          <script
-            dangerouslySetInnerHTML={{
-              __html: `
-                if ('serviceWorker' in navigator) {
-                  window.addEventListener('load', function() {
-                    navigator.serviceWorker.register('/sw.js').then(
-                      function(registration) {
-                        console.log('ServiceWorker registration successful');
-                      },
-                      function(err) {
-                        console.log('ServiceWorker registration failed: ', err);
-                      }
-                    );
-                  });
-                }
-              `,
-            }}
-          />
-        </body>
-      </html>
-    </ClerkProvider>
+        </SessionProvider>
+        
+        {/* Service Worker Registration */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js').then(
+                    function(registration) {
+                      console.log('ServiceWorker registration successful');
+                    },
+                    function(err) {
+                      console.log('ServiceWorker registration failed: ', err);
+                    }
+                  );
+                });
+              }
+            `,
+          }}
+        />
+      </body>
+    </html>
   );
 };
 

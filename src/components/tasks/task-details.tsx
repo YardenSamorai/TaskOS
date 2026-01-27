@@ -198,7 +198,7 @@ export const TaskDetails = ({ task, members }: TaskDetailsProps) => {
               >
                 <div className="flex items-center gap-2">
                   <Avatar className="w-7 h-7">
-                    <AvatarImage src={assignee.user.imageUrl || undefined} />
+                    <AvatarImage src={assignee.user.image || undefined} />
                     <AvatarFallback className="text-xs">
                       {assignee.user.name?.[0] || assignee.user.email[0]}
                     </AvatarFallback>
@@ -227,7 +227,7 @@ export const TaskDetails = ({ task, members }: TaskDetailsProps) => {
                     <SelectItem key={member.id} value={member.userId}>
                       <div className="flex items-center gap-2">
                         <Avatar className="w-5 h-5">
-                          <AvatarImage src={member.user.imageUrl || undefined} />
+                          <AvatarImage src={member.user.image || undefined} />
                           <AvatarFallback className="text-[10px]">
                             {member.user.name?.[0] || member.user.email[0]}
                           </AvatarFallback>

@@ -54,18 +54,78 @@ export const invitationStatusEnum = pgEnum("invitation_status", [
   "cancelled",
 ]);
 
-// Users table (synced with Clerk)
+// Users table (NextAuth compatible)
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
-  clerkId: varchar("clerk_id", { length: 255 }).notNull().unique(),
-  email: varchar("email", { length: 255 }).notNull(),
+  email: varchar("email", { length: 255 }).notNull().unique(),
+  emailVerified: timestamp("email_verified"),
+  password: varchar("password", { length: 255 }), // null for OAuth users
   name: varchar("name", { length: 255 }),
-  imageUrl: text("image_url"),
+  image: text("image"),
   plan: userPlanEnum("plan").notNull().default("free"),
   planExpiresAt: timestamp("plan_expires_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+// NextAuth Accounts table (for OAuth providers)
+export const accounts = pgTable(
+  "accounts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: varchar("type", { length: 255 }).notNull(),
+    provider: varchar("provider", { length: 255 }).notNull(),
+    providerAccountId: varchar("provider_account_id", { length: 255 }).notNull(),
+    refresh_token: text("refresh_token"),
+    access_token: text("access_token"),
+    expires_at: integer("expires_at"),
+    token_type: varchar("token_type", { length: 255 }),
+    scope: varchar("scope", { length: 255 }),
+    id_token: text("id_token"),
+    session_state: varchar("session_state", { length: 255 }),
+  },
+  (table) => ({
+    providerProviderAccountIdIdx: index("account_provider_idx").on(
+      table.provider,
+      table.providerAccountId
+    ),
+  })
+);
+
+// NextAuth Sessions table
+export const sessions = pgTable(
+  "sessions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    sessionToken: varchar("session_token", { length: 255 }).notNull().unique(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    expires: timestamp("expires").notNull(),
+  },
+  (table) => ({
+    userIdIdx: index("session_user_idx").on(table.userId),
+  })
+);
+
+// NextAuth Verification tokens (for email verification)
+export const verificationTokens = pgTable(
+  "verification_tokens",
+  {
+    identifier: varchar("identifier", { length: 255 }).notNull(),
+    token: varchar("token", { length: 255 }).notNull().unique(),
+    expires: timestamp("expires").notNull(),
+  },
+  (table) => ({
+    identifierTokenIdx: index("verification_token_idx").on(
+      table.identifier,
+      table.token
+    ),
+  })
+);
 
 // Workspaces table
 export const workspaces = pgTable("workspaces", {
@@ -402,12 +462,28 @@ export const templates = pgTable("templates", {
 
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
+  accounts: many(accounts),
+  sessions: many(sessions),
   workspaceMembers: many(workspaceMembers),
   ownedWorkspaces: many(workspaces),
   tasks: many(tasks),
   comments: many(taskComments),
   notifications: many(notifications),
   sentInvitations: many(workspaceInvitations),
+}));
+
+export const accountsRelations = relations(accounts, ({ one }) => ({
+  user: one(users, {
+    fields: [accounts.userId],
+    references: [users.id],
+  }),
+}));
+
+export const sessionsRelations = relations(sessions, ({ one }) => ({
+  user: one(users, {
+    fields: [sessions.userId],
+    references: [users.id],
+  }),
 }));
 
 export const workspacesRelations = relations(workspaces, ({ one, many }) => ({
@@ -576,6 +652,9 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
 // Type exports
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
+export type Account = typeof accounts.$inferSelect;
+export type Session = typeof sessions.$inferSelect;
+export type VerificationToken = typeof verificationTokens.$inferSelect;
 export type Workspace = typeof workspaces.$inferSelect;
 export type NewWorkspace = typeof workspaces.$inferInsert;
 export type WorkspaceMember = typeof workspaceMembers.$inferSelect;

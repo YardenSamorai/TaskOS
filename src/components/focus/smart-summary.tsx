@@ -153,7 +153,7 @@ export const SmartSummary = ({ stats, activity }: SmartSummaryProps) => {
               {activity.slice(0, 3).map((item) => (
                 <div key={item.id} className="flex items-center gap-2 text-sm">
                   <Avatar className="w-5 h-5">
-                    <AvatarImage src={item.user.imageUrl || undefined} />
+                    <AvatarImage src={item.user.image || undefined} />
                     <AvatarFallback className="text-[10px]">
                       {item.user.name?.[0] || item.user.email[0]}
                     </AvatarFallback>

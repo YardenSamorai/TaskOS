@@ -60,7 +60,7 @@ interface Template {
   createdBy: {
     id: string;
     name: string | null;
-    imageUrl: string | null;
+    image: string | null;
   };
 }
 
@@ -291,7 +291,7 @@ export const TemplatesView = ({ workspaceId, locale }: TemplatesViewProps) => {
                 {/* Footer */}
                 <div className="flex items-center gap-2 pt-4 border-t">
                   <Avatar className="w-6 h-6">
-                    <AvatarImage src={template.createdBy.imageUrl || undefined} />
+                    <AvatarImage src={template.createdBy.image || undefined} />
                     <AvatarFallback className="text-[10px]">
                       {template.createdBy.name?.charAt(0) || "?"}
                     </AvatarFallback>

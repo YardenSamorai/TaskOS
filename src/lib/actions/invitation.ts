@@ -160,7 +160,7 @@ export const getWorkspaceInvitations = async (workspaceId: string) => {
             id: true,
             name: true,
             email: true,
-            imageUrl: true,
+            image: true,
           },
         },
       },
@@ -348,7 +348,7 @@ export const getInvitationByToken = async (token: string) => {
           columns: {
             name: true,
             email: true,
-            imageUrl: true,
+            image: true,
           },
         },
       },

@@ -263,7 +263,7 @@ export const getMentionSuggestions = async (workspaceId: string, search?: string
       id: m.user.id,
       name: m.user.name || m.user.email,
       email: m.user.email,
-      imageUrl: m.user.imageUrl,
+      image: m.user.image,
     }));
 
     // Filter by search term

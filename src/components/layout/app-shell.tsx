@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, memo, useState } from "react";
 import { usePathname, useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { UserButton } from "@clerk/nextjs";
+import { UserMenu } from "@/components/auth/user-menu";
 import {
   LayoutDashboard,
   Kanban,
@@ -297,23 +297,13 @@ export const AppShell = ({ children, locale }: AppShellProps) => {
             </Button>
 
             {/* User */}
-            <Link 
-              href={`/${locale}/app/account`}
-              className="flex items-center gap-3 px-2 rounded-lg hover:bg-muted transition-colors py-2"
-            >
-              <UserButton
-                afterSignOutUrl={`/${locale}`}
-                appearance={{
-                  elements: {
-                    avatarBox: "w-9 h-9",
-                  },
-                }}
-              />
-              <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-3 px-2 rounded-lg hover:bg-muted transition-colors py-2">
+              <UserMenu locale={locale} />
+              <Link href={`/${locale}/app/account`} className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{t("common.profile")}</p>
                 <p className="text-xs text-muted-foreground">Account Settings</p>
-              </div>
-            </Link>
+              </Link>
+            </div>
           </div>
         </div>
       </aside>
@@ -376,14 +366,7 @@ export const AppShell = ({ children, locale }: AppShellProps) => {
               <NotificationsDropdown />
 
               <div className="lg:hidden">
-                <UserButton
-                  afterSignOutUrl={`/${locale}`}
-                  appearance={{
-                    elements: {
-                      avatarBox: "w-8 h-8",
-                    },
-                  }}
-                />
+                <UserMenu locale={locale} size="sm" />
               </div>
             </div>
           </div>

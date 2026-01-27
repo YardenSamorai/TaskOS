@@ -54,7 +54,7 @@ export const TaskAttachments = ({ task }: TaskAttachmentsProps) => {
       ? {
           id: a.uploader.id,
           name: a.uploader.name,
-          imageUrl: a.uploader.imageUrl,
+          image: a.uploader.image,
         }
       : undefined,
   }));

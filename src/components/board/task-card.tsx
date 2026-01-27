@@ -170,7 +170,7 @@ export const TaskCard = ({ task, locale, workspaceId, isDragging }: TaskCardProp
             <div className="flex -space-x-2">
               {task.assignees.slice(0, 3).map((assignee) => (
                 <Avatar key={assignee.id} className="w-6 h-6 border-2 border-background">
-                  <AvatarImage src={assignee.user.imageUrl || undefined} />
+                  <AvatarImage src={assignee.user.image || undefined} />
                   <AvatarFallback className="text-[10px]">
                     {assignee.user.name?.[0] || assignee.user.email[0]}
                   </AvatarFallback>

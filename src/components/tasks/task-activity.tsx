@@ -123,7 +123,7 @@ export const TaskActivity = ({ task }: TaskActivityProps) => {
                       <div className="flex-1 min-w-0 pt-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <Avatar className="w-5 h-5">
-                            <AvatarImage src={activity.user.imageUrl || undefined} />
+                            <AvatarImage src={activity.user.image || undefined} />
                             <AvatarFallback className="text-[10px]">
                               {activity.user.name?.[0] || activity.user.email[0]}
                             </AvatarFallback>

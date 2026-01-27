@@ -135,7 +135,7 @@ export const DashboardTasks = ({ workspaceId, locale }: DashboardTasksProps) => 
                       <div className="flex -space-x-2">
                         {task.assignees.slice(0, 3).map((assignee: any) => (
                           <Avatar key={assignee.id} className="w-7 h-7 border-2 border-background">
-                            <AvatarImage src={assignee.user?.imageUrl || undefined} />
+                            <AvatarImage src={assignee.user?.image || undefined} />
                             <AvatarFallback className="text-xs">
                               {assignee.user?.name?.[0] || assignee.user?.email?.[0] || "?"}
                             </AvatarFallback>
@@ -189,7 +189,7 @@ export const DashboardTasks = ({ workspaceId, locale }: DashboardTasksProps) => 
                         <p className="font-medium truncate flex-1">{task.title}</p>
                         {task.assignees?.length > 0 && (
                           <Avatar className="w-6 h-6 ms-2">
-                            <AvatarImage src={task.assignees[0].user?.imageUrl || undefined} />
+                            <AvatarImage src={task.assignees[0].user?.image || undefined} />
                             <AvatarFallback className="text-xs">
                               {task.assignees[0].user?.name?.[0] ||
                                 task.assignees[0].user?.email?.[0] || "?"}

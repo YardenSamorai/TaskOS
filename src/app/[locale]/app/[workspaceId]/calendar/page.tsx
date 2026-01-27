@@ -459,7 +459,7 @@ const TaskItem = ({
             <div className="flex -space-x-1 mt-2">
               {task.assignees.slice(0, 3).map((assignee) => (
                 <Avatar key={assignee.id} className="w-5 h-5 border border-background">
-                  <AvatarImage src={assignee.user.imageUrl || undefined} />
+                  <AvatarImage src={assignee.user.image || undefined} />
                   <AvatarFallback className="text-[8px]">
                     {assignee.user.name?.[0] || assignee.user.email[0]}
                   </AvatarFallback>

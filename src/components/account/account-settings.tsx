@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useUser, useClerk } from "@clerk/nextjs";
+import { useSession, signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { 
   User, 
   Crown, 
   Sparkles, 
   Check, 
-  ArrowRight,
   Building2,
   HardDrive,
   Users,
@@ -32,7 +32,8 @@ import {
   BarChart3,
   Target,
   Gift,
-  X
+  X,
+  Camera
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -56,8 +57,8 @@ interface AccountSettingsProps {
 }
 
 export const AccountSettings = ({ user, usageStats }: AccountSettingsProps) => {
-  const { user: clerkUser } = useUser();
-  const { signOut, openUserProfile } = useClerk();
+  const { data: session } = useSession();
+  const router = useRouter();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [activeTab, setActiveTab] = useState<"overview" | "billing" | "security">("overview");
 
@@ -67,7 +68,7 @@ export const AccountSettings = ({ user, usageStats }: AccountSettingsProps) => {
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
-    await signOut();
+    await signOut({ callbackUrl: "/" });
   };
 
   const workspaceUsagePercent = limits.maxWorkspaces === Infinity 
@@ -78,6 +79,13 @@ export const AccountSettings = ({ user, usageStats }: AccountSettingsProps) => {
     month: 'long', 
     year: 'numeric' 
   }) : 'Recently';
+
+  const initials = user.name
+    ?.split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2) || user.email?.[0].toUpperCase() || "U";
 
   return (
     <div className="min-h-screen pb-20">
@@ -96,9 +104,9 @@ export const AccountSettings = ({ user, usageStats }: AccountSettingsProps) => {
             <div className="relative group">
               <div className="absolute -inset-1 bg-gradient-to-r from-blue-500 to-violet-600 rounded-full opacity-75 group-hover:opacity-100 blur transition duration-300" />
               <Avatar className="relative w-24 h-24 md:w-32 md:h-32 border-4 border-background">
-                <AvatarImage src={clerkUser?.imageUrl || user.imageUrl || ""} />
+                <AvatarImage src={session?.user?.image || user.image || ""} />
                 <AvatarFallback className="text-3xl font-bold bg-gradient-to-br from-blue-500 to-violet-600 text-white">
-                  {user.name?.charAt(0) || user.email?.charAt(0) || "U"}
+                  {initials}
                 </AvatarFallback>
               </Avatar>
               {plan !== "free" && (
@@ -139,10 +147,6 @@ export const AccountSettings = ({ user, usageStats }: AccountSettingsProps) => {
             </div>
             
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => openUserProfile()} className="gap-2">
-                <Settings className="w-4 h-4" />
-                Edit Profile
-              </Button>
               {plan === "free" && (
                 <Button className="gap-2 bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 shadow-lg shadow-blue-500/25">
                   <Sparkles className="w-4 h-4" />
@@ -426,9 +430,7 @@ export const AccountSettings = ({ user, usageStats }: AccountSettingsProps) => {
                   <CardTitle className="text-lg">Quick Actions</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  <QuickAction icon={Settings} label="Edit Profile" onClick={() => openUserProfile()} />
                   <QuickAction icon={Bell} label="Notification Settings" />
-                  <QuickAction icon={Lock} label="Change Password" onClick={() => openUserProfile()} />
                   <QuickAction icon={Globe} label="Language & Region" />
                   <QuickAction icon={Palette} label="Appearance" />
                 </CardContent>
@@ -487,47 +489,6 @@ export const AccountSettings = ({ user, usageStats }: AccountSettingsProps) => {
                     <Button variant="outline">Manage</Button>
                   )}
                 </div>
-
-                {plan !== "free" && (
-                  <>
-                    <div className="space-y-4">
-                      <h4 className="font-medium">Payment Method</h4>
-                      <div className="p-4 rounded-lg border flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-12 h-8 bg-gradient-to-r from-blue-600 to-blue-400 rounded flex items-center justify-center text-white text-xs font-bold">
-                            VISA
-                          </div>
-                          <div>
-                            <p className="font-medium">•••• •••• •••• 4242</p>
-                            <p className="text-sm text-muted-foreground">Expires 12/25</p>
-                          </div>
-                        </div>
-                        <Button variant="ghost" size="sm">Edit</Button>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <h4 className="font-medium">Billing History</h4>
-                      <div className="space-y-2">
-                        {[
-                          { date: "Jan 1, 2026", amount: "$12.00", status: "Paid" },
-                          { date: "Dec 1, 2025", amount: "$12.00", status: "Paid" },
-                          { date: "Nov 1, 2025", amount: "$12.00", status: "Paid" },
-                        ].map((invoice, i) => (
-                          <div key={i} className="p-3 rounded-lg border flex items-center justify-between">
-                            <div>
-                              <p className="font-medium">{invoice.date}</p>
-                              <p className="text-sm text-muted-foreground">{invoice.amount}</p>
-                            </div>
-                            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600">
-                              {invoice.status}
-                            </Badge>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </>
-                )}
               </CardContent>
             </Card>
           </div>
@@ -547,9 +508,8 @@ export const AccountSettings = ({ user, usageStats }: AccountSettingsProps) => {
                 <SecurityItem 
                   icon={Lock} 
                   title="Password" 
-                  description="Last changed 30 days ago"
+                  description="Change your password"
                   action="Change"
-                  onClick={() => openUserProfile()}
                 />
                 <SecurityItem 
                   icon={Shield} 
@@ -562,12 +522,6 @@ export const AccountSettings = ({ user, usageStats }: AccountSettingsProps) => {
                   title="Email Verification" 
                   description="Your email is verified"
                   verified
-                />
-                <SecurityItem 
-                  icon={Globe} 
-                  title="Active Sessions" 
-                  description="1 active session"
-                  action="View All"
                 />
               </CardContent>
             </Card>

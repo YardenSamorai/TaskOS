@@ -159,7 +159,7 @@ export const TasksTable = ({ tasks, locale, workspaceId, members }: TasksTablePr
                             key={assignee.id}
                             className="w-7 h-7 border-2 border-background"
                           >
-                            <AvatarImage src={assignee.user.imageUrl || undefined} />
+                            <AvatarImage src={assignee.user.image || undefined} />
                             <AvatarFallback className="text-xs">
                               {assignee.user.name?.[0] || assignee.user.email[0]}
                             </AvatarFallback>

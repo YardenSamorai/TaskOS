@@ -1,4 +1,4 @@
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { workspaceMembers, users } from "@/lib/db/schema";
 import { and, eq } from "drizzle-orm";
@@ -15,50 +15,19 @@ export class AuthError extends Error {
 }
 
 export const getCurrentUser = async () => {
-  const { userId: clerkId } = await auth();
+  const session = await auth();
 
-  if (!clerkId) {
+  if (!session?.user?.id) {
     throw new AuthError("Not authenticated", "UNAUTHORIZED");
   }
 
-  // Try to find user in database
-  let user = await db.query.users.findFirst({
-    where: eq(users.clerkId, clerkId),
+  // Find user in database
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, session.user.id),
   });
 
-  // If user doesn't exist, create them (auto-sync from Clerk)
   if (!user) {
-    const clerkUser = await currentUser();
-    
-    if (!clerkUser) {
-      throw new AuthError("User not found", "NOT_FOUND");
-    }
-
-    const primaryEmail = clerkUser.emailAddresses.find(
-      (e) => e.id === clerkUser.primaryEmailAddressId
-    )?.emailAddress || clerkUser.emailAddresses[0]?.emailAddress;
-
-    if (!primaryEmail) {
-      throw new AuthError("User has no email", "NOT_FOUND");
-    }
-
-    const fullName = [clerkUser.firstName, clerkUser.lastName]
-      .filter(Boolean)
-      .join(" ");
-
-    // Create user in database
-    const [newUser] = await db
-      .insert(users)
-      .values({
-        clerkId: clerkUser.id,
-        email: primaryEmail,
-        name: fullName || null,
-        imageUrl: clerkUser.imageUrl || null,
-      })
-      .returning();
-
-    user = newUser;
-    console.log(`User auto-synced from Clerk: ${user.email}`);
+    throw new AuthError("User not found", "NOT_FOUND");
   }
 
   return user;

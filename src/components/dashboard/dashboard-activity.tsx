@@ -83,7 +83,7 @@ export const DashboardActivity = ({ workspaceId }: DashboardActivityProps) => {
                 return (
                   <div key={item.id} className="flex items-start gap-3">
                     <Avatar className="w-8 h-8">
-                      <AvatarImage src={item.user?.imageUrl} />
+                      <AvatarImage src={item.user?.image} />
                       <AvatarFallback className="text-xs">
                         {item.user?.name?.[0] || item.user?.email?.[0] || "?"}
                       </AvatarFallback>
