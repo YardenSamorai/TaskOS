@@ -62,8 +62,12 @@ export const TimeTracker = () => {
             className={`rounded-full w-14 h-14 ${
               isRunning 
                 ? "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700" 
-                : "bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/25"
+                : ""
             }`}
+            style={!isRunning ? { 
+              backgroundColor: 'var(--accent-color)',
+              boxShadow: '0 10px 25px -5px rgba(var(--accent-color-rgb), 0.4)'
+            } : undefined}
             onClick={handlePlayPause}
           >
             {isRunning ? (

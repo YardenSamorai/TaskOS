@@ -18,12 +18,43 @@ function initializePreferences() {
       // Apply accent color
       if (appearance.accentColor) {
         root.style.setProperty("--accent-color", appearance.accentColor);
+        
+        // Convert hex to RGB and HSL
         const hexToRgb = (hex: string) => {
           const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-          if (!result) return "99, 102, 241";
-          return `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}`;
+          if (!result) return { r: 99, g: 102, b: 241, str: "99, 102, 241" };
+          const r = parseInt(result[1], 16);
+          const g = parseInt(result[2], 16);
+          const b = parseInt(result[3], 16);
+          return { r, g, b, str: `${r}, ${g}, ${b}` };
         };
-        root.style.setProperty("--accent-color-rgb", hexToRgb(appearance.accentColor));
+        
+        const rgbToHsl = (r: number, g: number, b: number) => {
+          r /= 255; g /= 255; b /= 255;
+          const max = Math.max(r, g, b), min = Math.min(r, g, b);
+          let h = 0, s = 0;
+          const l = (max + min) / 2;
+          
+          if (max !== min) {
+            const d = max - min;
+            s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+            switch (max) {
+              case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+              case g: h = ((b - r) / d + 2) / 6; break;
+              case b: h = ((r - g) / d + 4) / 6; break;
+            }
+          }
+          
+          return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
+        };
+        
+        const rgb = hexToRgb(appearance.accentColor);
+        root.style.setProperty("--accent-color-rgb", rgb.str);
+        
+        const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+        root.style.setProperty("--accent-color-hsl", hsl);
+        root.style.setProperty("--primary", hsl);
+        root.setAttribute("data-accent", "true");
       }
       
       // Apply font size
@@ -73,8 +104,26 @@ export const preferencesInitScript = `
       if (prefs.accentColor) {
         root.style.setProperty("--accent-color", prefs.accentColor);
         var hex = prefs.accentColor.replace('#', '');
-        var rgb = parseInt(hex.substring(0,2), 16) + ', ' + parseInt(hex.substring(2,4), 16) + ', ' + parseInt(hex.substring(4,6), 16);
-        root.style.setProperty("--accent-color-rgb", rgb);
+        var r = parseInt(hex.substring(0,2), 16);
+        var g = parseInt(hex.substring(2,4), 16);
+        var b = parseInt(hex.substring(4,6), 16);
+        root.style.setProperty("--accent-color-rgb", r + ', ' + g + ', ' + b);
+        
+        // Convert to HSL for primary color
+        r /= 255; g /= 255; b /= 255;
+        var max = Math.max(r, g, b), min = Math.min(r, g, b);
+        var h = 0, s = 0, l = (max + min) / 2;
+        if (max !== min) {
+          var d = max - min;
+          s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+          if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+          else if (max === g) h = ((b - r) / d + 2) / 6;
+          else h = ((r - g) / d + 4) / 6;
+        }
+        var hsl = Math.round(h * 360) + ' ' + Math.round(s * 100) + '% ' + Math.round(l * 100) + '%';
+        root.style.setProperty("--accent-color-hsl", hsl);
+        root.style.setProperty("--primary", hsl);
+        root.setAttribute("data-accent", "true");
       }
       
       if (prefs.fontSize) {

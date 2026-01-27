@@ -17,13 +17,10 @@ import {
   X,
   Zap,
   Search,
-  Sun,
-  Moon,
   Target,
   Plus,
   Users,
 } from "lucide-react";
-import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/lib/store";
@@ -88,11 +85,15 @@ const NavLink = memo(({
       onClick();
     }}
     className={cn(
-      "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors",
+      "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
       active
-        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
+        ? "text-white shadow-lg"
         : "text-muted-foreground hover:text-foreground hover:bg-muted"
     )}
+    style={active ? { 
+      backgroundColor: 'var(--accent-color)', 
+      boxShadow: '0 10px 25px -5px rgba(var(--accent-color-rgb), 0.4)' 
+    } : undefined}
   >
     <item.icon className="w-5 h-5 flex-shrink-0" />
     <span>{label}</span>
@@ -137,16 +138,9 @@ export const AppShell = ({ children, locale }: AppShellProps) => {
   const params = useParams();
   const router = useRouter();
   const t = useTranslations();
-  const { theme, setTheme } = useTheme();
   
   const { sidebarOpen, setSidebarOpen, isNavigating, setIsNavigating } = useAppStore();
   const [createTaskOpen, setCreateTaskOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  // Prevent hydration mismatch for theme
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const workspaceId = params.workspaceId as string | undefined;
   const isInWorkspace = !!workspaceId;
@@ -226,7 +220,13 @@ export const AppShell = ({ children, locale }: AppShellProps) => {
           {/* Logo */}
           <div className="flex items-center justify-between p-4 border-b border-border">
             <Link href={`/${locale}`} className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center shadow-lg shadow-blue-500/25">
+              <div 
+                className="w-9 h-9 rounded-xl flex items-center justify-center shadow-lg transition-all duration-300"
+                style={{ 
+                  background: `linear-gradient(135deg, var(--accent-color), color-mix(in srgb, var(--accent-color) 60%, #000))`,
+                  boxShadow: `0 10px 20px -5px rgba(var(--accent-color-rgb), 0.4)`
+                }}
+              >
                 <Zap className="w-5 h-5 text-white" />
               </div>
               <span className="text-lg font-bold">
@@ -287,25 +287,6 @@ export const AppShell = ({ children, locale }: AppShellProps) => {
 
           {/* Bottom section */}
           <div className="p-4 border-t border-border space-y-4">
-            {/* Theme toggle - only render after mount to prevent hydration mismatch */}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full justify-start gap-3"
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            >
-              {mounted ? (
-                theme === "dark" ? (
-                  <Sun className="w-5 h-5" />
-                ) : (
-                  <Moon className="w-5 h-5" />
-                )
-              ) : (
-                <Moon className="w-5 h-5" />
-              )}
-              <span>{mounted ? (theme === "dark" ? "Light Mode" : "Dark Mode") : "Dark Mode"}</span>
-            </Button>
-
             {/* User */}
             <div className="flex items-center gap-3 px-2 rounded-lg hover:bg-muted transition-colors py-2">
               <UserMenu locale={locale} />

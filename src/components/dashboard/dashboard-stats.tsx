@@ -33,8 +33,9 @@ export const DashboardStats = ({ workspaceId }: DashboardStatsProps) => {
       label: "Total Tasks",
       value: stats.total,
       icon: ListTodo,
-      color: "text-blue-500",
-      bg: "bg-blue-500/10",
+      color: "accent-text",
+      bg: "accent-bg-light",
+      isAccent: true,
     },
     {
       label: "In Progress",
@@ -74,8 +75,14 @@ export const DashboardStats = ({ workspaceId }: DashboardStatsProps) => {
                   <p className="text-sm text-muted-foreground">{item.label}</p>
                   <p className="text-3xl font-bold mt-1">{item.value}</p>
                 </div>
-                <div className={`p-3 rounded-xl ${item.bg}`}>
-                  <item.icon className={`w-6 h-6 ${item.color}`} />
+                <div 
+                  className={`p-3 rounded-xl ${(item as any).isAccent ? '' : item.bg}`}
+                  style={(item as any).isAccent ? { backgroundColor: 'rgba(var(--accent-color-rgb), 0.1)' } : undefined}
+                >
+                  <item.icon 
+                    className={`w-6 h-6 ${(item as any).isAccent ? '' : item.color}`} 
+                    style={(item as any).isAccent ? { color: 'var(--accent-color)' } : undefined}
+                  />
                 </div>
               </div>
             </CardContent>
@@ -88,15 +95,18 @@ export const DashboardStats = ({ workspaceId }: DashboardStatsProps) => {
         <CardContent className="p-6">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-primary" />
+              <TrendingUp className="w-5 h-5" style={{ color: 'var(--accent-color)' }} />
               <span className="font-medium">Completion Rate</span>
             </div>
-            <span className="text-2xl font-bold">{completionRate}%</span>
+            <span className="text-2xl font-bold" style={{ color: 'var(--accent-color)' }}>{completionRate}%</span>
           </div>
           <div className="h-3 bg-muted rounded-full overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-blue-500 to-violet-500 rounded-full transition-all duration-500"
-              style={{ width: `${completionRate}%` }}
+              className="h-full rounded-full transition-all duration-500"
+              style={{ 
+                width: `${completionRate}%`,
+                background: `linear-gradient(90deg, var(--accent-color), color-mix(in srgb, var(--accent-color) 70%, #8b5cf6))`
+              }}
             />
           </div>
         </CardContent>

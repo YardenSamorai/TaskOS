@@ -555,6 +555,16 @@ export const AccountSettings = ({ user, usageStats }: AccountSettingsProps) => {
 
 // ============== TAB COMPONENTS ==============
 
+interface OverviewTabProps {
+  user: { name?: string | null; email?: string | null; image?: string | null };
+  usageStats: { workspaces: number; tasks: number; collaborators: number };
+  plan: string;
+  planInfo: { name: string; price: string; period: string };
+  limits: { workspaces: number; tasks: number; collaborators: number };
+  workspaceUsagePercent: number;
+  onTabChange: (tab: string) => void;
+}
+
 const OverviewTab = ({ 
   user, 
   usageStats, 
@@ -563,7 +573,7 @@ const OverviewTab = ({
   limits, 
   workspaceUsagePercent,
   onTabChange 
-}: any) => (
+}: OverviewTabProps) => (
   <div className="grid lg:grid-cols-3 gap-8">
     <div className="lg:col-span-2 space-y-6">
       {/* Usage Overview Card */}
@@ -997,12 +1007,45 @@ const AppearanceTab = ({ preferences, onSave, theme, setTheme }: {
     
     // Accent color
     root.style.setProperty("--accent-color", prefs.accentColor);
+    
+    // Convert hex to RGB
     const hexToRgb = (hex: string) => {
       const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-      if (!result) return "99, 102, 241";
-      return `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}`;
+      if (!result) return { r: 99, g: 102, b: 241, str: "99, 102, 241" };
+      const r = parseInt(result[1], 16);
+      const g = parseInt(result[2], 16);
+      const b = parseInt(result[3], 16);
+      return { r, g, b, str: `${r}, ${g}, ${b}` };
     };
-    root.style.setProperty("--accent-color-rgb", hexToRgb(prefs.accentColor));
+    
+    // Convert RGB to HSL
+    const rgbToHsl = (r: number, g: number, b: number) => {
+      r /= 255; g /= 255; b /= 255;
+      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      let h = 0, s = 0;
+      const l = (max + min) / 2;
+      
+      if (max !== min) {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+          case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+          case g: h = ((b - r) / d + 2) / 6; break;
+          case b: h = ((r - g) / d + 4) / 6; break;
+        }
+      }
+      
+      return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
+    };
+    
+    const rgb = hexToRgb(prefs.accentColor);
+    root.style.setProperty("--accent-color-rgb", rgb.str);
+    
+    // Set HSL for primary color override
+    const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+    root.style.setProperty("--accent-color-hsl", hsl);
+    root.style.setProperty("--primary", hsl);
+    root.setAttribute("data-accent", "true");
     
     // Font size
     const fontSizes = { small: "14px", medium: "16px", large: "18px" };
@@ -1385,6 +1428,19 @@ const LanguageTab = ({ preferences, onSave }: {
   );
 };
 
+interface SecurityTabProps {
+  user: { name?: string | null; email?: string | null; image?: string | null };
+  hasPassword: boolean;
+  showPasswordForm: boolean;
+  setShowPasswordForm: (show: boolean) => void;
+  passwordData: { current: string; new: string; confirm: string };
+  setPasswordData: (data: { current: string; new: string; confirm: string }) => void;
+  showPassword: { current: boolean; new: boolean; confirm: boolean };
+  setShowPassword: (data: { current: boolean; new: boolean; confirm: boolean }) => void;
+  isChangingPassword: boolean;
+  onPasswordChange: () => void;
+}
+
 const SecurityTab = ({ 
   user, 
   hasPassword, 
@@ -1396,7 +1452,7 @@ const SecurityTab = ({
   setShowPassword, 
   isChangingPassword, 
   onPasswordChange 
-}: any) => {
+}: SecurityTabProps) => {
   const passwordRequirements = [
     { label: "8+ characters", met: passwordData.new.length >= 8 },
     { label: "Uppercase", met: /[A-Z]/.test(passwordData.new) },
@@ -1707,7 +1763,7 @@ const BillingTab = ({ plan, planInfo }: { plan: UserPlan; planInfo: any }) => (
 
 // ============== HELPER COMPONENTS ==============
 
-const QuickStatCard = ({ icon: Icon, label, value, limit, color }: any) => {
+const QuickStatCard = ({ icon: Icon, label, value, limit, color }: { icon: React.ElementType; label: string; value: number; limit?: string; color: string }) => {
   const colorClasses: Record<string, string> = {
     blue: "from-blue-500/20 to-blue-600/20 text-blue-500",
     violet: "from-violet-500/20 to-violet-600/20 text-violet-500",
@@ -1730,7 +1786,7 @@ const QuickStatCard = ({ icon: Icon, label, value, limit, color }: any) => {
   );
 };
 
-const LimitItem = ({ icon: Icon, label, value }: any) => (
+const LimitItem = ({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) => (
   <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
     <div className="p-2 rounded-lg bg-emerald-500/10">
       <Icon className="w-4 h-4 text-emerald-500" />
@@ -1742,7 +1798,7 @@ const LimitItem = ({ icon: Icon, label, value }: any) => (
   </div>
 );
 
-const FeatureCard = ({ icon: Icon, title, description, available }: any) => (
+const FeatureCard = ({ icon: Icon, title, description, available }: { icon: React.ElementType; title: string; description: string; available: boolean }) => (
   <div className={`p-4 rounded-xl border transition-all ${
     available ? "bg-gradient-to-br from-emerald-500/5 to-emerald-600/5 border-emerald-500/20" : "bg-muted/50 border-transparent opacity-60"
   }`}>
@@ -1762,7 +1818,7 @@ const FeatureCard = ({ icon: Icon, title, description, available }: any) => (
   </div>
 );
 
-const QuickAction = ({ icon: Icon, label, onClick, badge, disabled }: any) => (
+const QuickAction = ({ icon: Icon, label, onClick, badge, disabled }: { icon: React.ElementType; label: string; onClick: () => void; badge?: string; disabled?: boolean }) => (
   <button 
     onClick={onClick}
     disabled={disabled}
@@ -1777,7 +1833,16 @@ const QuickAction = ({ icon: Icon, label, onClick, badge, disabled }: any) => (
   </button>
 );
 
-const NotificationToggle = ({ icon: Icon, title, description, checked, onChange, disabled }: any) => (
+interface NotificationToggleProps {
+  icon: React.ElementType;
+  title: string;
+  description: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  disabled?: boolean;
+}
+
+const NotificationToggle = ({ icon: Icon, title, description, checked, onChange, disabled }: NotificationToggleProps) => (
   <div className={`flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors ${disabled ? "opacity-50" : ""}`}>
     <div className="flex items-center gap-3">
       <Icon className="w-4 h-4 text-muted-foreground" />

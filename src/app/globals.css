@@ -243,7 +243,80 @@
 :root {
   --accent-color: #6366f1;
   --accent-color-rgb: 99, 102, 241;
+  --accent-color-hsl: 239 84% 67%;
   --base-font-size: 16px;
+}
+
+/* Override primary color with accent color */
+:root[data-accent="true"],
+:root {
+  --primary: var(--accent-color-hsl, 239 84% 67%);
+  --ring: var(--accent-color-hsl, 239 84% 67%);
+}
+
+.dark[data-accent="true"],
+.dark {
+  --primary: var(--accent-color-hsl, 239 84% 67%);
+  --primary-foreground: 0 0% 100%;
+  --ring: var(--accent-color-hsl, 239 84% 67%);
+}
+
+/* Accent color applied to more elements */
+[data-accent="true"] a:not(.no-accent):hover {
+  color: var(--accent-color);
+}
+
+[data-accent="true"] .text-primary {
+  color: var(--accent-color) !important;
+}
+
+[data-accent="true"] .bg-primary {
+  background-color: var(--accent-color) !important;
+}
+
+[data-accent="true"] .border-primary {
+  border-color: var(--accent-color) !important;
+}
+
+/* Checkboxes and switches */
+[data-accent="true"] [data-state="checked"] {
+  background-color: var(--accent-color) !important;
+  border-color: var(--accent-color) !important;
+}
+
+/* Progress bars */
+[data-accent="true"] [role="progressbar"] > div {
+  background-color: var(--accent-color) !important;
+}
+
+/* Tabs */
+[data-accent="true"] [data-state="active"][role="tab"] {
+  color: var(--accent-color);
+  border-color: var(--accent-color);
+}
+
+/* Scrollbar thumb on hover */
+[data-accent="true"]::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(var(--accent-color-rgb), 0.5);
+}
+
+/* Input focus */
+[data-accent="true"] input:focus,
+[data-accent="true"] textarea:focus,
+[data-accent="true"] select:focus {
+  border-color: var(--accent-color) !important;
+  box-shadow: 0 0 0 2px rgba(var(--accent-color-rgb), 0.2) !important;
+}
+
+/* Links */
+[data-accent="true"] .link-accent,
+[data-accent="true"] a.text-primary {
+  color: var(--accent-color);
+}
+
+[data-accent="true"] .link-accent:hover,
+[data-accent="true"] a.text-primary:hover {
+  color: color-mix(in srgb, var(--accent-color) 80%, #000);
 }
 
 /* Accent color utilities */
@@ -409,4 +482,223 @@ html.font-large {
   background-color: rgba(var(--accent-color-rgb), 0.1);
   color: var(--accent-color);
   border-color: rgba(var(--accent-color-rgb), 0.3);
+}
+
+/* ============================================ */
+/* Enhanced Accent Color Effects               */
+/* ============================================ */
+
+/* Card hover effect with accent */
+[data-accent="true"] .card:hover,
+[data-accent="true"] [class*="Card"]:hover {
+  border-color: rgba(var(--accent-color-rgb), 0.3);
+}
+
+/* Avatar ring with accent */
+[data-accent="true"] .ring-primary {
+  --tw-ring-color: var(--accent-color) !important;
+}
+
+/* Notification badge */
+[data-accent="true"] .notification-badge,
+[data-accent="true"] [class*="badge"][class*="destructive"] {
+  background-color: var(--accent-color);
+}
+
+/* Floating action button */
+[data-accent="true"] .fab,
+[data-accent="true"] .floating-button {
+  background-color: var(--accent-color);
+  box-shadow: 0 8px 24px rgba(var(--accent-color-rgb), 0.4);
+}
+
+/* Task status indicators */
+[data-accent="true"] .status-active,
+[data-accent="true"] .status-in-progress {
+  background-color: var(--accent-color);
+}
+
+/* Chart colors */
+[data-accent="true"] {
+  --chart-1: var(--accent-color-hsl);
+}
+
+/* Hover underline effect */
+[data-accent="true"] .hover-underline:hover::after {
+  background-color: var(--accent-color);
+}
+
+/* Toggle switch when checked */
+[data-accent="true"] [role="switch"][data-state="checked"] {
+  background-color: var(--accent-color) !important;
+}
+
+/* Radio button when checked */
+[data-accent="true"] [role="radio"][data-state="checked"] {
+  border-color: var(--accent-color) !important;
+}
+
+[data-accent="true"] [role="radio"][data-state="checked"]::before {
+  background-color: var(--accent-color) !important;
+}
+
+/* Dropdown menu item on hover */
+[data-accent="true"] [role="menuitem"]:hover,
+[data-accent="true"] [role="option"]:hover,
+[data-accent="true"] [cmdk-item][aria-selected="true"] {
+  background-color: rgba(var(--accent-color-rgb), 0.1) !important;
+}
+
+/* Command palette selected item */
+[data-accent="true"] [cmdk-item][aria-selected="true"] {
+  background-color: rgba(var(--accent-color-rgb), 0.15) !important;
+}
+
+/* Toast notifications */
+[data-accent="true"] [data-sonner-toast][data-type="success"] {
+  border-left: 4px solid var(--accent-color);
+}
+
+/* Calendar selected date */
+[data-accent="true"] .rdp-day_selected {
+  background-color: var(--accent-color) !important;
+}
+
+/* Kanban column header accent line */
+[data-accent="true"] .kanban-column-header::before {
+  background-color: var(--accent-color);
+}
+
+/* Active nav indicator */
+[data-accent="true"] .nav-indicator {
+  background-color: var(--accent-color);
+}
+
+/* Loading spinner */
+[data-accent="true"] .animate-spin {
+  color: var(--accent-color);
+}
+
+/* Logo accent */
+[data-accent="true"] .logo-accent {
+  background: linear-gradient(135deg, var(--accent-color), color-mix(in srgb, var(--accent-color) 70%, #000));
+}
+
+/* Border accent on focus-visible */
+[data-accent="true"] button:focus-visible,
+[data-accent="true"] a:focus-visible,
+[data-accent="true"] [tabindex]:focus-visible {
+  outline-color: var(--accent-color);
+  box-shadow: 0 0 0 2px rgba(var(--accent-color-rgb), 0.3);
+}
+
+/* Stats/metrics highlight */
+[data-accent="true"] .stat-highlight,
+[data-accent="true"] .metric-value {
+  color: var(--accent-color);
+}
+
+/* Slider thumb */
+[data-accent="true"] input[type="range"]::-webkit-slider-thumb {
+  background-color: var(--accent-color);
+}
+
+[data-accent="true"] input[type="range"]::-moz-range-thumb {
+  background-color: var(--accent-color);
+}
+
+/* Tag/chip selected */
+[data-accent="true"] .tag-selected,
+[data-accent="true"] .chip-selected {
+  background-color: var(--accent-color);
+  color: white;
+}
+
+/* Breadcrumb current */
+[data-accent="true"] .breadcrumb-current {
+  color: var(--accent-color);
+}
+
+/* Table row selected */
+[data-accent="true"] tr[data-state="selected"] {
+  background-color: rgba(var(--accent-color-rgb), 0.08) !important;
+}
+
+/* Pagination active */
+[data-accent="true"] .pagination-active,
+[data-accent="true"] [aria-current="page"] {
+  background-color: var(--accent-color) !important;
+  color: white !important;
+}
+
+/* Primary buttons glow effect */
+[data-accent="true"] button[class*="bg-primary"],
+[data-accent="true"] .btn-primary,
+[data-accent="true"] [class*="Button"][class*="default"] {
+  box-shadow: 0 4px 14px -3px rgba(var(--accent-color-rgb), 0.5);
+}
+
+[data-accent="true"] button[class*="bg-primary"]:hover {
+  box-shadow: 0 6px 20px -3px rgba(var(--accent-color-rgb), 0.6);
+}
+
+/* Icons in primary context */
+[data-accent="true"] .icon-accent,
+[data-accent="true"] .text-primary svg {
+  color: var(--accent-color);
+}
+
+/* Tooltip accent */
+[data-accent="true"] [role="tooltip"] {
+  border-color: rgba(var(--accent-color-rgb), 0.2);
+}
+
+/* Alert accent */
+[data-accent="true"] .alert-accent {
+  border-left: 4px solid var(--accent-color);
+  background-color: rgba(var(--accent-color-rgb), 0.05);
+}
+
+/* Counter/Badge in nav */
+[data-accent="true"] .nav-badge {
+  background-color: var(--accent-color);
+  color: white;
+}
+
+/* Step indicator */
+[data-accent="true"] .step-active,
+[data-accent="true"] .step-completed {
+  background-color: var(--accent-color);
+  border-color: var(--accent-color);
+}
+
+/* Timeline dot */
+[data-accent="true"] .timeline-dot-active {
+  background-color: var(--accent-color);
+  box-shadow: 0 0 0 4px rgba(var(--accent-color-rgb), 0.2);
+}
+
+/* Selection highlight */
+::selection {
+  background-color: rgba(var(--accent-color-rgb, 99, 102, 241), 0.3);
+}
+
+/* Subtle gradient backgrounds */
+[data-accent="true"] .accent-gradient-subtle {
+  background: linear-gradient(135deg, rgba(var(--accent-color-rgb), 0.1), rgba(var(--accent-color-rgb), 0.05));
+}
+
+/* Skeleton loading pulse in accent color */
+[data-accent="true"] .skeleton-accent {
+  background: linear-gradient(90deg, 
+    rgba(var(--accent-color-rgb), 0.1) 0%, 
+    rgba(var(--accent-color-rgb), 0.2) 50%, 
+    rgba(var(--accent-color-rgb), 0.1) 100%);
+  background-size: 200% 100%;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
