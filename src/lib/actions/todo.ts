@@ -192,7 +192,8 @@ export async function createTodo(data: z.infer<typeof createTodoSchema>) {
     .returning();
 
   revalidatePath("/[locale]/app/my-day", "page");
-  return todo;
+  revalidatePath("/[locale]/app/workspaces", "page");
+  return { success: true, todo };
 }
 
 /**
