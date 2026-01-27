@@ -141,6 +141,12 @@ export const AppShell = ({ children, locale }: AppShellProps) => {
   
   const { sidebarOpen, setSidebarOpen, isNavigating, setIsNavigating } = useAppStore();
   const [createTaskOpen, setCreateTaskOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  // Prevent hydration mismatch for theme
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const workspaceId = params.workspaceId as string | undefined;
   const isInWorkspace = !!workspaceId;
@@ -281,19 +287,23 @@ export const AppShell = ({ children, locale }: AppShellProps) => {
 
           {/* Bottom section */}
           <div className="p-4 border-t border-border space-y-4">
-            {/* Theme toggle */}
+            {/* Theme toggle - only render after mount to prevent hydration mismatch */}
             <Button
               variant="ghost"
               size="sm"
               className="w-full justify-start gap-3"
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             >
-              {theme === "dark" ? (
-                <Sun className="w-5 h-5" />
+              {mounted ? (
+                theme === "dark" ? (
+                  <Sun className="w-5 h-5" />
+                ) : (
+                  <Moon className="w-5 h-5" />
+                )
               ) : (
                 <Moon className="w-5 h-5" />
               )}
-              <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
+              <span>{mounted ? (theme === "dark" ? "Light Mode" : "Dark Mode") : "Dark Mode"}</span>
             </Button>
 
             {/* User */}

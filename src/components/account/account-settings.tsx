@@ -811,42 +811,42 @@ const NotificationsTab = ({ preferences, onSave, isPro }: {
               title="Task Assigned"
               description="When someone assigns a task to you"
               checked={local.taskAssigned}
-              onChange={(v) => updatePref("taskAssigned", v)}
+              onChange={(v: boolean) => updatePref("taskAssigned", v)}
             />
             <NotificationToggle
               icon={CheckCircle2}
               title="Task Completed"
               description="When a task you're following is completed"
               checked={local.taskCompleted}
-              onChange={(v) => updatePref("taskCompleted", v)}
+              onChange={(v: boolean) => updatePref("taskCompleted", v)}
             />
             <NotificationToggle
               icon={Timer}
               title="Due Date Reminders"
               description="Reminders before task due dates"
               checked={local.taskDueSoon}
-              onChange={(v) => updatePref("taskDueSoon", v)}
+              onChange={(v: boolean) => updatePref("taskDueSoon", v)}
             />
             <NotificationToggle
               icon={AtSign}
               title="Mentions"
               description="When someone mentions you in a comment"
               checked={local.mentions}
-              onChange={(v) => updatePref("mentions", v)}
+              onChange={(v: boolean) => updatePref("mentions", v)}
             />
             <NotificationToggle
               icon={MessageSquare}
               title="Comments"
               description="New comments on your tasks"
               checked={local.comments}
-              onChange={(v) => updatePref("comments", v)}
+              onChange={(v: boolean) => updatePref("comments", v)}
             />
             <NotificationToggle
               icon={FileText}
               title="Weekly Digest"
               description="Weekly summary of your activity"
               checked={local.weeklyDigest}
-              onChange={(v) => updatePref("weeklyDigest", v)}
+              onChange={(v: boolean) => updatePref("weeklyDigest", v)}
             />
           </CardContent>
         )}
@@ -922,7 +922,7 @@ const NotificationsTab = ({ preferences, onSave, isPro }: {
               title="Desktop Notifications"
               description="Show notifications on your desktop"
               checked={local.desktopNotifications}
-              onChange={(v) => updatePref("desktopNotifications", v)}
+              onChange={(v: boolean) => updatePref("desktopNotifications", v)}
               disabled={notificationPermission !== "granted"}
             />
             <NotificationToggle
@@ -930,7 +930,7 @@ const NotificationsTab = ({ preferences, onSave, isPro }: {
               title="Sound Effects"
               description="Play sounds for notifications"
               checked={local.soundEnabled}
-              onChange={(v) => updatePref("soundEnabled", v)}
+              onChange={(v: boolean) => updatePref("soundEnabled", v)}
             />
           </CardContent>
         )}
