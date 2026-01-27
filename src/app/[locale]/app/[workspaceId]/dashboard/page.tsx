@@ -108,18 +108,19 @@ const DashboardPage = () => {
   return (
     <div className="space-y-6 pb-8">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground mt-1 text-sm md:text-base">
             Welcome back! Here's your overview for {workspace.name}
           </p>
         </div>
         <div className="flex gap-2">
           <Link href={`/${locale}/app/${workspaceId}/tasks`}>
-            <Button variant="outline" className="gap-2">
+            <Button variant="outline" className="gap-2" size="sm">
               <ListTodo className="w-4 h-4" />
-              All Tasks
+              <span className="hidden sm:inline">All Tasks</span>
+              <span className="sm:hidden">Tasks</span>
             </Button>
           </Link>
         </div>

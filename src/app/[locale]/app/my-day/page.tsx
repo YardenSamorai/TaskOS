@@ -391,9 +391,9 @@ export default function MyDayPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-6">
+    <div className="max-w-6xl mx-auto px-4 md:px-6 py-4 space-y-4 md:space-y-6">
       {/* Header with Greeting */}
-      <div className="relative overflow-hidden rounded-3xl p-8"
+      <div className="relative overflow-hidden rounded-2xl md:rounded-3xl p-4 md:p-8"
         style={{
           background: `linear-gradient(135deg, rgba(var(--accent-color-rgb), 0.15), rgba(var(--accent-color-rgb), 0.05))`,
         }}
@@ -413,10 +413,10 @@ export default function MyDayPage() {
               <greeting.icon className="w-8 h-8 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold flex items-center gap-2">
+              <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
                 {greeting.text}! {greeting.emoji}
               </h1>
-              <p className="text-muted-foreground mt-1">{formattedDate}</p>
+              <p className="text-muted-foreground mt-1 text-sm md:text-base">{formattedDate}</p>
               <div className="flex items-center gap-2 mt-3">
                 <Button
                   variant="outline"
@@ -555,15 +555,15 @@ export default function MyDayPage() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-center gap-8">
+              <div className="flex items-center justify-center">
                 <div className="text-center">
-                  <div className={`text-6xl font-mono font-bold ${
+                  <div className={`text-5xl md:text-6xl font-mono font-bold ${
                     timerState === "focus" ? "text-violet-500" :
                     timerState === "break" ? "text-emerald-500" : ""
                   }`}>
                     {formatTime(timeLeft)}
                   </div>
-                  <p className="text-sm text-muted-foreground mt-2">
+                  <p className="text-xs md:text-sm text-muted-foreground mt-2">
                     {timerState === "focus" && "Focus Session"}
                     {timerState === "break" && "Break Time"}
                     {timerState === "idle" && "25:00 Focus / 5:00 Break"}
@@ -571,26 +571,27 @@ export default function MyDayPage() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-center gap-3 mt-6">
+              <div className="flex items-center justify-center gap-3 mt-4 md:mt-6">
                 {timerState === "idle" ? (
                   <Button
                     size="lg"
-                    className="gap-2 px-8"
+                    className="gap-2 px-4 md:px-8 text-sm md:text-base"
                     style={{
                       background: "linear-gradient(135deg, var(--accent-color), color-mix(in srgb, var(--accent-color) 70%, #8b5cf6))",
                     }}
                     onClick={startFocus}
                   >
-                    <Play className="w-5 h-5" />
-                    Start Focus Session
+                    <Play className="w-4 h-4 md:w-5 md:h-5" />
+                    <span className="hidden sm:inline">Start Focus Session</span>
+                    <span className="sm:hidden">Start</span>
                   </Button>
                 ) : (
                   <>
                     <Button variant="outline" size="lg" onClick={pauseTimer}>
-                      <Pause className="w-5 h-5" />
+                      <Pause className="w-4 h-4 md:w-5 md:h-5" />
                     </Button>
                     <Button variant="outline" size="lg" onClick={resetTimer}>
-                      <RotateCcw className="w-5 h-5" />
+                      <RotateCcw className="w-4 h-4 md:w-5 md:h-5" />
                     </Button>
                   </>
                 )}
