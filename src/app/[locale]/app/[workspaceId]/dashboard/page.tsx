@@ -23,7 +23,8 @@ import {
   Timer,
   Zap,
   Flag,
-  CircleDot
+  CircleDot,
+  Sparkles
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -53,6 +54,18 @@ const statusLabels: Record<string, string> = {
   done: "Done",
 };
 
+// Motivational quotes
+const motivationalQuotes = [
+  { text: "The secret of getting ahead is getting started.", author: "Mark Twain" },
+  { text: "Focus on being productive instead of busy.", author: "Tim Ferriss" },
+  { text: "Done is better than perfect.", author: "Sheryl Sandberg" },
+  { text: "Your focus determines your reality.", author: "George Lucas" },
+  { text: "Small daily improvements are the key to long-term results.", author: "Unknown" },
+  { text: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
+  { text: "Success is the sum of small efforts repeated daily.", author: "Robert Collier" },
+  { text: "Progress, not perfection.", author: "Unknown" },
+];
+
 const DashboardPage = () => {
   const params = useParams();
   const workspaceId = params.workspaceId as string;
@@ -65,6 +78,7 @@ const DashboardPage = () => {
   
   const [personalData, setPersonalData] = useState<PersonalDashboardData | null>(null);
   const [loadingPersonal, setLoadingPersonal] = useState(true);
+  const [quote] = useState(() => motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)]);
 
   const workspace = data?.workspace;
   const members = data?.members || [];
@@ -107,22 +121,31 @@ const DashboardPage = () => {
 
   return (
     <div className="space-y-6 pb-8">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground mt-1 text-sm md:text-base">
-            Welcome back! Here's your overview for {workspace.name}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Link href={`/${locale}/app/${workspaceId}/tasks`}>
-            <Button variant="outline" className="gap-2" size="sm">
-              <ListTodo className="w-4 h-4" />
-              <span className="hidden sm:inline">All Tasks</span>
-              <span className="sm:hidden">Tasks</span>
-            </Button>
-          </Link>
+      {/* Header with Quote */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/5 via-violet-500/5 to-background border p-6">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Dashboard</h1>
+            <p className="text-muted-foreground mt-1 text-sm md:text-base">
+              Welcome back! Here&apos;s your overview for <span className="font-medium text-foreground">{workspace.name}</span>
+            </p>
+            <div className="mt-3 flex items-start gap-2 max-w-lg">
+              <Sparkles className="w-4 h-4 text-yellow-500 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-muted-foreground italic">
+                &ldquo;{quote.text}&rdquo; — <span className="text-foreground/70">{quote.author}</span>
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Link href={`/${locale}/app/${workspaceId}/tasks`}>
+              <Button variant="outline" className="gap-2" size="sm">
+                <ListTodo className="w-4 h-4" />
+                <span className="hidden sm:inline">All Tasks</span>
+                <span className="sm:hidden">Tasks</span>
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
 
