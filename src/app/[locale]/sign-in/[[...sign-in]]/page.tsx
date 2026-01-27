@@ -23,6 +23,8 @@ export default function SignInPage() {
     email: "",
     password: "",
   });
+  const [loginSuccess, setLoginSuccess] = useState(false);
+  const [redirectUrl, setRedirectUrl] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,11 +55,12 @@ export default function SignInPage() {
       
       // Success - show toast and redirect
       toast.success("Welcome back!");
-      const redirectUrl = callbackUrl || "/en/app/workspaces";
+      const url = callbackUrl || "/en/app/workspaces";
+      setRedirectUrl(url);
+      setLoginSuccess(true);
       
       // Use direct location assignment for reliable redirect
-      window.location.href = redirectUrl;
-      // Keep loading state - page will change
+      window.location.href = url;
       
     } catch (error) {
       console.error("Sign in error:", error);
@@ -73,6 +76,35 @@ export default function SignInPage() {
       callbackUrl: callbackUrl || "/en/app/workspaces" 
     });
   };
+
+  // Show success screen if login worked but redirect didn't
+  if (loginSuccess) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-zinc-50">
+        <div className="text-center p-8">
+          <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
+            <CheckCircle2 className="w-8 h-8 text-emerald-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-zinc-900 mb-2">Login Successful!</h2>
+          <p className="text-zinc-500 mb-6">Redirecting you to the app...</p>
+          <div className="space-y-3">
+            <Button
+              onClick={() => window.location.href = redirectUrl}
+              className="w-full"
+            >
+              Click here if not redirected
+            </Button>
+            <Link
+              href={redirectUrl || "/en/app/workspaces"}
+              className="block text-sm text-indigo-600 hover:underline"
+            >
+              Or click this link: {redirectUrl || "/en/app/workspaces"}
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex">
