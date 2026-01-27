@@ -29,6 +29,7 @@ import { CommandPalette } from "@/components/search/command-palette";
 import { NotificationsDropdown } from "@/components/notifications/notifications-dropdown";
 import { CreateTaskDialog } from "@/components/tasks/create-task-dialog";
 import { InstallPrompt } from "@/components/pwa/install-prompt";
+import { useWorkspace } from "@/lib/hooks/use-workspaces";
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -146,6 +147,10 @@ export const AppShell = ({ children, locale }: AppShellProps) => {
 
   const workspaceId = params.workspaceId as string | undefined;
   const isInWorkspace = !!workspaceId;
+  
+  // Fetch workspace details when inside a workspace
+  const { data: workspaceData } = useWorkspace(workspaceId || "");
+  const workspaceName = workspaceData?.workspace?.name;
 
   // Fast navigation - use replace for same-workspace navigation
   const navigateTo = useCallback((href: string) => {
@@ -268,9 +273,16 @@ export const AppShell = ({ children, locale }: AppShellProps) => {
             {/* Workspace nav */}
             {isInWorkspace && (
               <div className="space-y-1">
-                <p className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                  Workspace
-                </p>
+                <div className="px-3 mb-3">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Workspace
+                  </p>
+                  {workspaceName && (
+                    <p className="text-sm font-medium text-foreground mt-1 truncate" title={workspaceName}>
+                      {workspaceName}
+                    </p>
+                  )}
+                </div>
                 {workspaceNavItems.map((item) => {
                   const href = getHref(item);
                   return (
