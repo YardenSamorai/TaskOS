@@ -221,11 +221,6 @@ export const AppShell = ({ children, locale }: AppShellProps) => {
 
     // If in a workspace, add the workspace name
     if (isInWorkspace && workspaceName) {
-      crumbs.push({
-        label: workspaceName,
-        href: `/${locale}/app/${workspaceId}/dashboard`,
-      });
-
       // Find current page
       const pathSegments = pathname.split("/");
       const lastSegment = pathSegments[pathSegments.length - 1];
@@ -241,7 +236,14 @@ export const AppShell = ({ children, locale }: AppShellProps) => {
         settings: { label: navLabels.settings, icon: Settings },
       };
 
-      if (pageLabels[lastSegment]) {
+      // Add workspace name - clicking goes to dashboard
+      crumbs.push({
+        label: workspaceName,
+        href: `/${locale}/app/${workspaceId}/dashboard`,
+      });
+
+      // Add current page (but skip if we're already on dashboard to avoid duplicate)
+      if (pageLabels[lastSegment] && lastSegment !== "dashboard") {
         crumbs.push({
           label: pageLabels[lastSegment].label,
           href: `/${locale}/app/${workspaceId}/${lastSegment}`,
@@ -436,7 +438,7 @@ export const AppShell = ({ children, locale }: AppShellProps) => {
               {/* Breadcrumbs */}
               <nav className="hidden md:flex items-center gap-1 text-sm">
                 {breadcrumbs.map((crumb, index) => (
-                  <div key={crumb.href} className="flex items-center gap-1">
+                  <div key={`${index}-${crumb.label}`} className="flex items-center gap-1">
                     {index > 0 && (
                       <ChevronRight className="w-4 h-4 text-muted-foreground/50" />
                     )}
