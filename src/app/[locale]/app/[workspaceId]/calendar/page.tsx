@@ -18,6 +18,7 @@ import {
   isPast,
   isTomorrow,
   addDays,
+  isYesterday,
 } from "date-fns";
 import {
   Calendar as CalendarIcon,
@@ -64,6 +65,8 @@ const priorityConfig: Record<string, { color: string; bg: string }> = {
   urgent: { color: "text-red-500", bg: "bg-red-500/10" },
 };
 
+type ViewMode = "grid" | "agenda";
+
 const CalendarPage = () => {
   const params = useParams();
   const router = useRouter();
@@ -74,6 +77,7 @@ const CalendarPage = () => {
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createDialogDate, setCreateDialogDate] = useState<Date | undefined>();
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
 
   const { data: tasks = [], isLoading } = useTasks(workspaceId);
   const { data: workspaceData } = useWorkspace(workspaceId);
@@ -107,9 +111,50 @@ const CalendarPage = () => {
       .slice(0, 5);
   }, [tasksWithDates]);
 
+  // Get agenda items grouped by date (for agenda view)
+  const agendaItems = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Get tasks for the next 30 days + overdue
+    const futureDate = addDays(today, 30);
+    
+    const grouped: { date: Date; tasks: TaskWithRelations[]; isOverdue?: boolean }[] = [];
+    
+    // Add overdue tasks first
+    const overdueTasks = tasksWithDates.filter((t) => {
+      const dueDate = parseISO(t.dueDate!);
+      return isPast(dueDate) && !isToday(dueDate) && t.status !== "done";
+    }).sort((a, b) => parseISO(a.dueDate!).getTime() - parseISO(b.dueDate!).getTime());
+    
+    if (overdueTasks.length > 0) {
+      grouped.push({ date: new Date(0), tasks: overdueTasks, isOverdue: true });
+    }
+    
+    // Group future tasks by date
+    const futureTasks = tasksWithDates.filter((t) => {
+      const dueDate = parseISO(t.dueDate!);
+      return (isToday(dueDate) || dueDate > today) && dueDate <= futureDate;
+    }).sort((a, b) => parseISO(a.dueDate!).getTime() - parseISO(b.dueDate!).getTime());
+    
+    const dateMap = new Map<string, TaskWithRelations[]>();
+    futureTasks.forEach((task) => {
+      const dateKey = format(parseISO(task.dueDate!), "yyyy-MM-dd");
+      if (!dateMap.has(dateKey)) {
+        dateMap.set(dateKey, []);
+      }
+      dateMap.get(dateKey)!.push(task);
+    });
+    
+    dateMap.forEach((tasks, dateKey) => {
+      grouped.push({ date: parseISO(dateKey), tasks });
+    });
+    
+    return grouped;
+  }, [tasksWithDates]);
+
   // Stats
   const stats = useMemo(() => {
-    const today = new Date();
     return {
       total: tasksWithDates.length,
       overdue: tasksWithDates.filter((t) => 
@@ -154,181 +199,269 @@ const CalendarPage = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <CalendarIcon className="w-6 h-6" />
+          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+            <CalendarIcon className="w-5 h-5 md:w-6 md:h-6" />
             Calendar
           </h1>
-          <p className="text-muted-foreground">
-            {format(currentMonth, "MMMM yyyy")} • {stats.thisMonth} tasks scheduled
+          <p className="text-sm text-muted-foreground">
+            {format(currentMonth, "MMMM yyyy")} • {stats.thisMonth} tasks
           </p>
         </div>
-        <Button onClick={() => handleCreateTask(selectedDate || undefined)} className="gap-2">
-          <Plus className="w-4 h-4" />
-          New Task
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* View Toggle */}
+          <div className="flex items-center bg-muted rounded-lg p-1">
+            <Button
+              variant={viewMode === "grid" ? "secondary" : "ghost"}
+              size="sm"
+              className="h-8 px-3 gap-1.5"
+              onClick={() => setViewMode("grid")}
+            >
+              <LayoutGrid className="w-4 h-4" />
+              <span className="hidden sm:inline">Grid</span>
+            </Button>
+            <Button
+              variant={viewMode === "agenda" ? "secondary" : "ghost"}
+              size="sm"
+              className="h-8 px-3 gap-1.5"
+              onClick={() => setViewMode("agenda")}
+            >
+              <List className="w-4 h-4" />
+              <span className="hidden sm:inline">Agenda</span>
+            </Button>
+          </div>
+          <Button onClick={() => handleCreateTask(selectedDate || undefined)} size="sm" className="gap-2">
+            <Plus className="w-4 h-4" />
+            <span className="hidden sm:inline">New Task</span>
+          </Button>
+        </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatsCard icon={CalendarIcon} label="Total Scheduled" value={stats.total} color="blue" />
-        <StatsCard icon={AlertCircle} label="Overdue" value={stats.overdue} color="red" />
-        <StatsCard icon={Clock} label="Due Today" value={stats.today} color="orange" />
-        <StatsCard icon={CheckCircle2} label="This Month" value={stats.thisMonth} color="emerald" />
+      {/* Stats - Compact on mobile */}
+      <div className="grid grid-cols-4 gap-2 md:gap-4">
+        <StatsCard icon={CalendarIcon} label="Total" fullLabel="Total Scheduled" value={stats.total} color="blue" />
+        <StatsCard icon={AlertCircle} label="Overdue" fullLabel="Overdue" value={stats.overdue} color="red" />
+        <StatsCard icon={Clock} label="Today" fullLabel="Due Today" value={stats.today} color="orange" />
+        <StatsCard icon={CheckCircle2} label="Month" fullLabel="This Month" value={stats.thisMonth} color="emerald" />
       </div>
 
-      <div className="grid lg:grid-cols-4 gap-6">
-        {/* Calendar */}
-        <Card className="lg:col-span-3">
-          <CardHeader className="pb-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="icon" onClick={handlePrevMonth}>
-                  <ChevronLeft className="w-4 h-4" />
-                </Button>
-                <Button variant="outline" size="icon" onClick={handleNextMonth}>
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
-                <h2 className="text-xl font-semibold ms-2">
-                  {format(currentMonth, "MMMM yyyy")}
-                </h2>
-              </div>
-              <Button variant="outline" size="sm" onClick={handleToday}>
-                Today
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {/* Weekday Headers */}
-            <div className="grid grid-cols-7 mb-2">
-              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-                <div key={day} className="text-center text-sm font-medium text-muted-foreground py-2">
-                  {day}
-                </div>
-              ))}
-            </div>
-
-            {/* Calendar Grid */}
-            <div className="grid grid-cols-7 gap-1">
-              {calendarDays.map((day, index) => {
-                const dayTasks = getTasksForDate(day);
-                const isCurrentMonth = isSameMonth(day, currentMonth);
-                const isSelected = selectedDate && isSameDay(day, selectedDate);
-                const isTodayDate = isToday(day);
-                const hasOverdue = dayTasks.some((t) => 
-                  isPast(parseISO(t.dueDate!)) && !isToday(parseISO(t.dueDate!)) && t.status !== "done"
-                );
-
-                return (
-                  <button
-                    key={index}
-                    onClick={() => handleDateClick(day)}
-                    className={cn(
-                      "relative min-h-[100px] p-2 rounded-lg border transition-all text-left",
-                      isCurrentMonth ? "bg-card" : "bg-muted/30 text-muted-foreground",
-                      isSelected && "ring-2 ring-primary border-primary",
-                      isTodayDate && !isSelected && "border-primary/50 bg-primary/5",
-                      "hover:border-primary/50 hover:bg-accent/50"
-                    )}
-                  >
-                    {/* Date Number */}
-                    <div className={cn(
-                      "text-sm font-medium mb-1 w-7 h-7 flex items-center justify-center rounded-full",
-                      isTodayDate && "bg-primary text-primary-foreground"
-                    )}>
-                      {format(day, "d")}
-                    </div>
-
-                    {/* Task Indicators */}
-                    <div className="space-y-1">
-                      {dayTasks.slice(0, 3).map((task) => (
-                        <div
-                          key={task.id}
-                          className={cn(
-                            "text-[10px] px-1.5 py-0.5 rounded truncate",
-                            statusConfig[task.status]?.bg
-                          )}
-                          title={task.title}
-                        >
-                          <span className={cn("inline-block w-1.5 h-1.5 rounded-full me-1", statusConfig[task.status]?.color)} />
-                          {task.title}
-                        </div>
-                      ))}
-                      {dayTasks.length > 3 && (
-                        <div className="text-[10px] text-muted-foreground px-1.5">
-                          +{dayTasks.length - 3} more
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Overdue indicator */}
-                    {hasOverdue && (
-                      <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-red-500" />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Legend */}
-            <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t">
-              {Object.entries(statusConfig).map(([status, config]) => (
-                <div key={status} className="flex items-center gap-2 text-xs">
-                  <div className={cn("w-2.5 h-2.5 rounded-full", config.color)} />
-                  <span className="text-muted-foreground">{config.label}</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Selected Date Tasks */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center justify-between">
-                <span>
-                  {selectedDate ? (
-                    isToday(selectedDate) ? "Today" : format(selectedDate, "EEE, MMM d")
-                  ) : "Select a date"}
-                </span>
-                {selectedDate && (
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="h-7 px-2"
-                    onClick={() => handleCreateTask(selectedDate)}
-                  >
-                    <Plus className="w-4 h-4" />
+      {viewMode === "agenda" ? (
+        /* Agenda View */
+        <AgendaView
+          agendaItems={agendaItems}
+          locale={locale}
+          workspaceId={workspaceId}
+          onCreateTask={handleCreateTask}
+        />
+      ) : (
+        /* Grid View */
+        <div className="grid lg:grid-cols-4 gap-4 md:gap-6">
+          {/* Calendar */}
+          <Card className="lg:col-span-3">
+            <CardHeader className="pb-2 md:pb-4 px-3 md:px-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1 md:gap-2">
+                  <Button variant="outline" size="icon" className="h-8 w-8" onClick={handlePrevMonth}>
+                    <ChevronLeft className="w-4 h-4" />
                   </Button>
-                )}
-              </CardTitle>
+                  <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleNextMonth}>
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                  <h2 className="text-base md:text-xl font-semibold ms-1 md:ms-2">
+                    {format(currentMonth, "MMMM yyyy")}
+                  </h2>
+                </div>
+                <Button variant="outline" size="sm" className="h-8" onClick={handleToday}>
+                  Today
+                </Button>
+              </div>
             </CardHeader>
-            <CardContent>
-              {selectedDateTasks.length === 0 ? (
-                <div className="text-center py-6 text-muted-foreground">
-                  <CalendarIcon className="w-10 h-10 mx-auto mb-2 opacity-40" />
-                  <p className="text-sm">No tasks scheduled</p>
+            <CardContent className="px-2 md:px-6">
+              {/* Weekday Headers */}
+              <div className="grid grid-cols-7 mb-1 md:mb-2">
+                {["S", "M", "T", "W", "T", "F", "S"].map((day, idx) => (
+                  <div key={idx} className="text-center text-xs md:text-sm font-medium text-muted-foreground py-1 md:py-2">
+                    <span className="md:hidden">{day}</span>
+                    <span className="hidden md:inline">{["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][idx]}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Calendar Grid - Compact on mobile */}
+              <div className="grid grid-cols-7 gap-0.5 md:gap-1">
+                {calendarDays.map((day, index) => {
+                  const dayTasks = getTasksForDate(day);
+                  const isCurrentMonth = isSameMonth(day, currentMonth);
+                  const isSelected = selectedDate && isSameDay(day, selectedDate);
+                  const isTodayDate = isToday(day);
+                  const hasOverdue = dayTasks.some((t) => 
+                    isPast(parseISO(t.dueDate!)) && !isToday(parseISO(t.dueDate!)) && t.status !== "done"
+                  );
+
+                  return (
+                    <button
+                      key={index}
+                      onClick={() => handleDateClick(day)}
+                      className={cn(
+                        "relative aspect-square md:min-h-[100px] md:aspect-auto p-1 md:p-2 rounded-md md:rounded-lg border transition-all text-left flex flex-col",
+                        isCurrentMonth ? "bg-card" : "bg-muted/30 text-muted-foreground",
+                        isSelected && "ring-2 ring-primary border-primary",
+                        isTodayDate && !isSelected && "border-primary/50 bg-primary/5",
+                        "hover:border-primary/50 hover:bg-accent/50"
+                      )}
+                    >
+                      {/* Date Number */}
+                      <div className={cn(
+                        "text-xs md:text-sm font-medium w-5 h-5 md:w-7 md:h-7 flex items-center justify-center rounded-full mx-auto md:mx-0",
+                        isTodayDate && "bg-primary text-primary-foreground"
+                      )}>
+                        {format(day, "d")}
+                      </div>
+
+                      {/* Mobile: Task Dots */}
+                      <div className="flex-1 flex items-center justify-center md:hidden">
+                        {dayTasks.length > 0 && (
+                          <div className="flex flex-wrap gap-0.5 justify-center max-w-full">
+                            {dayTasks.slice(0, 4).map((task, i) => (
+                              <div
+                                key={i}
+                                className={cn("w-1.5 h-1.5 rounded-full", statusConfig[task.status]?.color)}
+                              />
+                            ))}
+                            {dayTasks.length > 4 && (
+                              <span className="text-[8px] text-muted-foreground">+{dayTasks.length - 4}</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Desktop: Task Labels */}
+                      <div className="hidden md:block space-y-1 mt-1">
+                        {dayTasks.slice(0, 3).map((task) => (
+                          <div
+                            key={task.id}
+                            className={cn(
+                              "text-[10px] px-1.5 py-0.5 rounded truncate",
+                              statusConfig[task.status]?.bg
+                            )}
+                            title={task.title}
+                          >
+                            <span className={cn("inline-block w-1.5 h-1.5 rounded-full me-1", statusConfig[task.status]?.color)} />
+                            {task.title}
+                          </div>
+                        ))}
+                        {dayTasks.length > 3 && (
+                          <div className="text-[10px] text-muted-foreground px-1.5">
+                            +{dayTasks.length - 3} more
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Overdue indicator */}
+                      {hasOverdue && (
+                        <div className="absolute top-0.5 right-0.5 md:top-2 md:right-2 w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-red-500" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Legend - Hidden on mobile */}
+              <div className="hidden md:flex flex-wrap gap-4 mt-4 pt-4 border-t">
+                {Object.entries(statusConfig).map(([status, config]) => (
+                  <div key={status} className="flex items-center gap-2 text-xs">
+                    <div className={cn("w-2.5 h-2.5 rounded-full", config.color)} />
+                    <span className="text-muted-foreground">{config.label}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Mobile Legend - Compact */}
+              <div className="flex md:hidden flex-wrap gap-2 mt-2 pt-2 border-t justify-center">
+                {Object.entries(statusConfig).map(([status, config]) => (
+                  <div key={status} className="flex items-center gap-1 text-[10px]">
+                    <div className={cn("w-2 h-2 rounded-full", config.color)} />
+                    <span className="text-muted-foreground">{config.label}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Sidebar - Show selected date tasks on mobile below calendar */}
+          <div className="space-y-4 md:space-y-6">
+            {/* Selected Date Tasks */}
+            <Card>
+              <CardHeader className="pb-2 md:pb-3">
+                <CardTitle className="text-sm md:text-base flex items-center justify-between">
+                  <span>
+                    {selectedDate ? (
+                      isToday(selectedDate) ? "Today" : format(selectedDate, "EEE, MMM d")
+                    ) : "Select a date"}
+                  </span>
                   {selectedDate && (
                     <Button 
-                      variant="link" 
+                      variant="ghost" 
                       size="sm" 
-                      className="mt-2"
+                      className="h-7 px-2"
                       onClick={() => handleCreateTask(selectedDate)}
                     >
-                      Add a task
+                      <Plus className="w-4 h-4" />
                     </Button>
                   )}
-                </div>
-              ) : (
-                <ScrollArea className="h-[300px]">
-                  <div className="space-y-3 pr-4">
-                    {selectedDateTasks.map((task) => (
-                      <TaskItem 
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {selectedDateTasks.length === 0 ? (
+                  <div className="text-center py-4 md:py-6 text-muted-foreground">
+                    <CalendarIcon className="w-8 h-8 md:w-10 md:h-10 mx-auto mb-2 opacity-40" />
+                    <p className="text-xs md:text-sm">No tasks scheduled</p>
+                    {selectedDate && (
+                      <Button 
+                        variant="link" 
+                        size="sm" 
+                        className="mt-2 text-xs md:text-sm"
+                        onClick={() => handleCreateTask(selectedDate)}
+                      >
+                        Add a task
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <ScrollArea className="h-[200px] md:h-[300px]">
+                    <div className="space-y-2 md:space-y-3 pr-4">
+                      {selectedDateTasks.map((task) => (
+                        <TaskItem 
+                          key={task.id} 
+                          task={task} 
+                          locale={locale} 
+                          workspaceId={workspaceId}
+                        />
+                      ))}
+                    </div>
+                  </ScrollArea>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Upcoming Tasks - Hidden on mobile in grid view, shown in agenda */}
+            <Card className="hidden lg:block">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Upcoming Tasks</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {upcomingTasks.length === 0 ? (
+                  <div className="text-center py-4 text-muted-foreground">
+                    <CheckCircle2 className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                    <p className="text-sm">All clear!</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {upcomingTasks.map((task) => (
+                      <UpcomingTaskItem 
                         key={task.id} 
                         task={task} 
                         locale={locale} 
@@ -336,38 +469,12 @@ const CalendarPage = () => {
                       />
                     ))}
                   </div>
-                </ScrollArea>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Upcoming Tasks */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Upcoming Tasks</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {upcomingTasks.length === 0 ? (
-                <div className="text-center py-4 text-muted-foreground">
-                  <CheckCircle2 className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                  <p className="text-sm">All clear!</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {upcomingTasks.map((task) => (
-                    <UpcomingTaskItem 
-                      key={task.id} 
-                      task={task} 
-                      locale={locale} 
-                      workspaceId={workspaceId}
-                    />
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
-      </div>
+      )}
 
       <CreateTaskDialog
         open={createDialogOpen}
@@ -381,15 +488,143 @@ const CalendarPage = () => {
   );
 };
 
+// Agenda View Component
+const AgendaView = ({
+  agendaItems,
+  locale,
+  workspaceId,
+  onCreateTask,
+}: {
+  agendaItems: { date: Date; tasks: TaskWithRelations[]; isOverdue?: boolean }[];
+  locale: string;
+  workspaceId: string;
+  onCreateTask: (date?: Date) => void;
+}) => {
+  const router = useRouter();
+
+  const getDateLabel = (date: Date, isOverdue?: boolean) => {
+    if (isOverdue) return "Overdue";
+    if (isToday(date)) return "Today";
+    if (isTomorrow(date)) return "Tomorrow";
+    if (isYesterday(date)) return "Yesterday";
+    return format(date, "EEEE, MMMM d");
+  };
+
+  if (agendaItems.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center">
+          <CalendarIcon className="w-12 h-12 mx-auto mb-4 text-muted-foreground/40" />
+          <h3 className="text-lg font-medium mb-2">No scheduled tasks</h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            Tasks with due dates will appear here
+          </p>
+          <Button onClick={() => onCreateTask()} className="gap-2">
+            <Plus className="w-4 h-4" />
+            Create Task
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {agendaItems.map((group, groupIndex) => (
+        <Card key={groupIndex} className={cn(group.isOverdue && "border-red-500/50")}>
+          <CardHeader className="pb-2 px-4 pt-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {group.isOverdue ? (
+                  <AlertCircle className="w-4 h-4 text-red-500" />
+                ) : isToday(group.date) ? (
+                  <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                ) : null}
+                <CardTitle className={cn(
+                  "text-sm md:text-base font-semibold",
+                  group.isOverdue && "text-red-500"
+                )}>
+                  {getDateLabel(group.date, group.isOverdue)}
+                </CardTitle>
+                {!group.isOverdue && (
+                  <span className="text-xs text-muted-foreground">
+                    {format(group.date, "MMM d")}
+                  </span>
+                )}
+              </div>
+              <Badge variant="secondary" className="text-xs">
+                {group.tasks.length} {group.tasks.length === 1 ? "task" : "tasks"}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="px-4 pb-4">
+            <div className="space-y-2">
+              {group.tasks.map((task) => (
+                <button
+                  key={task.id}
+                  onClick={() => router.push(`/${locale}/app/${workspaceId}/tasks/${task.id}`)}
+                  className="w-full text-left p-3 rounded-lg border hover:border-primary/50 hover:bg-accent/50 transition-all group flex items-center gap-3"
+                >
+                  <div className={cn("w-2.5 h-2.5 rounded-full flex-shrink-0", statusConfig[task.status]?.color)} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="font-medium text-sm truncate group-hover:text-primary transition-colors">
+                        {task.title}
+                      </h4>
+                      <Badge 
+                        variant="secondary" 
+                        className={cn("text-[10px] flex-shrink-0", priorityConfig[task.priority]?.bg, priorityConfig[task.priority]?.color)}
+                      >
+                        {task.priority}
+                      </Badge>
+                    </div>
+                    {task.assignees?.length > 0 && (
+                      <div className="flex items-center gap-2 mt-1.5">
+                        <div className="flex -space-x-1">
+                          {task.assignees.slice(0, 3).map((assignee) => (
+                            <Avatar key={assignee.id} className="w-5 h-5 border border-background">
+                              <AvatarImage src={assignee.user.image || undefined} />
+                              <AvatarFallback className="text-[8px]">
+                                {assignee.user.name?.[0] || assignee.user.email[0]}
+                              </AvatarFallback>
+                            </Avatar>
+                          ))}
+                        </div>
+                        {task.assignees.length > 3 && (
+                          <span className="text-[10px] text-muted-foreground">
+                            +{task.assignees.length - 3}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-[10px]">
+                      {statusConfig[task.status]?.label}
+                    </Badge>
+                    <ArrowRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                </button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+};
+
 // Stats Card Component
 const StatsCard = ({ 
   icon: Icon, 
-  label, 
+  label,
+  fullLabel,
   value, 
   color 
 }: { 
   icon: React.ElementType; 
-  label: string; 
+  label: string;
+  fullLabel: string;
   value: number; 
   color: "blue" | "red" | "orange" | "emerald";
 }) => {
@@ -402,14 +637,17 @@ const StatsCard = ({
 
   return (
     <Card>
-      <CardContent className="p-4">
-        <div className="flex items-center gap-3">
-          <div className={cn("p-2 rounded-lg", colorClasses[color])}>
-            <Icon className="w-5 h-5" />
+      <CardContent className="p-2 md:p-4">
+        <div className="flex flex-col md:flex-row items-center gap-1 md:gap-3">
+          <div className={cn("p-1.5 md:p-2 rounded-lg", colorClasses[color])}>
+            <Icon className="w-4 h-4 md:w-5 md:h-5" />
           </div>
-          <div>
-            <p className="text-2xl font-bold">{value}</p>
-            <p className="text-xs text-muted-foreground">{label}</p>
+          <div className="text-center md:text-left">
+            <p className="text-lg md:text-2xl font-bold">{value}</p>
+            <p className="text-[10px] md:text-xs text-muted-foreground">
+              <span className="md:hidden">{label}</span>
+              <span className="hidden md:inline">{fullLabel}</span>
+            </p>
           </div>
         </div>
       </CardContent>
