@@ -36,6 +36,8 @@ export default function SignInPage() {
         redirect: false,
       });
 
+      console.log("Sign in result:", result);
+
       if (result?.error) {
         // Handle specific errors
         if (result.error.includes("GOOGLE_ACCOUNT")) {
@@ -45,14 +47,21 @@ export default function SignInPage() {
         } else if (result.error.includes("Invalid password")) {
           toast.error("Invalid password");
         } else {
-          toast.error("Invalid email or password");
+          toast.error(result.error || "Invalid email or password");
         }
-      } else if (result?.ok) {
+      } else {
+        // Success - redirect regardless of result.ok
         toast.success("Welcome back!");
-        // Redirect after successful login
-        window.location.href = callbackUrl || "/en/app/workspaces";
+        // Use setTimeout to ensure toast shows before redirect
+        setTimeout(() => {
+          const redirectUrl = callbackUrl || "/en/app/workspaces";
+          console.log("Redirecting to:", redirectUrl);
+          window.location.replace(redirectUrl);
+        }, 500);
+        return; // Don't set isLoading to false
       }
     } catch (error) {
+      console.error("Sign in error:", error);
       toast.error("Failed to sign in");
     }
 
