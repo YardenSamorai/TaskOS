@@ -137,7 +137,7 @@ const WorkspacesPage = () => {
     e.preventDefault();
     if (!newTodo.trim()) return;
 
-    const result = await createTodo(newTodo.trim());
+    const result = await createTodo({ title: newTodo.trim() });
     if (result.success && result.todo) {
       setTodos([result.todo, ...todos]);
       setNewTodo("");
