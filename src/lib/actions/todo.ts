@@ -82,7 +82,7 @@ export async function getTodos(options?: {
     orderBy: [asc(todos.completed), asc(todos.orderIndex), desc(todos.createdAt)],
   });
 
-  return result as TodoWithLinkedTask[];
+  return { success: true, todos: result as TodoWithLinkedTask[] };
 }
 
 /**
