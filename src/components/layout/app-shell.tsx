@@ -272,30 +272,46 @@ export const AppShell = ({ children, locale }: AppShellProps) => {
 
             {/* Workspace nav */}
             {isInWorkspace && (
-              <div className="space-y-1">
-                <div className="px-3 mb-3">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    Workspace
-                  </p>
-                  {workspaceName && (
-                    <p className="text-sm font-medium text-foreground mt-1 truncate" title={workspaceName}>
-                      {workspaceName}
-                    </p>
-                  )}
+              <div className="space-y-2">
+                {/* Workspace Header Card */}
+                <Link
+                  href={`/${locale}/app/${workspaceId}/dashboard`}
+                  className="block mx-1 p-3 rounded-xl bg-gradient-to-br from-muted/80 to-muted/40 border border-border/50 hover:border-border hover:shadow-md transition-all duration-200 group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div 
+                      className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-md transition-transform group-hover:scale-105"
+                      style={{ 
+                        background: `linear-gradient(135deg, var(--accent-color), color-mix(in srgb, var(--accent-color) 60%, #6366f1))`,
+                      }}
+                    >
+                      {workspaceName?.charAt(0).toUpperCase() || "W"}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-muted-foreground font-medium">Current Workspace</p>
+                      <p className="font-semibold text-foreground truncate" title={workspaceName}>
+                        {workspaceName || "Loading..."}
+                      </p>
+                    </div>
+                  </div>
+                </Link>
+
+                {/* Navigation Items */}
+                <div className="space-y-1 pt-1">
+                  {workspaceNavItems.map((item) => {
+                    const href = getHref(item);
+                    return (
+                      <NavLink
+                        key={item.labelKey}
+                        item={item}
+                        active={isActive(href)}
+                        href={href}
+                        label={navLabels[item.labelKey as keyof typeof navLabels]}
+                        onClick={() => navigateTo(href)}
+                      />
+                    );
+                  })}
                 </div>
-                {workspaceNavItems.map((item) => {
-                  const href = getHref(item);
-                  return (
-                    <NavLink
-                      key={item.labelKey}
-                      item={item}
-                      active={isActive(href)}
-                      href={href}
-                      label={navLabels[item.labelKey as keyof typeof navLabels]}
-                      onClick={() => navigateTo(href)}
-                    />
-                  );
-                })}
               </div>
             )}
           </nav>
