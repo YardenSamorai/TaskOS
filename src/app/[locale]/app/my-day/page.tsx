@@ -66,7 +66,7 @@ import {
   clearCompletedTodos,
   TodoWithLinkedTask,
 } from "@/lib/actions/todo";
-import { getWorkspaces } from "@/lib/actions/workspace";
+import { getUserWorkspaces } from "@/lib/actions/workspace";
 
 // Priority config
 const priorityConfig = {
@@ -115,7 +115,7 @@ export default function MyDayPage() {
       const [dayData, allTodos, ws] = await Promise.all([
         getMyDayData(),
         getTodos(),
-        getWorkspaces(),
+        getUserWorkspaces(),
       ]);
 
       setQuickTodos(allTodos.filter((t) => !t.completed));
