@@ -8,6 +8,7 @@ import { checkCanAddMember, PlanLimitError } from "@/lib/auth/plan-check";
 import { and, eq, gt, or } from "drizzle-orm";
 import { z } from "zod";
 import { CACHE_TAGS } from "@/lib/cache";
+import { sendInvitationEmail } from "@/lib/email";
 
 // Schemas
 const createInvitationSchema = z.object({
@@ -102,6 +103,22 @@ export const createInvitation = async (formData: FormData) => {
         expiresAt,
       })
       .returning();
+
+    // Send invitation email
+    const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL || "https://taskos.app"}/en/app/invite/${token}`;
+    const roleLabels: Record<string, string> = {
+      admin: "Admin",
+      member: "Member",
+      viewer: "Viewer",
+    };
+
+    await sendInvitationEmail({
+      to: data.email.toLowerCase(),
+      workspaceName: workspace.name,
+      inviterName: user.name || user.email,
+      inviteLink,
+      role: roleLabels[data.role] || "Member",
+    });
 
     revalidatePath(`/app/${data.workspaceId}/members`);
 
