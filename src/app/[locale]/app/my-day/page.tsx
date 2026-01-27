@@ -121,7 +121,7 @@ export default function MyDayPage() {
       setQuickTodos(allTodos.filter((t) => !t.completed));
       setCompletedTodos(allTodos.filter((t) => t.completed));
       setMyTasks(dayData.tasks);
-      setWorkspaces(ws.map((w) => ({ id: w.id, name: w.name })));
+      setWorkspaces(ws.workspaces?.map((w) => ({ id: w.id, name: w.name })) || []);
     } catch (error) {
       console.error("Error fetching data:", error);
       toast.error("Failed to load data");
