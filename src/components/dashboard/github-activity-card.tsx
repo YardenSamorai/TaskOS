@@ -227,7 +227,7 @@ export function GitHubActivityCard({
           {linkedReposCount} repo{linkedReposCount === 1 ? "" : "s"} linked
         </p>
       </CardHeader>
-      <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+      <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6 overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-6 sm:py-8">
             <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin text-muted-foreground" />
@@ -238,13 +238,13 @@ export function GitHubActivityCard({
             <p>No recent activity</p>
           </div>
         ) : (
-          <ScrollArea className="h-[240px] sm:h-[300px]">
-            <div className="space-y-2 sm:space-y-3 pr-2">
+          <div className="h-[240px] sm:h-[300px] overflow-y-auto overflow-x-hidden">
+            <div className="space-y-2 sm:space-y-3 pr-1">
               {activity.slice(0, 10).map((item, index) => (
                 <ActivityItemCard key={`${item.type}-${index}`} item={item} />
               ))}
             </div>
-          </ScrollArea>
+          </div>
         )}
       </CardContent>
 
@@ -274,22 +274,23 @@ function ActivityItemCard({ item }: { item: ActivityItem }) {
         href={commit.html_url}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex items-start gap-2 sm:gap-3 p-1.5 sm:p-2 rounded-lg hover:bg-muted/50 transition-colors group overflow-hidden"
+        className="block w-full p-1.5 sm:p-2 rounded-lg hover:bg-muted/50 transition-colors group"
       >
-        <GitCommit className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-        <div className="flex-1 min-w-0 overflow-hidden">
-          <p className="text-xs sm:text-sm truncate group-hover:text-primary transition-colors">
-            {message}
-          </p>
-          <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-muted-foreground mt-0.5 overflow-hidden">
-            <code className="bg-muted px-1 rounded font-mono text-[9px] sm:text-[10px] shrink-0">
-              {commit.sha.slice(0, 7)}
-            </code>
-            <span className="truncate hidden xs:inline">{item.repo.split('/')[1] || item.repo}</span>
-            <span className="hidden xs:inline">•</span>
-            <span className="flex-shrink-0 truncate">
-              {formatDistanceToNow(new Date(item.timestamp), { addSuffix: true }).replace(' ago', '')}
-            </span>
+        <div className="flex items-start gap-2 sm:gap-3 w-full">
+          <GitCommit className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs sm:text-sm truncate group-hover:text-primary transition-colors">
+              {message}
+            </p>
+            <div className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-muted-foreground mt-0.5">
+              <code className="bg-muted px-1 rounded font-mono text-[9px] sm:text-[10px] shrink-0">
+                {commit.sha.slice(0, 7)}
+              </code>
+              <span className="shrink-0">•</span>
+              <span className="shrink-0">
+                {formatDistanceToNow(new Date(item.timestamp), { addSuffix: true }).replace(' ago', '')}
+              </span>
+            </div>
           </div>
         </div>
       </a>
@@ -310,20 +311,21 @@ function ActivityItemCard({ item }: { item: ActivityItem }) {
         href={pr.html_url}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex items-start gap-2 sm:gap-3 p-1.5 sm:p-2 rounded-lg hover:bg-muted/50 transition-colors group overflow-hidden"
+        className="block w-full p-1.5 sm:p-2 rounded-lg hover:bg-muted/50 transition-colors group"
       >
-        <div className="shrink-0 mt-0.5">{getIcon()}</div>
-        <div className="flex-1 min-w-0 overflow-hidden">
-          <p className="text-xs sm:text-sm truncate group-hover:text-primary transition-colors">
-            {pr.title}
-          </p>
-          <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-muted-foreground mt-0.5 overflow-hidden">
-            <span className="shrink-0">#{pr.number}</span>
-            <span className="truncate hidden xs:inline">{item.repo.split('/')[1] || item.repo}</span>
-            <span className="hidden xs:inline">•</span>
-            <span className="flex-shrink-0 truncate">
-              {formatDistanceToNow(new Date(item.timestamp), { addSuffix: true }).replace(' ago', '')}
-            </span>
+        <div className="flex items-start gap-2 sm:gap-3 w-full">
+          <div className="shrink-0 mt-0.5">{getIcon()}</div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs sm:text-sm truncate group-hover:text-primary transition-colors">
+              {pr.title}
+            </p>
+            <div className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-muted-foreground mt-0.5">
+              <span className="shrink-0">#{pr.number}</span>
+              <span className="shrink-0">•</span>
+              <span className="shrink-0">
+                {formatDistanceToNow(new Date(item.timestamp), { addSuffix: true }).replace(' ago', '')}
+              </span>
+            </div>
           </div>
         </div>
       </a>
