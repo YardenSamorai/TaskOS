@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { tasks, activityLogs } from "@/lib/db/schema";
+import { tasks, activityLogs, integrations } from "@/lib/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 
 // Find task linked to Jira issue
-async function findLinkedTask(issueKey: string, cloudId: string) {
+async function findLinkedTask(issueKey: string, cloudId: string | null) {
+  console.log("[Jira Webhook] Finding linked task for:", issueKey, "cloudId:", cloudId);
+  
   // Search in activity logs for the imported_from_jira action
   const allActivities = await db.query.activityLogs.findMany({
     where: eq(activityLogs.action, "imported_from_jira"),
@@ -15,11 +17,12 @@ async function findLinkedTask(issueKey: string, cloudId: string) {
     if (!activity.metadata || !activity.taskId) continue;
     try {
       const metadata = JSON.parse(activity.metadata as string);
-      if (
-        metadata.jira?.issueKey === issueKey &&
-        metadata.jira?.cloudId === cloudId
-      ) {
-        return activity.taskId;
+      // Match by issueKey, and optionally by cloudId if provided
+      if (metadata.jira?.issueKey === issueKey) {
+        if (!cloudId || metadata.jira?.cloudId === cloudId) {
+          console.log("[Jira Webhook] Found task via activity log:", activity.taskId);
+          return activity.taskId;
+        }
       }
     } catch {
       continue;
@@ -32,17 +35,19 @@ async function findLinkedTask(issueKey: string, cloudId: string) {
     if (!task.metadata) continue;
     try {
       const metadata = JSON.parse(task.metadata as string);
-      if (
-        metadata.jira?.issueKey === issueKey &&
-        metadata.jira?.cloudId === cloudId
-      ) {
-        return task.id;
+      // Match by issueKey, and optionally by cloudId if provided
+      if (metadata.jira?.issueKey === issueKey) {
+        if (!cloudId || metadata.jira?.cloudId === cloudId) {
+          console.log("[Jira Webhook] Found task via task metadata:", task.id);
+          return task.id;
+        }
       }
     } catch {
       continue;
     }
   }
 
+  console.log("[Jira Webhook] No linked task found for issueKey:", issueKey);
   return null;
 }
 
@@ -51,7 +56,11 @@ export async function POST(request: NextRequest) {
     const payload = await request.json();
     const event = payload.webhookEvent;
 
-    console.log("[Jira Webhook] Received event:", event);
+    console.log("[Jira Webhook] ========== WEBHOOK RECEIVED ==========");
+    console.log("[Jira Webhook] Event type:", event);
+    console.log("[Jira Webhook] Issue key:", payload.issue?.key);
+    console.log("[Jira Webhook] Issue self URL:", payload.issue?.self);
+    console.log("[Jira Webhook] Changelog items:", JSON.stringify(payload.changelog?.items?.map((i: any) => i.field)));
 
     // Handle different event types
     switch (event) {
@@ -75,9 +84,34 @@ export async function POST(request: NextRequest) {
 async function handleIssueUpdated(payload: any) {
   const { issue, changelog } = payload;
   const issueKey = issue?.key;
-  const cloudId = payload.issue?.self?.match(/ex\/jira\/([^/]+)/)?.[1];
+  
+  // Extract cloudId from the issue URL - handle different URL formats
+  // Format 1: https://api.atlassian.com/ex/jira/CLOUD_ID/rest/api/3/issue/...
+  // Format 2: https://SITE.atlassian.net/rest/api/3/issue/... (no cloudId in URL)
+  let cloudId = issue?.self?.match(/ex\/jira\/([^/]+)/)?.[1];
+  
+  // If cloudId not in URL, try to find it from the stored integration
+  if (!cloudId) {
+    // Try to extract from different URL patterns
+    const altMatch = issue?.self?.match(/https:\/\/([^.]+)\.atlassian\.net/);
+    if (altMatch) {
+      console.log("[Jira Webhook] Site name from URL:", altMatch[1]);
+      // We'll need to look up the cloudId from our integrations table
+      const allIntegrations = await db.query.integrations.findMany({
+        where: eq(integrations.provider, "jira"),
+      });
+      for (const integration of allIntegrations) {
+        if (integration.providerUsername === altMatch[1]) {
+          const metadata = integration.metadata ? JSON.parse(integration.metadata as string) : null;
+          cloudId = metadata?.cloudId;
+          console.log("[Jira Webhook] Found cloudId from integration:", cloudId);
+          break;
+        }
+      }
+    }
+  }
 
-  console.log("[Jira Webhook] Issue updated:", issueKey);
+  console.log("[Jira Webhook] Issue updated:", issueKey, "cloudId:", cloudId);
 
   if (!issueKey) return;
 
