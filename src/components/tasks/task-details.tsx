@@ -23,7 +23,6 @@ import { TaskGitHubActivity } from "@/components/github/task-github-activity";
 interface TaskWithRelations extends Task {
   assignees: { id: string; userId: string; user: UserType }[];
   tags: { tag: { id: string; name: string; color: string } }[];
-  metadata?: string | null;
 }
 
 interface TaskDetailsProps {
@@ -269,10 +268,7 @@ export const TaskDetails = ({ task, members }: TaskDetailsProps) => {
         )}
 
         {/* GitHub Activity */}
-        <TaskGitHubActivity
-          taskId={task.id}
-          metadata={task.metadata ? JSON.parse(task.metadata as string) : undefined}
-        />
+        <TaskGitHubActivity taskId={task.id} />
       </CardContent>
     </Card>
   );

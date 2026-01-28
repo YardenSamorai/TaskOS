@@ -6,6 +6,7 @@ import {
   linkedRepositories, 
   tasks, 
   workspaceMembers,
+  activityLogs,
   LinkedRepository 
 } from "@/lib/db/schema";
 import { eq, and, desc, inArray } from "drizzle-orm";
@@ -221,9 +222,19 @@ export async function importIssuesAsTasks(data: {
         description: issue.body || "",
         status,
         priority,
-        creatorId: user.id,
-        dueDate: issue.milestone?.due_on ? new Date(issue.milestone.due_on) : null,
-        // Store GitHub reference in metadata
+        createdBy: user.id,
+        dueDate: issue.milestone?.due_on ? issue.milestone.due_on.split("T")[0] : null,
+      }).returning();
+      
+      // Store GitHub reference in activity log for now
+      // TODO: Add metadata field to tasks table for proper GitHub linking
+      await db.insert(activityLogs).values({
+        workspaceId: data.workspaceId,
+        userId: user.id,
+        taskId: task.id,
+        action: "imported_from_github",
+        entityType: "task",
+        entityId: task.id,
         metadata: JSON.stringify({
           github: {
             issueId: issue.id,
@@ -233,7 +244,7 @@ export async function importIssuesAsTasks(data: {
             repositoryFullName: repo.fullName,
           }
         }),
-      }).returning();
+      });
 
       createdTasks.push(task);
     }
@@ -258,6 +269,28 @@ export async function createTaskFromIssue(data: {
   });
 }
 
+// Helper to get GitHub info from activity logs (exported for use in components)
+export async function getTaskGitHubInfo(taskId: string) {
+  const importActivity = await db.query.activityLogs.findFirst({
+    where: and(
+      eq(activityLogs.taskId, taskId),
+      eq(activityLogs.action, "imported_from_github")
+    ),
+    orderBy: [desc(activityLogs.createdAt)],
+  });
+
+  if (!importActivity?.metadata) {
+    return null;
+  }
+
+  try {
+    const metadata = JSON.parse(importActivity.metadata as string);
+    return metadata.github || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function syncTaskToGitHub(taskId: string) {
   try {
     const user = await getCurrentUser();
@@ -275,17 +308,17 @@ export async function syncTaskToGitHub(taskId: string) {
       return { success: false, error: "Task not found" };
     }
 
-    // Parse metadata to get GitHub info
-    const metadata = task.metadata ? JSON.parse(task.metadata as string) : {};
+    // Get GitHub info from activity logs
+    const githubInfo = await getTaskGitHubInfo(taskId);
     
-    if (!metadata.github?.issueNumber || !metadata.github?.repositoryFullName) {
+    if (!githubInfo?.issueNumber || !githubInfo?.repositoryFullName) {
       return { success: false, error: "Task is not linked to a GitHub issue" };
     }
 
-    const [owner, repoName] = metadata.github.repositoryFullName.split("/");
+    const [owner, repoName] = githubInfo.repositoryFullName.split("/");
     
     // Update the GitHub issue
-    await updateIssue(token, owner, repoName, metadata.github.issueNumber, {
+    await updateIssue(token, owner, repoName, githubInfo.issueNumber, {
       title: task.title,
       body: task.description || undefined,
       state: task.status === "done" ? "closed" : "open",
@@ -335,11 +368,15 @@ export async function createGitHubIssueFromTask(data: {
       labels: [task.priority],
     });
 
-    // Update task metadata with GitHub reference
-    const existingMetadata = task.metadata ? JSON.parse(task.metadata as string) : {};
-    await db.update(tasks).set({
+    // Store GitHub reference in activity log
+    await db.insert(activityLogs).values({
+      workspaceId: task.workspaceId,
+      userId: user.id,
+      taskId: task.id,
+      action: "imported_from_github",
+      entityType: "task",
+      entityId: task.id,
       metadata: JSON.stringify({
-        ...existingMetadata,
         github: {
           issueId: issue.id,
           issueNumber: issue.number,
@@ -348,8 +385,7 @@ export async function createGitHubIssueFromTask(data: {
           repositoryFullName: repo.fullName,
         }
       }),
-      updatedAt: new Date(),
-    }).where(eq(tasks.id, data.taskId));
+    });
 
     revalidatePath(`/app/${task.workspaceId}`);
     return { success: true, issue };
@@ -378,14 +414,15 @@ export async function fetchCommitsForTask(taskId: string) {
       return { success: false, error: "Task not found", commits: [] };
     }
 
-    const metadata = task.metadata ? JSON.parse(task.metadata as string) : {};
+    // Get GitHub info from activity logs
+    const githubInfo = await getTaskGitHubInfo(taskId);
     
-    if (!metadata.github?.repositoryFullName) {
-      // If task is not linked, try to find commits mentioning the task ID
+    if (!githubInfo?.repositoryFullName) {
+      // If task is not linked, return empty
       return { success: true, commits: [] };
     }
 
-    const [owner, repoName] = metadata.github.repositoryFullName.split("/");
+    const [owner, repoName] = githubInfo.repositoryFullName.split("/");
     
     // Get recent commits and filter for ones mentioning this task
     const allCommits = await getRepositoryCommits(token, owner, repoName, { per_page: 100 });
@@ -394,7 +431,7 @@ export async function fetchCommitsForTask(taskId: string) {
     const relevantCommits = allCommits.filter(commit => {
       const message = commit.commit.message.toLowerCase();
       const taskIdShort = taskId.slice(0, 8).toLowerCase();
-      const issueNumber = metadata.github?.issueNumber;
+      const issueNumber = githubInfo?.issueNumber;
       
       return message.includes(taskIdShort) || 
              message.includes(`#${issueNumber}`) ||
@@ -425,13 +462,14 @@ export async function fetchPullRequestsForTask(taskId: string) {
       return { success: false, error: "Task not found", pullRequests: [] };
     }
 
-    const metadata = task.metadata ? JSON.parse(task.metadata as string) : {};
+    // Get GitHub info from activity logs
+    const githubInfo = await getTaskGitHubInfo(taskId);
     
-    if (!metadata.github?.repositoryFullName) {
+    if (!githubInfo?.repositoryFullName) {
       return { success: true, pullRequests: [] };
     }
 
-    const [owner, repoName] = metadata.github.repositoryFullName.split("/");
+    const [owner, repoName] = githubInfo.repositoryFullName.split("/");
     
     // Get PRs and filter for ones related to this task
     const allPRs = await getRepositoryPullRequests(token, owner, repoName, "all");
@@ -441,7 +479,7 @@ export async function fetchPullRequestsForTask(taskId: string) {
       const body = (pr.body || "").toLowerCase();
       const branch = pr.head.ref.toLowerCase();
       const taskIdShort = taskId.slice(0, 8).toLowerCase();
-      const issueNumber = metadata.github?.issueNumber;
+      const issueNumber = githubInfo?.issueNumber;
       
       return title.includes(taskIdShort) ||
              body.includes(taskIdShort) ||

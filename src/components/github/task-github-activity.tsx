@@ -31,28 +31,29 @@ import {
   fetchCommitsForTask,
   fetchPullRequestsForTask,
   syncTaskToGitHub,
+  getTaskGitHubInfo,
 } from "@/lib/actions/github";
 import type { GitHubCommit, GitHubPullRequest } from "@/lib/github";
 import { toast } from "sonner";
 
-interface TaskGitHubActivityProps {
-  taskId: string;
-  metadata?: {
-    github?: {
-      issueId: number;
-      issueNumber: number;
-      issueUrl: string;
-      repositoryId: string;
-      repositoryFullName: string;
-    };
-  };
+interface GitHubInfo {
+  issueId: number;
+  issueNumber: number;
+  issueUrl: string;
+  repositoryId: string;
+  repositoryFullName: string;
 }
 
-export function TaskGitHubActivity({ taskId, metadata }: TaskGitHubActivityProps) {
+interface TaskGitHubActivityProps {
+  taskId: string;
+}
+
+export function TaskGitHubActivity({ taskId }: TaskGitHubActivityProps) {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [commits, setCommits] = useState<GitHubCommit[]>([]);
   const [pullRequests, setPullRequests] = useState<GitHubPullRequest[]>([]);
+  const [githubInfo, setGithubInfo] = useState<GitHubInfo | null>(null);
   const [isOpen, setIsOpen] = useState(true);
 
   useEffect(() => {
@@ -63,6 +64,10 @@ export function TaskGitHubActivity({ taskId, metadata }: TaskGitHubActivityProps
     setLoading(true);
 
     try {
+      // Get GitHub info for this task
+      const info = await getTaskGitHubInfo(taskId);
+      setGithubInfo(info as GitHubInfo | null);
+
       const [commitsResult, prsResult] = await Promise.all([
         fetchCommitsForTask(taskId),
         fetchPullRequestsForTask(taskId),
@@ -82,7 +87,7 @@ export function TaskGitHubActivity({ taskId, metadata }: TaskGitHubActivityProps
   };
 
   const handleSync = async () => {
-    if (!metadata?.github) {
+    if (!githubInfo) {
       toast.error("Task is not linked to a GitHub issue");
       return;
     }
@@ -104,7 +109,6 @@ export function TaskGitHubActivity({ taskId, metadata }: TaskGitHubActivityProps
     }
   };
 
-  const githubInfo = metadata?.github;
   const hasActivity = commits.length > 0 || pullRequests.length > 0;
 
   if (!githubInfo && !hasActivity) {
