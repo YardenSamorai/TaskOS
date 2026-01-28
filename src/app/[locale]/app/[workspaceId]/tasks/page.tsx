@@ -21,8 +21,18 @@ import {
   Play,
   Check,
   RotateCcw,
-  Eye
+  Eye,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { format, parseISO, isPast, isToday, isTomorrow, differenceInDays } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -40,7 +50,7 @@ import { TasksFilters } from "@/components/tasks/tasks-filters";
 import { CreateTaskDialog } from "@/components/tasks/create-task-dialog";
 import { useWorkspace } from "@/lib/hooks/use-workspaces";
 import { useTasks } from "@/lib/hooks/use-tasks";
-import { updateTaskStatus } from "@/lib/actions/task";
+import { updateTaskStatus, deleteTask } from "@/lib/actions/task";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { TaskStatus, TaskPriority, Task, User } from "@/lib/db/schema";
@@ -79,6 +89,9 @@ const TasksPage = () => {
   const [viewMode, setViewMode] = useState<ViewMode>("cards");
   const [groupBy, setGroupBy] = useState<GroupBy>("status");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const filters = {
     status: searchParams.get("status")?.split(",") as TaskStatus[] | undefined,
@@ -153,6 +166,32 @@ const TasksPage = () => {
       refetch();
     } catch (error) {
       toast.error("Failed to update status");
+    }
+  };
+
+  const handleDeleteClick = (taskId: string) => {
+    setTaskToDelete(taskId);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!taskToDelete) return;
+    
+    setDeleting(true);
+    try {
+      const result = await deleteTask(taskToDelete);
+      if (result.success) {
+        toast.success("Task deleted");
+        refetch();
+      } else {
+        toast.error(result.error || "Failed to delete task");
+      }
+    } catch {
+      toast.error("Something went wrong");
+    } finally {
+      setDeleting(false);
+      setDeleteDialogOpen(false);
+      setTaskToDelete(null);
     }
   };
 
@@ -294,6 +333,7 @@ const TasksPage = () => {
                         locale={locale}
                         workspaceId={workspaceId}
                         onStatusChange={handleQuickStatusChange}
+                        onDelete={handleDeleteClick}
                       />
                     ))}
                   </div>
@@ -319,6 +359,7 @@ const TasksPage = () => {
                     locale={locale}
                     workspaceId={workspaceId}
                     onStatusChange={handleQuickStatusChange}
+                    onDelete={handleDeleteClick}
                   />
                 )}
               </div>
@@ -334,6 +375,36 @@ const TasksPage = () => {
         locale={locale}
         members={members}
       />
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Task</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the task
+              and all its data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="w-4 h-4 me-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
@@ -413,12 +484,14 @@ const TaskCard = ({
   task, 
   locale, 
   workspaceId,
-  onStatusChange 
+  onStatusChange,
+  onDelete
 }: { 
   task: TaskWithRelations;
   locale: string;
   workspaceId: string;
   onStatusChange: (taskId: string, status: TaskStatus) => void;
+  onDelete: (taskId: string) => void;
 }) => {
   const dueInfo = getDueDateInfo(task.dueDate, task.status);
   const completedSteps = task.steps.filter((s) => s.completed).length;
@@ -448,6 +521,7 @@ const TaskCard = ({
           <QuickActions 
             task={task} 
             onStatusChange={onStatusChange}
+            onDelete={onDelete}
             locale={locale}
             workspaceId={workspaceId}
           />
@@ -601,12 +675,14 @@ const TasksTableView = ({
   tasks, 
   locale, 
   workspaceId,
-  onStatusChange 
+  onStatusChange,
+  onDelete
 }: { 
   tasks: TaskWithRelations[];
   locale: string;
   workspaceId: string;
   onStatusChange: (taskId: string, status: TaskStatus) => void;
+  onDelete: (taskId: string) => void;
 }) => {
   return (
     <Card>
@@ -677,6 +753,7 @@ const TasksTableView = ({
                     <QuickActions 
                       task={task} 
                       onStatusChange={onStatusChange}
+                      onDelete={onDelete}
                       locale={locale}
                       workspaceId={workspaceId}
                     />
@@ -695,11 +772,13 @@ const TasksTableView = ({
 const QuickActions = ({ 
   task, 
   onStatusChange,
+  onDelete,
   locale,
   workspaceId
 }: { 
   task: TaskWithRelations;
   onStatusChange: (taskId: string, status: TaskStatus) => void;
+  onDelete: (taskId: string) => void;
   locale: string;
   workspaceId: string;
 }) => {
@@ -733,7 +812,10 @@ const QuickActions = ({
           </DropdownMenuItem>
         ))}
         <DropdownMenuSeparator />
-        <DropdownMenuItem className="text-destructive">
+        <DropdownMenuItem 
+          className="text-destructive focus:text-destructive"
+          onClick={() => onDelete(task.id)}
+        >
           <Trash2 className="w-4 h-4 me-2" />
           Delete
         </DropdownMenuItem>
