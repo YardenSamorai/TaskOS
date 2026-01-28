@@ -45,7 +45,7 @@ interface NavItem {
 }
 
 const mainNavItems: NavItem[] = [
-  { icon: FolderKanban, labelKey: "dashboard", href: "/app/dashboard" },
+  { icon: Home, labelKey: "home", href: "/app/dashboard" },
 ];
 
 const workspaceNavItems: NavItem[] = [
@@ -183,6 +183,7 @@ export const AppShell = ({ children, locale }: AppShellProps) => {
   }, [workspaceId, locale, router]);
 
   const navLabels = useMemo(() => ({
+    home: "Home",
     myDay: "My Day",
     workspaces: t("workspaces.title"),
     dashboard: t("dashboard.title"),
@@ -210,11 +211,11 @@ export const AppShell = ({ children, locale }: AppShellProps) => {
   const breadcrumbs = useMemo(() => {
     const crumbs: { label: string; href: string; icon?: React.ElementType }[] = [];
     
-    // Always start with Workspaces
+    // Always start with Home
     crumbs.push({
-      label: t("dashboard"),
+      label: "Home",
       href: `/${locale}/app/dashboard`,
-      icon: FolderKanban,
+      icon: Home,
     });
 
     // If in a workspace, add the workspace name
