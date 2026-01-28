@@ -165,9 +165,7 @@ const GlobalDashboardPage = () => {
       <CreateWorkspaceDialog
         open={createWorkspaceOpen}
         onOpenChange={setCreateWorkspaceOpen}
-        onSuccess={(workspace) => {
-          router.push(`/${locale}/app/${workspace.id}/dashboard`);
-        }}
+        locale={locale}
       />
     </div>
   );
