@@ -2,11 +2,10 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, MoreHorizontal, Video, MapPin } from "lucide-react";
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { 
   format, 
   startOfWeek, 
@@ -36,8 +35,8 @@ export const CalendarCard = ({ locale, workspaceId, tasks }: CalendarCardProps) 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
 
-  const weekStart = startOfWeek(currentDate, { weekStartsOn: 5 }); // Start from Friday like in the image
-  const weekEnd = endOfWeek(currentDate, { weekStartsOn: 5 });
+  const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 });
+  const weekEnd = endOfWeek(currentDate, { weekStartsOn: 0 });
   const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
 
   const currentMonth = format(currentDate, "MMMM");
@@ -65,29 +64,29 @@ export const CalendarCard = ({ locale, workspaceId, tasks }: CalendarCardProps) 
   }, [tasks]);
 
   return (
-    <Card className="bg-zinc-900/50 border-zinc-800 backdrop-blur-sm">
+    <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-white">
-            <CalendarIcon className="w-5 h-5 text-zinc-400" />
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <CalendarIcon className="w-5 h-5 text-muted-foreground" />
             Calendar
           </CardTitle>
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-zinc-400 hover:text-white"
+              className="h-8 w-8"
               onClick={() => setCurrentDate(subWeeks(currentDate, 1))}
             >
               <ChevronLeft className="w-4 h-4" />
             </Button>
-            <span className="text-white text-sm font-medium min-w-[90px] text-center">
+            <span className="text-sm font-medium min-w-[90px] text-center">
               {currentMonth}
             </span>
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-zinc-400 hover:text-white"
+              className="h-8 w-8"
               onClick={() => setCurrentDate(addWeeks(currentDate, 1))}
             >
               <ChevronRight className="w-4 h-4" />
@@ -111,23 +110,23 @@ export const CalendarCard = ({ locale, workspaceId, tasks }: CalendarCardProps) 
                 className={cn(
                   "flex flex-col items-center py-2 px-1 rounded-xl transition-colors",
                   isSelected 
-                    ? "bg-amber-500 text-white" 
+                    ? "bg-primary text-primary-foreground" 
                     : isTodayDate
-                      ? "bg-zinc-800 text-white"
-                      : "hover:bg-zinc-800/50 text-zinc-400"
+                      ? "bg-muted"
+                      : "hover:bg-muted/50"
                 )}
               >
-                <span className="text-xs uppercase mb-1">
+                <span className="text-xs uppercase mb-1 text-muted-foreground">
                   {format(day, "EEE")}
                 </span>
                 <span className={cn(
                   "text-lg font-semibold",
-                  isSelected ? "text-white" : isTodayDate ? "text-white" : "text-zinc-200"
+                  isSelected ? "text-primary-foreground" : ""
                 )}>
                   {format(day, "d")}
                 </span>
                 {hasTasks && !isSelected && (
-                  <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1" />
+                  <div className="w-1.5 h-1.5 rounded-full mt-1" style={{ backgroundColor: "var(--accent-color)" }} />
                 )}
               </button>
             );
@@ -137,7 +136,7 @@ export const CalendarCard = ({ locale, workspaceId, tasks }: CalendarCardProps) 
         {/* Events for selected date */}
         <div className="space-y-2">
           {tasksForDate.length === 0 ? (
-            <div className="text-center py-4 text-zinc-500 text-sm">
+            <div className="text-center py-4 text-muted-foreground text-sm">
               No events for this day
             </div>
           ) : (
@@ -145,16 +144,16 @@ export const CalendarCard = ({ locale, workspaceId, tasks }: CalendarCardProps) 
               <Link
                 key={task.id}
                 href={`/${locale}/app/${workspaceId}/tasks/${task.id}`}
-                className="block p-3 rounded-xl bg-zinc-800/50 hover:bg-zinc-800 transition-colors"
+                className="block p-3 rounded-xl bg-muted/50 hover:bg-muted transition-colors"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <h4 className="text-white font-medium">{task.title}</h4>
-                    <p className="text-zinc-500 text-sm mt-1">
+                    <h4 className="font-medium">{task.title}</h4>
+                    <p className="text-muted-foreground text-sm mt-1">
                       {isToday(new Date(task.dueDate!)) ? "Today" : format(new Date(task.dueDate!), "MMM d")}
                     </p>
                   </div>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400">
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
                     <MoreHorizontal className="w-4 h-4" />
                   </Button>
                 </div>
@@ -163,16 +162,16 @@ export const CalendarCard = ({ locale, workspaceId, tasks }: CalendarCardProps) 
                   <div className="flex items-center gap-2 mt-3">
                     <div className="flex -space-x-2">
                       {task.assignees.slice(0, 3).map((assignee, i) => (
-                        <Avatar key={i} className="w-7 h-7 border-2 border-zinc-900">
+                        <Avatar key={i} className="w-7 h-7 border-2 border-background">
                           <AvatarImage src={assignee.user.image || undefined} />
-                          <AvatarFallback className="bg-gradient-to-br from-amber-500 to-orange-600 text-white text-xs">
+                          <AvatarFallback className="bg-primary text-primary-foreground text-xs">
                             {assignee.user.name?.charAt(0) || "?"}
                           </AvatarFallback>
                         </Avatar>
                       ))}
                       {task.assignees.length > 3 && (
-                        <div className="w-7 h-7 rounded-full bg-zinc-700 border-2 border-zinc-900 flex items-center justify-center">
-                          <span className="text-xs text-zinc-300">+{task.assignees.length - 3}</span>
+                        <div className="w-7 h-7 rounded-full bg-muted border-2 border-background flex items-center justify-center">
+                          <span className="text-xs text-muted-foreground">+{task.assignees.length - 3}</span>
                         </div>
                       )}
                     </div>

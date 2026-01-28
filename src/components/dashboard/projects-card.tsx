@@ -5,7 +5,6 @@ import Link from "next/link";
 import { Building2, Plus, ChevronDown, Users, ListTodo } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,7 +30,7 @@ interface ProjectsCardProps {
 // Generate consistent color from string
 const getColorFromString = (str: string) => {
   const colors = [
-    "from-amber-500 to-orange-600",
+    "from-primary/80 to-primary",
     "from-emerald-500 to-teal-600",
     "from-blue-500 to-indigo-600",
     "from-purple-500 to-violet-600",
@@ -70,20 +69,20 @@ export const ProjectsCard = ({ locale, onCreateWorkspace }: ProjectsCardProps) =
     if (sortBy === "name") {
       return a.name.localeCompare(b.name);
     }
-    return 0; // Keep original order for recents
+    return 0;
   });
 
   return (
-    <Card className="bg-zinc-900/50 border-zinc-800 backdrop-blur-sm">
+    <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-white">
-            <Building2 className="w-5 h-5 text-zinc-400" />
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Building2 className="w-5 h-5 text-muted-foreground" />
             Projects
           </CardTitle>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-white gap-1">
+              <Button variant="ghost" size="sm" className="text-muted-foreground gap-1">
                 {sortBy === "recents" ? "Recents" : "Name"}
                 <ChevronDown className="w-4 h-4" />
               </Button>
@@ -103,11 +102,11 @@ export const ProjectsCard = ({ locale, onCreateWorkspace }: ProjectsCardProps) =
         {/* Create new project button */}
         <Button
           variant="ghost"
-          className="w-full justify-start gap-3 text-zinc-400 hover:text-white hover:bg-zinc-800/50 h-12"
+          className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground h-12"
           onClick={onCreateWorkspace}
         >
-          <div className="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center">
-            <Plus className="w-4 h-4 text-amber-500" />
+          <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
+            <Plus className="w-4 h-4" style={{ color: "var(--accent-color)" }} />
           </div>
           Create new project
         </Button>
@@ -116,7 +115,7 @@ export const ProjectsCard = ({ locale, onCreateWorkspace }: ProjectsCardProps) =
         {loading ? (
           <div className="space-y-2">
             {[1, 2].map((i) => (
-              <div key={i} className="h-14 bg-zinc-800/50 rounded-xl animate-pulse" />
+              <div key={i} className="h-14 bg-muted rounded-xl animate-pulse" />
             ))}
           </div>
         ) : (
@@ -124,7 +123,7 @@ export const ProjectsCard = ({ locale, onCreateWorkspace }: ProjectsCardProps) =
             <Link
               key={workspace.id}
               href={`/${locale}/app/${workspace.id}/dashboard`}
-              className="flex items-center justify-between p-3 rounded-xl hover:bg-zinc-800/50 transition-colors group"
+              className="flex items-center justify-between p-3 rounded-xl hover:bg-muted/50 transition-colors group"
             >
               <div className="flex items-center gap-3">
                 <div className={cn(
@@ -137,9 +136,9 @@ export const ProjectsCard = ({ locale, onCreateWorkspace }: ProjectsCardProps) =
                     workspace.name.charAt(0).toUpperCase()
                   )}
                 </div>
-                <span className="text-white font-medium">{workspace.name}</span>
+                <span className="font-medium">{workspace.name}</span>
               </div>
-              <div className="flex items-center gap-4 text-zinc-500 text-sm">
+              <div className="flex items-center gap-4 text-muted-foreground text-sm">
                 <span className="flex items-center gap-1">
                   <ListTodo className="w-4 h-4" />
                   tasks

@@ -8,9 +8,12 @@ import {
   FolderPlus, 
   Link2, 
   ArrowRight,
-  Zap
+  Zap,
+  Users,
+  ListTodo
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { useWorkspace } from "@/lib/hooks/use-workspaces";
 import { useTasks } from "@/lib/hooks/use-tasks";
 import { CreateWorkspaceDialog } from "@/components/workspaces/create-workspace-dialog";
@@ -51,7 +54,6 @@ const DashboardPage = () => {
 
   // Get tasks assigned to current user
   const myTasks = useMemo(() => {
-    // For now, show all tasks - in production, filter by current user
     return tasks.filter((t: any) => t.status !== "done").slice(0, 10);
   }, [tasks]);
 
@@ -89,110 +91,122 @@ const DashboardPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950">
-      {/* Decorative background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-orange-500/10 rounded-full blur-3xl" />
+    <div className="space-y-6 pb-8">
+      {/* Header */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div>
+          <p className="text-muted-foreground text-sm">{currentDate}</p>
+          <h1 className="text-2xl md:text-3xl font-bold mt-1">
+            {greeting}, {userName}!
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            How can I help you today?
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button 
+            className="gap-2"
+            size="sm"
+          >
+            <Sparkles className="w-4 h-4" />
+            Ask AI
+          </Button>
+          <Button 
+            variant="outline" 
+            className="gap-2"
+            size="sm"
+            onClick={() => setCreateWorkspaceOpen(true)}
+          >
+            <FolderPlus className="w-4 h-4" />
+            Create workspace
+          </Button>
+          <Button 
+            variant="outline" 
+            className="gap-2"
+            size="sm"
+          >
+            <Link2 className="w-4 h-4" />
+            Connect apps
+          </Button>
+        </div>
       </div>
 
-      <div className="relative z-10 space-y-6 pb-8 p-6">
-        {/* Header */}
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div>
-            <p className="text-zinc-500 text-sm">{currentDate}</p>
-            <h1 className="text-2xl md:text-3xl font-bold text-white mt-1">
-              {greeting}, {userName}!
-            </h1>
-            <p className="text-zinc-400 mt-1">
-              How can I help you today?
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button 
-              className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white gap-2"
-              size="sm"
-            >
-              <Sparkles className="w-4 h-4" />
-              Ask AI
-            </Button>
-            <Button 
-              variant="outline" 
-              className="border-zinc-700 text-zinc-300 hover:bg-zinc-800 gap-2"
-              size="sm"
-              onClick={() => setCreateWorkspaceOpen(true)}
-            >
-              <FolderPlus className="w-4 h-4" />
-              Create workspace
-            </Button>
-            <Button 
-              variant="outline" 
-              className="border-zinc-700 text-zinc-300 hover:bg-zinc-800 gap-2"
-              size="sm"
-            >
-              <Link2 className="w-4 h-4" />
-              Connect apps
-            </Button>
-          </div>
+      {/* Main Grid Layout */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        {/* Left Column */}
+        <div className="space-y-6">
+          <ProjectsCard 
+            locale={locale} 
+            onCreateWorkspace={() => setCreateWorkspaceOpen(true)} 
+          />
+          <CalendarCard 
+            locale={locale} 
+            workspaceId={workspaceId} 
+            tasks={tasks as any[]} 
+          />
+          <RemindersCard />
         </div>
 
-        {/* Main Grid Layout */}
-        <div className="grid lg:grid-cols-2 gap-6">
-          {/* Left Column */}
-          <div className="space-y-6">
-            <ProjectsCard 
-              locale={locale} 
-              onCreateWorkspace={() => setCreateWorkspaceOpen(true)} 
-            />
-            <CalendarCard 
-              locale={locale} 
-              workspaceId={workspaceId} 
-              tasks={tasks as any[]} 
-            />
-            <RemindersCard />
-          </div>
+        {/* Right Column */}
+        <div className="space-y-6">
+          <MyTasksCard 
+            locale={locale} 
+            workspaceId={workspaceId} 
+            tasks={myTasks as any[]} 
+            onCreateTask={() => setCreateTaskOpen(true)}
+          />
+          <GoalsCard workspaceId={workspaceId} />
 
-          {/* Right Column */}
-          <div className="space-y-6">
-            <MyTasksCard 
-              locale={locale} 
-              workspaceId={workspaceId} 
-              tasks={myTasks as any[]} 
-              onCreateTask={() => setCreateTaskOpen(true)}
-            />
-            <GoalsCard workspaceId={workspaceId} />
-
-            {/* Quick Stats Summary */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800">
-                <p className="text-zinc-500 text-sm">Total Tasks</p>
-                <p className="text-2xl font-bold text-white mt-1">{tasks.length}</p>
-              </div>
-              <div className="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800">
-                <p className="text-zinc-500 text-sm">Team Members</p>
-                <p className="text-2xl font-bold text-white mt-1">{members.length}</p>
-              </div>
-            </div>
-
-            {/* Focus Mode CTA */}
-            <button
-              onClick={() => router.push(`/${locale}/app/workspaces`)}
-              className="w-full p-4 rounded-xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 hover:border-amber-500/40 transition-colors group"
-            >
-              <div className="flex items-center justify-between">
+          {/* Quick Stats Summary */}
+          <div className="grid grid-cols-2 gap-4">
+            <Card>
+              <CardContent className="pt-6">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-amber-500/20">
-                    <Zap className="w-5 h-5 text-amber-500" />
+                  <div className="p-2.5 rounded-xl bg-primary/10">
+                    <ListTodo className="w-5 h-5" style={{ color: "var(--accent-color)" }} />
                   </div>
-                  <div className="text-left">
-                    <p className="text-white font-medium">Focus Mode</p>
-                    <p className="text-zinc-500 text-sm">Start a focused work session</p>
+                  <div>
+                    <p className="text-muted-foreground text-sm">Total Tasks</p>
+                    <p className="text-2xl font-bold">{tasks.length}</p>
                   </div>
                 </div>
-                <ArrowRight className="w-5 h-5 text-zinc-500 group-hover:text-amber-500 transition-colors" />
-              </div>
-            </button>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-primary/10">
+                    <Users className="w-5 h-5" style={{ color: "var(--accent-color)" }} />
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-sm">Team Members</p>
+                    <p className="text-2xl font-bold">{members.length}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
+
+          {/* Focus Mode CTA */}
+          <Card 
+            className="cursor-pointer hover:border-primary/50 transition-colors"
+            onClick={() => router.push(`/${locale}/app/workspaces`)}
+          >
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <Zap className="w-5 h-5" style={{ color: "var(--accent-color)" }} />
+                  </div>
+                  <div>
+                    <p className="font-medium">Focus Mode</p>
+                    <p className="text-muted-foreground text-sm">Start a focused work session</p>
+                  </div>
+                </div>
+                <ArrowRight className="w-5 h-5 text-muted-foreground" />
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
 

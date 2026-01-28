@@ -12,7 +12,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { toast } from "sonner";
-import { format, isToday, isTomorrow, isPast, startOfDay } from "date-fns";
+import { format, isToday, isPast, startOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
 import { 
   getReminders, 
@@ -100,7 +100,7 @@ export const RemindersCard = () => {
 
   // Group reminders by date
   const todayReminders = reminders.filter(r => {
-    if (!r.dueDate) return true; // No date = show in today
+    if (!r.dueDate) return true;
     return isToday(new Date(r.dueDate));
   });
 
@@ -111,17 +111,17 @@ export const RemindersCard = () => {
   });
 
   return (
-    <Card className="bg-zinc-900/50 border-zinc-800 backdrop-blur-sm">
+    <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-white">
-            <Bell className="w-5 h-5 text-zinc-400" />
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Bell className="w-5 h-5 text-muted-foreground" />
             Reminders
           </CardTitle>
           <Button 
             variant="ghost" 
             size="icon" 
-            className="h-8 w-8 text-zinc-400 hover:text-white"
+            className="h-8 w-8"
             onClick={() => setIsAdding(true)}
           >
             <Plus className="w-4 h-4" />
@@ -136,18 +136,14 @@ export const RemindersCard = () => {
               value={newReminderTitle}
               onChange={(e) => setNewReminderTitle(e.target.value)}
               placeholder="Add a reminder..."
-              className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500"
+              className="flex-1"
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === "Enter") handleAddReminder();
                 if (e.key === "Escape") setIsAdding(false);
               }}
             />
-            <Button 
-              size="sm" 
-              onClick={handleAddReminder}
-              className="bg-amber-500 hover:bg-amber-600 text-white"
-            >
+            <Button size="sm" onClick={handleAddReminder}>
               Add
             </Button>
           </div>
@@ -155,19 +151,19 @@ export const RemindersCard = () => {
 
         {/* Today section */}
         <Collapsible open={todayOpen} onOpenChange={setTodayOpen}>
-          <CollapsibleTrigger className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors">
+          <CollapsibleTrigger className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
             <ChevronDown className={cn(
               "w-4 h-4 transition-transform",
               !todayOpen && "-rotate-90"
             )} />
             <span className="text-sm font-medium">Today</span>
-            <Badge variant="secondary" className="bg-zinc-800 text-zinc-400 text-xs">
+            <Badge variant="secondary" className="text-xs">
               {todayReminders.filter(r => !r.completed).length}
             </Badge>
           </CollapsibleTrigger>
           <CollapsibleContent className="mt-2 space-y-1">
             {todayReminders.length === 0 ? (
-              <p className="text-zinc-500 text-sm py-2 pl-6">No reminders for today</p>
+              <p className="text-muted-foreground text-sm py-2 pl-6">No reminders for today</p>
             ) : (
               todayReminders.map((reminder) => (
                 <ReminderItem
@@ -184,10 +180,10 @@ export const RemindersCard = () => {
         {/* Upcoming section */}
         {upcomingReminders.length > 0 && (
           <Collapsible>
-            <CollapsibleTrigger className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors">
+            <CollapsibleTrigger className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
               <ChevronDown className="w-4 h-4" />
               <span className="text-sm font-medium">Upcoming</span>
-              <Badge variant="secondary" className="bg-zinc-800 text-zinc-400 text-xs">
+              <Badge variant="secondary" className="text-xs">
                 {upcomingReminders.filter(r => !r.completed).length}
               </Badge>
             </CollapsibleTrigger>
@@ -216,21 +212,21 @@ interface ReminderItemProps {
 
 const ReminderItem = ({ reminder, onToggle, onDelete }: ReminderItemProps) => {
   return (
-    <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-800/50 transition-colors group">
+    <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors group">
       <button
         onClick={onToggle}
         className={cn(
           "w-5 h-5 rounded border-2 flex items-center justify-center transition-colors",
           reminder.completed
-            ? "bg-emerald-500 border-emerald-500"
-            : "border-zinc-600 hover:border-amber-500"
+            ? "bg-primary border-primary"
+            : "border-muted-foreground/30 hover:border-primary"
         )}
       >
-        {reminder.completed && <Check className="w-3 h-3 text-white" />}
+        {reminder.completed && <Check className="w-3 h-3 text-primary-foreground" />}
       </button>
       <span className={cn(
         "flex-1 text-sm transition-colors",
-        reminder.completed ? "text-zinc-500 line-through" : "text-zinc-200"
+        reminder.completed ? "text-muted-foreground line-through" : ""
       )}>
         {reminder.title}
       </span>
@@ -238,14 +234,14 @@ const ReminderItem = ({ reminder, onToggle, onDelete }: ReminderItemProps) => {
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7 text-zinc-500 hover:text-amber-500"
+          className="h-7 w-7 text-muted-foreground hover:text-foreground"
         >
           <Bell className="w-3.5 h-3.5" />
         </Button>
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7 text-zinc-500 hover:text-red-500"
+          className="h-7 w-7 text-muted-foreground hover:text-destructive"
           onClick={onDelete}
         >
           <Trash2 className="w-3.5 h-3.5" />
@@ -253,7 +249,7 @@ const ReminderItem = ({ reminder, onToggle, onDelete }: ReminderItemProps) => {
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7 text-zinc-500 hover:text-zinc-300"
+          className="h-7 w-7 text-muted-foreground hover:text-foreground"
         >
           <Clock className="w-3.5 h-3.5" />
         </Button>
