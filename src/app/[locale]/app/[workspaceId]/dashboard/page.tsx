@@ -33,7 +33,7 @@ const DashboardPage = () => {
   const locale = params.locale as string;
 
   const { data, isLoading } = useWorkspace(workspaceId);
-  const { data: tasks = [] } = useTasks(workspaceId);
+  const { data: tasks = [], refetch: refetchTasks } = useTasks(workspaceId);
   
   const [createWorkspaceOpen, setCreateWorkspaceOpen] = useState(false);
   const [createTaskOpen, setCreateTaskOpen] = useState(false);
@@ -157,6 +157,7 @@ const DashboardPage = () => {
             workspaceId={workspaceId} 
             tasks={myTasks as any[]} 
             onCreateTask={() => setCreateTaskOpen(true)}
+            onRefresh={() => refetchTasks()}
           />
           <GoalsCard workspaceId={workspaceId} />
 
