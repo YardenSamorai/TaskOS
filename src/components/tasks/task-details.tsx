@@ -23,6 +23,7 @@ import type { Task, User as UserType, WorkspaceMember } from "@/lib/db/schema";
 import { TaskGitHubActivity } from "@/components/github/task-github-activity";
 import { CreateIssueButton } from "@/components/github/create-issue-button";
 import { CreateJiraIssueButton } from "@/components/jira/create-jira-issue-button";
+import { TaskEnhancer } from "@/components/ai/task-enhancer";
 
 interface TaskWithRelations extends Task {
   assignees: { id: string; userId: string; user: UserType }[];
@@ -158,7 +159,7 @@ export const TaskDetails = ({ task, members, workspaceId }: TaskDetailsProps) =>
             )}
           </div>
           {editingDescription ? (
-            <div className="space-y-2">
+            <div className="space-y-3">
               <Textarea
                 value={editedDescription}
                 onChange={(e) => setEditedDescription(e.target.value)}
@@ -166,6 +167,15 @@ export const TaskDetails = ({ task, members, workspaceId }: TaskDetailsProps) =>
                 className="min-h-[120px]"
                 disabled={savingDescription}
               />
+              
+              {/* AI Enhancement */}
+              <TaskEnhancer
+                taskDescription={editedDescription || task.title}
+                onApply={(enhanced) => {
+                  setEditedDescription(enhanced.description);
+                }}
+              />
+              
               <div className="flex gap-2">
                 <Button
                   size="sm"
