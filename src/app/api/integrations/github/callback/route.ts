@@ -10,16 +10,25 @@ export async function GET(request: NextRequest) {
     const code = searchParams.get("code");
     const state = searchParams.get("state"); // workspaceId or "global"
     const error = searchParams.get("error");
+    const errorDescription = searchParams.get("error_description");
+
+    console.log("[GitHub Callback] Received callback:", {
+      hasCode: !!code,
+      state,
+      error,
+      errorDescription,
+    });
 
     // Handle OAuth errors
     if (error) {
-      console.error("GitHub OAuth error:", error);
+      console.error("[GitHub Callback] OAuth error:", error, errorDescription);
       return NextResponse.redirect(
-        new URL(`/en/app/dashboard?error=github_auth_failed`, request.url)
+        new URL(`/en/app/dashboard?error=github_auth_failed&message=${encodeURIComponent(errorDescription || error)}`, request.url)
       );
     }
 
     if (!code) {
+      console.error("[GitHub Callback] No code received");
       return NextResponse.redirect(
         new URL(`/en/app/dashboard?error=no_code`, request.url)
       );
@@ -27,13 +36,28 @@ export async function GET(request: NextRequest) {
 
     // Get current user session
     const session = await auth();
+    console.log("[GitHub Callback] Session:", { userId: session?.user?.id, email: session?.user?.email });
+    
     if (!session?.user?.id) {
+      console.error("[GitHub Callback] No session found");
       return NextResponse.redirect(
         new URL(`/en/sign-in?callbackUrl=/en/app/dashboard`, request.url)
       );
     }
 
+    // Check GitHub credentials
+    const clientId = process.env.GITHUB_CLIENT_ID;
+    const clientSecret = process.env.GITHUB_CLIENT_SECRET;
+    
+    if (!clientId || !clientSecret) {
+      console.error("[GitHub Callback] Missing GitHub credentials:", { hasClientId: !!clientId, hasClientSecret: !!clientSecret });
+      return NextResponse.redirect(
+        new URL(`/en/app/dashboard?error=github_not_configured`, request.url)
+      );
+    }
+
     // Exchange code for access token
+    console.log("[GitHub Callback] Exchanging code for token...");
     const tokenResponse = await fetch("https://github.com/login/oauth/access_token", {
       method: "POST",
       headers: {
@@ -41,24 +65,30 @@ export async function GET(request: NextRequest) {
         "Accept": "application/json",
       },
       body: JSON.stringify({
-        client_id: process.env.GITHUB_CLIENT_ID,
-        client_secret: process.env.GITHUB_CLIENT_SECRET,
+        client_id: clientId,
+        client_secret: clientSecret,
         code,
       }),
     });
 
     const tokenData = await tokenResponse.json();
+    console.log("[GitHub Callback] Token response:", { 
+      error: tokenData.error,
+      hasAccessToken: !!tokenData.access_token,
+      scope: tokenData.scope 
+    });
 
     if (tokenData.error) {
-      console.error("GitHub token error:", tokenData.error);
+      console.error("[GitHub Callback] Token error:", tokenData.error, tokenData.error_description);
       return NextResponse.redirect(
-        new URL(`/en/app/dashboard?error=token_exchange_failed`, request.url)
+        new URL(`/en/app/dashboard?error=token_exchange_failed&message=${encodeURIComponent(tokenData.error_description || tokenData.error)}`, request.url)
       );
     }
 
     const { access_token, refresh_token, expires_in, scope } = tokenData;
 
     // Get GitHub user info
+    console.log("[GitHub Callback] Fetching GitHub user info...");
     const userResponse = await fetch("https://api.github.com/user", {
       headers: {
         "Authorization": `Bearer ${access_token}`,
@@ -67,6 +97,11 @@ export async function GET(request: NextRequest) {
     });
 
     const userData = await userResponse.json();
+    console.log("[GitHub Callback] GitHub user:", { 
+      id: userData.id, 
+      login: userData.login,
+      name: userData.name 
+    });
 
     // Calculate token expiration
     const tokenExpiresAt = expires_in 
@@ -74,15 +109,18 @@ export async function GET(request: NextRequest) {
       : null;
 
     // Check if integration already exists
+    console.log("[GitHub Callback] Checking for existing integration...");
     const existingIntegration = await db.query.integrations.findFirst({
       where: and(
         eq(integrations.userId, session.user.id),
         eq(integrations.provider, "github")
       ),
     });
+    console.log("[GitHub Callback] Existing integration:", existingIntegration?.id || "none");
 
     if (existingIntegration) {
       // Update existing integration
+      console.log("[GitHub Callback] Updating existing integration...");
       await db
         .update(integrations)
         .set({
@@ -103,9 +141,11 @@ export async function GET(request: NextRequest) {
           }),
         })
         .where(eq(integrations.id, existingIntegration.id));
+      console.log("[GitHub Callback] Integration updated successfully");
     } else {
       // Create new integration
-      await db.insert(integrations).values({
+      console.log("[GitHub Callback] Creating new integration...");
+      const newIntegration = await db.insert(integrations).values({
         userId: session.user.id,
         workspaceId: state !== "global" ? state : null,
         provider: "github",
@@ -123,7 +163,8 @@ export async function GET(request: NextRequest) {
           avatar_url: userData.avatar_url,
           html_url: userData.html_url,
         }),
-      });
+      }).returning();
+      console.log("[GitHub Callback] New integration created:", newIntegration[0]?.id);
     }
 
     // Redirect back to dashboard with success
@@ -131,9 +172,10 @@ export async function GET(request: NextRequest) {
       ? `/en/app/${state}/dashboard?integration=github&status=connected`
       : `/en/app/dashboard?integration=github&status=connected`;
 
+    console.log("[GitHub Callback] Success! Redirecting to:", redirectUrl);
     return NextResponse.redirect(new URL(redirectUrl, request.url));
   } catch (error) {
-    console.error("GitHub callback error:", error);
+    console.error("[GitHub Callback] Error:", error);
     return NextResponse.redirect(
       new URL(`/en/app/dashboard?error=callback_failed`, request.url)
     );
