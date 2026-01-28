@@ -5,7 +5,6 @@ import Link from "next/link";
 import { Building2, Plus, ChevronDown, Users, ListTodo, Check } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,12 +31,12 @@ interface ProjectsCardProps {
 // Generate consistent color from string
 const getColorFromString = (str: string) => {
   const colors = [
-    "from-primary/80 to-primary",
-    "from-emerald-500 to-teal-600",
-    "from-blue-500 to-indigo-600",
-    "from-purple-500 to-violet-600",
-    "from-pink-500 to-rose-600",
-    "from-cyan-500 to-blue-600",
+    "bg-gradient-to-br from-violet-500 to-purple-600",
+    "bg-gradient-to-br from-emerald-500 to-teal-600",
+    "bg-gradient-to-br from-blue-500 to-indigo-600",
+    "bg-gradient-to-br from-pink-500 to-rose-600",
+    "bg-gradient-to-br from-amber-500 to-orange-600",
+    "bg-gradient-to-br from-cyan-500 to-blue-600",
   ];
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
@@ -55,7 +54,7 @@ export const ProjectsCard = ({ locale, currentWorkspaceId, onCreateWorkspace }: 
     const fetchWorkspaces = async () => {
       try {
         const result = await getUserWorkspaces();
-        if (result.success) {
+        if (result.success && result.workspaces) {
           setWorkspaces(result.workspaces as Workspace[]);
         }
       } catch (error) {
@@ -120,60 +119,59 @@ export const ProjectsCard = ({ locale, currentWorkspaceId, onCreateWorkspace }: 
               <div key={i} className="h-14 bg-muted rounded-xl animate-pulse" />
             ))}
           </div>
+        ) : workspaces.length === 0 ? (
+          <div className="text-center py-4 text-muted-foreground text-sm">
+            No projects yet. Create your first one!
+          </div>
         ) : (
-          sortedWorkspaces.slice(0, 5).map((workspace) => {
+          sortedWorkspaces.map((workspace) => {
             const isSelected = workspace.id === currentWorkspaceId;
             return (
               <Link
                 key={workspace.id}
                 href={`/${locale}/app/${workspace.id}/dashboard`}
                 className={cn(
-                  "flex items-center justify-between p-3 rounded-xl transition-all",
+                  "flex items-center justify-between p-3 rounded-xl transition-all border-2",
                   isSelected 
-                    ? "bg-primary/10 border-2 border-primary/30 shadow-sm" 
-                    : "hover:bg-muted/50 border-2 border-transparent"
+                    ? "bg-primary/10 border-primary/30 shadow-sm" 
+                    : "bg-muted/30 hover:bg-muted/50 border-transparent hover:border-muted"
                 )}
               >
                 <div className="flex items-center gap-3">
+                  {/* Workspace Icon */}
                   <div className={cn(
-                    "w-8 h-8 rounded-lg bg-gradient-to-br flex items-center justify-center text-white font-semibold text-sm relative",
+                    "w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold text-sm relative shrink-0",
                     getColorFromString(workspace.name)
                   )}>
-                    {workspace.imageUrl ? (
-                      <img src={workspace.imageUrl} alt="" className="w-full h-full rounded-lg object-cover" />
-                    ) : (
-                      workspace.name.charAt(0).toUpperCase()
-                    )}
+                    {workspace.name.charAt(0).toUpperCase()}
                     {isSelected && (
-                      <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-primary flex items-center justify-center">
+                      <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-primary flex items-center justify-center shadow-sm">
                         <Check className="w-2.5 h-2.5 text-white" />
                       </div>
                     )}
                   </div>
-                  <div>
-                    <span className={cn(
-                      "font-medium block",
-                      isSelected && "text-primary"
+                  
+                  {/* Workspace Name */}
+                  <div className="min-w-0">
+                    <p className={cn(
+                      "font-medium truncate",
+                      isSelected ? "text-primary" : "text-foreground"
                     )}>
                       {workspace.name}
-                    </span>
-                    {isSelected && (
-                      <span className="text-xs text-primary/70">Current</span>
-                    )}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {isSelected ? "Current workspace" : workspace.role}
+                    </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  {!isSelected && (
-                    <div className="flex items-center gap-4 text-muted-foreground text-sm">
-                      <span className="flex items-center gap-1">
-                        <ListTodo className="w-4 h-4" />
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Users className="w-4 h-4" />
-                      </span>
-                    </div>
-                  )}
-                </div>
+
+                {/* Right side icons */}
+                {!isSelected && (
+                  <div className="flex items-center gap-3 text-muted-foreground">
+                    <ListTodo className="w-4 h-4" />
+                    <Users className="w-4 h-4" />
+                  </div>
+                )}
               </Link>
             );
           })
