@@ -78,8 +78,8 @@ const WorkspacesPage = () => {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [quote] = useState(() => quotes[Math.floor(Math.random() * quotes.length)]);
-  const [focusQuote] = useState(() => focusQuotes[Math.floor(Math.random() * focusQuotes.length)]);
+  const [quote, setQuote] = useState(quotes[0]);
+  const [focusQuote, setFocusQuote] = useState(focusQuotes[0]);
 
   // Focus Mode state
   const [focusMode, setFocusMode] = useState(false);
@@ -103,6 +103,8 @@ const WorkspacesPage = () => {
 
   useEffect(() => {
     setMounted(true);
+    setQuote(quotes[Math.floor(Math.random() * quotes.length)]);
+    setFocusQuote(focusQuotes[Math.floor(Math.random() * focusQuotes.length)]);
     loadTodos();
   }, []);
 
