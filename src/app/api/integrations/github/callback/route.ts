@@ -121,50 +121,73 @@ export async function GET(request: NextRequest) {
     if (existingIntegration) {
       // Update existing integration
       console.log("[GitHub Callback] Updating existing integration...");
-      await db
-        .update(integrations)
-        .set({
+      try {
+        await db
+          .update(integrations)
+          .set({
+            accessToken: access_token,
+            refreshToken: refresh_token,
+            tokenExpiresAt,
+            scope,
+            providerAccountId: userData.id?.toString(),
+            providerUsername: userData.login,
+            isActive: true,
+            lastSyncAt: new Date(),
+            updatedAt: new Date(),
+            metadata: JSON.stringify({
+              name: userData.name,
+              email: userData.email,
+              avatar_url: userData.avatar_url,
+              html_url: userData.html_url,
+            }),
+          })
+          .where(eq(integrations.id, existingIntegration.id));
+        console.log("[GitHub Callback] Integration updated successfully");
+      } catch (dbError) {
+        console.error("[GitHub Callback] DB update error:", dbError);
+        throw dbError;
+      }
+    } else {
+      // Create new integration
+      console.log("[GitHub Callback] Creating new integration for user:", session.user.id);
+      console.log("[GitHub Callback] Workspace ID:", state !== "global" ? state : "null (global)");
+      
+      try {
+        // Don't set workspaceId if it's "global" - set to null for global integrations
+        const integrationData = {
+          userId: session.user.id,
+          workspaceId: state && state !== "global" ? state : null,
+          provider: "github" as const,
           accessToken: access_token,
-          refreshToken: refresh_token,
-          tokenExpiresAt,
-          scope,
-          providerAccountId: userData.id?.toString(),
-          providerUsername: userData.login,
+          refreshToken: refresh_token || null,
+          tokenExpiresAt: tokenExpiresAt || null,
+          scope: scope || null,
+          providerAccountId: userData.id?.toString() || null,
+          providerUsername: userData.login || null,
           isActive: true,
           lastSyncAt: new Date(),
-          updatedAt: new Date(),
           metadata: JSON.stringify({
             name: userData.name,
             email: userData.email,
             avatar_url: userData.avatar_url,
             html_url: userData.html_url,
           }),
-        })
-        .where(eq(integrations.id, existingIntegration.id));
-      console.log("[GitHub Callback] Integration updated successfully");
-    } else {
-      // Create new integration
-      console.log("[GitHub Callback] Creating new integration...");
-      const newIntegration = await db.insert(integrations).values({
-        userId: session.user.id,
-        workspaceId: state !== "global" ? state : null,
-        provider: "github",
-        accessToken: access_token,
-        refreshToken: refresh_token,
-        tokenExpiresAt,
-        scope,
-        providerAccountId: userData.id?.toString(),
-        providerUsername: userData.login,
-        isActive: true,
-        lastSyncAt: new Date(),
-        metadata: JSON.stringify({
-          name: userData.name,
-          email: userData.email,
-          avatar_url: userData.avatar_url,
-          html_url: userData.html_url,
-        }),
-      }).returning();
-      console.log("[GitHub Callback] New integration created:", newIntegration[0]?.id);
+        };
+        
+        console.log("[GitHub Callback] Integration data prepared:", {
+          userId: integrationData.userId,
+          workspaceId: integrationData.workspaceId,
+          provider: integrationData.provider,
+          providerUsername: integrationData.providerUsername,
+        });
+        
+        const newIntegration = await db.insert(integrations).values(integrationData).returning();
+        console.log("[GitHub Callback] New integration created:", newIntegration[0]?.id);
+      } catch (dbError) {
+        console.error("[GitHub Callback] DB insert error:", dbError);
+        console.error("[GitHub Callback] DB error details:", JSON.stringify(dbError, Object.getOwnPropertyNames(dbError)));
+        throw dbError;
+      }
     }
 
     // Redirect back to dashboard with success

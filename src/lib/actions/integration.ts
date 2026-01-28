@@ -12,16 +12,14 @@ export async function getUserIntegrations(workspaceId?: string) {
   try {
     const user = await getCurrentUser();
 
-    const conditions = [eq(integrations.userId, user.id)];
-    
-    if (workspaceId) {
-      conditions.push(eq(integrations.workspaceId, workspaceId));
-    }
-
+    // Always get all integrations for the user (both global and workspace-specific)
+    // We don't filter by workspaceId because integrations can be used across workspaces
     const result = await db.query.integrations.findMany({
-      where: and(...conditions),
+      where: eq(integrations.userId, user.id),
       orderBy: [desc(integrations.createdAt)],
     });
+
+    console.log("[getUserIntegrations] Found integrations:", result.length, "for user:", user.id);
 
     return { success: true, integrations: result };
   } catch (error) {
