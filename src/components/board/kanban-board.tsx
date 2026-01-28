@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -21,7 +21,7 @@ import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { KanbanColumn } from "./kanban-column";
 import { TaskCard } from "./task-card";
 import { CreateTaskDialog } from "../tasks/create-task-dialog";
-import { updateTaskStatus } from "@/lib/actions/task";
+import { useUpdateTaskStatus } from "@/lib/hooks/use-tasks";
 import { toast } from "sonner";
 import type { Task, TaskStatus, User, WorkspaceMember } from "@/lib/db/schema";
 
@@ -59,6 +59,14 @@ export const KanbanBoard = ({
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createDialogStatus, setCreateDialogStatus] = useState<TaskStatus>("todo");
+  
+  // Hook for updating task status with proper cache invalidation
+  const updateTaskStatusMutation = useUpdateTaskStatus(workspaceId);
+  
+  // Sync local state with prop changes (e.g., after refetch)
+  useEffect(() => {
+    setTasks(initialTasks);
+  }, [initialTasks]);
 
   // Optimized sensors for better responsiveness
   const sensors = useSensors(
@@ -203,14 +211,17 @@ export const KanbanBoard = ({
       });
     });
 
-    // Persist to database
-    try {
-      await updateTaskStatus(activeId, targetColumn, newOrderIndex);
-    } catch (error) {
-      toast.error("Failed to update task");
-      setTasks(initialTasks);
-    }
-  }, [tasks, findColumn, initialTasks]);
+    // Persist to database using the mutation hook
+    updateTaskStatusMutation.mutate(
+      { taskId: activeId, status: targetColumn, orderIndex: newOrderIndex },
+      {
+        onError: () => {
+          toast.error("Failed to update task");
+          setTasks(initialTasks);
+        },
+      }
+    );
+  }, [tasks, findColumn, initialTasks, updateTaskStatusMutation]);
 
   const handleDragCancel = useCallback(() => {
     setActiveId(null);

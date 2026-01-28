@@ -382,6 +382,17 @@ export async function createJiraIssueFromTask(data: {
 }
 
 // Sync task status to Jira
+// Map TaskOS priority to Jira priority
+function mapTaskPriorityToJira(priority: string): string {
+  const mapping: Record<string, string> = {
+    urgent: "Highest",
+    high: "High",
+    medium: "Medium",
+    low: "Low",
+  };
+  return mapping[priority] || "Medium";
+}
+
 export async function syncTaskToJira(taskId: string): Promise<{
   success: boolean;
   error?: string;
@@ -418,7 +429,20 @@ export async function syncTaskToJira(taskId: string): Promise<{
       return { success: false, error: "Task not linked to Jira" };
     }
 
-    // Get available transitions
+    // 1. Update fields (Title, Description, Priority, Due Date)
+    await updateJiraIssue(
+      tokenResult.accessToken,
+      tokenResult.cloudId,
+      jiraInfo.issueKey,
+      {
+        summary: task.title,
+        description: task.description || undefined,
+        priority: mapTaskPriorityToJira(task.priority),
+        duedate: task.dueDate || undefined,
+      }
+    );
+
+    // 2. Handle status transition
     const transitions = await getJiraIssueTransitions(
       tokenResult.accessToken,
       tokenResult.cloudId,
@@ -434,13 +458,13 @@ export async function syncTaskToJira(taskId: string): Promise<{
           t.to.name.toLowerCase().includes("closed") ||
           t.to.name.toLowerCase().includes("resolved")
       );
-    } else if (task.status === "in_progress") {
+    } else if (task.status === "in_progress" || task.status === "review") {
       targetTransition = transitions.find(
         (t) =>
           t.to.name.toLowerCase().includes("progress") ||
           t.to.name.toLowerCase().includes("start")
       );
-    } else if (task.status === "todo") {
+    } else if (task.status === "todo" || task.status === "backlog") {
       targetTransition = transitions.find(
         (t) =>
           t.to.name.toLowerCase().includes("to do") ||

@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import { format, parseISO } from "date-fns";
-import { Calendar, User, Tag, Loader2 } from "lucide-react";
+import { Calendar, User, Tag, Loader2, Pencil, Check, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Select,
@@ -16,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { updateTask, addAssignee, removeAssignee } from "@/lib/actions/task";
+import { updateTask, addAssignee, removeAssignee, updateTaskFields } from "@/lib/actions/task";
 import type { Task, User as UserType, WorkspaceMember } from "@/lib/db/schema";
 import { TaskGitHubActivity } from "@/components/github/task-github-activity";
 import { CreateIssueButton } from "@/components/github/create-issue-button";
@@ -35,7 +37,36 @@ interface TaskDetailsProps {
 
 export const TaskDetails = ({ task, members, workspaceId }: TaskDetailsProps) => {
   const [updating, setUpdating] = useState(false);
+  const [editingDescription, setEditingDescription] = useState(false);
+  const [editedDescription, setEditedDescription] = useState(task.description || "");
+  const [savingDescription, setSavingDescription] = useState(false);
+  const router = useRouter();
   const t = useTranslations("tasks");
+
+  const handleSaveDescription = async () => {
+    if (editedDescription === (task.description || "")) {
+      setEditingDescription(false);
+      return;
+    }
+
+    setSavingDescription(true);
+    try {
+      const result = await updateTaskFields(task.id, { description: editedDescription });
+      if (result.success) {
+        toast.success("Description updated");
+        router.refresh();
+      } else {
+        toast.error(result.error || "Failed to update description");
+        setEditedDescription(task.description || "");
+      }
+    } catch {
+      toast.error("Something went wrong");
+      setEditedDescription(task.description || "");
+    } finally {
+      setSavingDescription(false);
+      setEditingDescription(false);
+    }
+  };
 
   const handleStatusChange = async (status: string) => {
     setUpdating(true);
@@ -109,14 +140,65 @@ export const TaskDetails = ({ task, members, workspaceId }: TaskDetailsProps) =>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Description */}
-        {task.description && (
-          <div>
-            <h4 className="text-sm font-medium text-muted-foreground mb-2">
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-sm font-medium text-muted-foreground">
               {t("description")}
             </h4>
-            <p className="text-sm whitespace-pre-wrap">{task.description}</p>
+            {!editingDescription && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 px-2"
+                onClick={() => setEditingDescription(true)}
+              >
+                <Pencil className="w-3.5 h-3.5 me-1" />
+                Edit
+              </Button>
+            )}
           </div>
-        )}
+          {editingDescription ? (
+            <div className="space-y-2">
+              <Textarea
+                value={editedDescription}
+                onChange={(e) => setEditedDescription(e.target.value)}
+                placeholder="Add a description..."
+                className="min-h-[120px]"
+                disabled={savingDescription}
+              />
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  onClick={handleSaveDescription}
+                  disabled={savingDescription}
+                >
+                  {savingDescription ? (
+                    <Loader2 className="w-4 h-4 animate-spin me-1" />
+                  ) : (
+                    <Check className="w-4 h-4 me-1" />
+                  )}
+                  Save
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setEditingDescription(false);
+                    setEditedDescription(task.description || "");
+                  }}
+                  disabled={savingDescription}
+                >
+                  <X className="w-4 h-4 me-1" />
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : task.description ? (
+            <p className="text-sm whitespace-pre-wrap">{task.description}</p>
+          ) : (
+            <p className="text-sm text-muted-foreground italic">No description</p>
+          )}
+        </div>
 
         {/* Status & Priority */}
         <div className="grid sm:grid-cols-2 gap-4">

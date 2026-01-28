@@ -470,6 +470,19 @@ export const updateTask = async (formData: FormData) => {
       }
     }
 
+    // Sync to Jira if task is linked and any relevant field changed
+    if (existingTask.metadata && Object.keys(changes).length > 0) {
+      try {
+        const metadata = JSON.parse(existingTask.metadata as string);
+        if (metadata.jira?.issueKey) {
+          const { syncTaskToJira } = await import("./jira");
+          syncTaskToJira(taskId).catch(console.error);
+        }
+      } catch {
+        // Ignore parse errors
+      }
+    }
+
     // Invalidate caches
     revalidateTag(CACHE_TAGS.tasks(existingTask.workspaceId));
     revalidateTag(CACHE_TAGS.task(taskId));
@@ -480,6 +493,98 @@ export const updateTask = async (formData: FormData) => {
     return { success: true, task };
   } catch (error) {
     console.error("Error updating task:", error);
+    return { success: false, error: "Failed to update task" };
+  }
+};
+
+// Update task fields (simpler API for client)
+export const updateTaskFields = async (
+  taskId: string,
+  data: {
+    title?: string;
+    description?: string;
+    priority?: TaskPriority;
+    dueDate?: string | null;
+  }
+) => {
+  try {
+    const existingTask = await db.query.tasks.findFirst({
+      where: eq(tasks.id, taskId),
+    });
+
+    if (!existingTask) {
+      return { success: false, error: "Task not found" };
+    }
+
+    const { user } = await requireWorkspaceEditor(existingTask.workspaceId);
+
+    const updateData: Record<string, unknown> = {
+      updatedAt: new Date(),
+      updatedBy: user.id,
+    };
+
+    const changes: Record<string, { from: unknown; to: unknown }> = {};
+
+    if (data.title !== undefined && data.title !== existingTask.title) {
+      updateData.title = data.title;
+      changes.title = { from: existingTask.title, to: data.title };
+    }
+    if (data.description !== undefined && data.description !== existingTask.description) {
+      updateData.description = data.description;
+      changes.description = { from: existingTask.description, to: data.description };
+    }
+    if (data.priority !== undefined && data.priority !== existingTask.priority) {
+      updateData.priority = data.priority;
+      changes.priority = { from: existingTask.priority, to: data.priority };
+    }
+    if (data.dueDate !== undefined) {
+      updateData.dueDate = data.dueDate;
+      if (data.dueDate !== existingTask.dueDate) {
+        changes.dueDate = { from: existingTask.dueDate, to: data.dueDate };
+      }
+    }
+
+    const [task] = await db
+      .update(tasks)
+      .set(updateData)
+      .where(eq(tasks.id, taskId))
+      .returning();
+
+    // Log activity
+    if (Object.keys(changes).length > 0) {
+      await logActivity(
+        existingTask.workspaceId,
+        user.id,
+        "updated",
+        "task",
+        taskId,
+        taskId,
+        changes
+      );
+    }
+
+    // Sync to Jira if task is linked
+    if (existingTask.metadata && Object.keys(changes).length > 0) {
+      try {
+        const metadata = JSON.parse(existingTask.metadata as string);
+        if (metadata.jira?.issueKey) {
+          const { syncTaskToJira } = await import("./jira");
+          syncTaskToJira(taskId).catch(console.error);
+        }
+      } catch {
+        // Ignore parse errors
+      }
+    }
+
+    // Invalidate caches
+    revalidateTag(CACHE_TAGS.tasks(existingTask.workspaceId));
+    revalidateTag(CACHE_TAGS.task(taskId));
+    revalidateTag(CACHE_TAGS.activity(existingTask.workspaceId));
+    revalidatePath(`/app/${existingTask.workspaceId}`);
+
+    return { success: true, task };
+  } catch (error) {
+    console.error("Error updating task fields:", error);
     return { success: false, error: "Failed to update task" };
   }
 };

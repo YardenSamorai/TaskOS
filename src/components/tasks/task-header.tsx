@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -12,9 +12,13 @@ import {
   Edit,
   Copy,
   ExternalLink,
+  Check,
+  X,
+  Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,7 +37,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { deleteTask } from "@/lib/actions/task";
+import { deleteTask, updateTaskFields } from "@/lib/actions/task";
 import { taskKeys } from "@/lib/hooks/use-tasks";
 import type { Task } from "@/lib/db/schema";
 
@@ -65,9 +69,56 @@ const statusColors: Record<string, string> = {
 export const TaskHeader = ({ task, locale, workspaceId }: TaskHeaderProps) => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [editedTitle, setEditedTitle] = useState(task.title);
+  const [savingTitle, setSavingTitle] = useState(false);
+  const titleInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const queryClient = useQueryClient();
   const t = useTranslations("tasks");
+
+  useEffect(() => {
+    if (editingTitle && titleInputRef.current) {
+      titleInputRef.current.focus();
+      titleInputRef.current.select();
+    }
+  }, [editingTitle]);
+
+  const handleSaveTitle = async () => {
+    if (!editedTitle.trim() || editedTitle === task.title) {
+      setEditingTitle(false);
+      setEditedTitle(task.title);
+      return;
+    }
+
+    setSavingTitle(true);
+    try {
+      const result = await updateTaskFields(task.id, { title: editedTitle.trim() });
+      if (result.success) {
+        toast.success("Title updated");
+        await queryClient.invalidateQueries({ queryKey: taskKeys.all });
+        router.refresh();
+      } else {
+        toast.error(result.error || "Failed to update title");
+        setEditedTitle(task.title);
+      }
+    } catch {
+      toast.error("Something went wrong");
+      setEditedTitle(task.title);
+    } finally {
+      setSavingTitle(false);
+      setEditingTitle(false);
+    }
+  };
+
+  const handleTitleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleSaveTitle();
+    } else if (e.key === "Escape") {
+      setEditingTitle(false);
+      setEditedTitle(task.title);
+    }
+  };
 
   const handleDelete = async () => {
     setDeleting(true);
@@ -113,7 +164,50 @@ export const TaskHeader = ({ task, locale, workspaceId }: TaskHeaderProps) => {
 
           {/* Title & badges */}
           <div className="space-y-3">
-            <h1 className="text-2xl md:text-3xl font-bold">{task.title}</h1>
+            {editingTitle ? (
+              <div className="flex items-center gap-2">
+                <Input
+                  ref={titleInputRef}
+                  value={editedTitle}
+                  onChange={(e) => setEditedTitle(e.target.value)}
+                  onKeyDown={handleTitleKeyDown}
+                  onBlur={handleSaveTitle}
+                  disabled={savingTitle}
+                  className="text-2xl md:text-3xl font-bold h-auto py-1 px-2"
+                />
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={handleSaveTitle}
+                  disabled={savingTitle}
+                >
+                  <Check className="w-4 h-4 text-green-500" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => {
+                    setEditingTitle(false);
+                    setEditedTitle(task.title);
+                  }}
+                  disabled={savingTitle}
+                >
+                  <X className="w-4 h-4 text-red-500" />
+                </Button>
+              </div>
+            ) : (
+              <div className="group flex items-center gap-2">
+                <h1 className="text-2xl md:text-3xl font-bold">{task.title}</h1>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={() => setEditingTitle(true)}
+                >
+                  <Pencil className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
             <div className="flex items-center gap-2 flex-wrap">
               <div className="flex items-center gap-2">
                 <div className={`w-2.5 h-2.5 rounded-full ${statusColors[task.status]}`} />
