@@ -20,6 +20,7 @@ import { updateTask, addAssignee, removeAssignee } from "@/lib/actions/task";
 import type { Task, User as UserType, WorkspaceMember } from "@/lib/db/schema";
 import { TaskGitHubActivity } from "@/components/github/task-github-activity";
 import { CreateIssueButton } from "@/components/github/create-issue-button";
+import { CreateJiraIssueButton } from "@/components/jira/create-jira-issue-button";
 
 interface TaskWithRelations extends Task {
   assignees: { id: string; userId: string; user: UserType }[];
@@ -269,16 +270,22 @@ export const TaskDetails = ({ task, members, workspaceId }: TaskDetailsProps) =>
           </div>
         )}
 
-        {/* GitHub Integration */}
+        {/* Integrations */}
         <div>
           <h4 className="text-sm font-medium text-muted-foreground mb-2">
-            GitHub
+            Integrations
           </h4>
-          <CreateIssueButton
-            taskId={task.id}
-            workspaceId={workspaceId}
-            taskTitle={task.title}
-          />
+          <div className="flex flex-wrap gap-2">
+            <CreateIssueButton
+              taskId={task.id}
+              workspaceId={workspaceId}
+              taskTitle={task.title}
+            />
+            <CreateJiraIssueButton
+              taskId={task.id}
+              taskTitle={task.title}
+            />
+          </div>
         </div>
 
         {/* GitHub Activity */}

@@ -26,9 +26,11 @@ import { RemindersCard } from "@/components/dashboard/reminders-card";
 import { TodosCard } from "@/components/dashboard/todos-card";
 import { GoalsCard } from "@/components/dashboard/goals-card";
 import { GitHubActivityCard } from "@/components/dashboard/github-activity-card";
+import { JiraActivityCard } from "@/components/dashboard/jira-activity-card";
 import { GitHubOnboardingDialog } from "@/components/github/github-onboarding-dialog";
 import { RepositoriesDialog } from "@/components/github/repositories-dialog";
 import { JiraOnboardingDialog } from "@/components/jira/jira-onboarding-dialog";
+import { JiraProjectsDialog } from "@/components/jira/jira-projects-dialog";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
@@ -48,6 +50,8 @@ const DashboardPage = () => {
   const [githubOnboardingOpen, setGithubOnboardingOpen] = useState(false);
   const [jiraOnboardingOpen, setJiraOnboardingOpen] = useState(false);
   const [repositoriesOpen, setRepositoriesOpen] = useState(false);
+  const [jiraProjectsOpen, setJiraProjectsOpen] = useState(false);
+  const [jiraRefreshKey, setJiraRefreshKey] = useState(0);
   const [mounted, setMounted] = useState(false);
   const [greeting, setGreeting] = useState("Hello");
   const [currentDate, setCurrentDate] = useState("");
@@ -190,6 +194,11 @@ const DashboardPage = () => {
             onOpenIntegrations={() => setIntegrationsOpen(true)}
             refreshKey={githubRefreshKey}
           />
+          <JiraActivityCard
+            workspaceId={workspaceId}
+            onOpenIntegrations={() => setIntegrationsOpen(true)}
+            refreshKey={jiraRefreshKey}
+          />
           <RemindersCard />
           <TodosCard />
         </div>
@@ -292,9 +301,15 @@ const DashboardPage = () => {
       <JiraOnboardingDialog
         open={jiraOnboardingOpen}
         onOpenChange={setJiraOnboardingOpen}
-        onLinkProject={() => {
-          // TODO: Open Jira projects dialog when ready
-          toast.info("Jira projects dialog coming soon!");
+        onLinkProject={() => setJiraProjectsOpen(true)}
+      />
+      <JiraProjectsDialog
+        open={jiraProjectsOpen}
+        onOpenChange={setJiraProjectsOpen}
+        workspaceId={workspaceId}
+        onSelectProject={() => {
+          setJiraProjectsOpen(false);
+          setJiraRefreshKey(k => k + 1);
         }}
       />
     </div>

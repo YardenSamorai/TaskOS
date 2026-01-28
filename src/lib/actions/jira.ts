@@ -1,0 +1,446 @@
+"use server";
+
+import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { integrations, tasks, activityLogs } from "@/lib/db/schema";
+import { eq, and } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import {
+  getJiraProjects,
+  getJiraIssues,
+  createJiraIssue,
+  updateJiraIssue,
+  transitionJiraIssue,
+  getJiraIssueTransitions,
+  mapJiraStatusToTaskStatus,
+  mapJiraPriorityToTaskPriority,
+  type JiraProject,
+  type JiraIssue,
+} from "@/lib/jira";
+
+// Get Jira access token for current user
+export async function getJiraToken() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  const integration = await db.query.integrations.findFirst({
+    where: and(
+      eq(integrations.userId, session.user.id),
+      eq(integrations.provider, "jira"),
+      eq(integrations.isActive, true)
+    ),
+  });
+
+  if (!integration) {
+    return { success: false, error: "Jira not connected" };
+  }
+
+  // Parse metadata to get cloudId
+  let cloudId = integration.providerAccountId;
+  if (integration.metadata) {
+    try {
+      const metadata = JSON.parse(integration.metadata as string);
+      cloudId = metadata.cloudId || cloudId;
+    } catch {}
+  }
+
+  return {
+    success: true,
+    accessToken: integration.accessToken,
+    cloudId,
+    integration,
+  };
+}
+
+// Get user's Jira projects
+export async function getUserJiraProjects(): Promise<{
+  success: boolean;
+  projects?: JiraProject[];
+  error?: string;
+}> {
+  try {
+    const tokenResult = await getJiraToken();
+    if (!tokenResult.success || !tokenResult.accessToken || !tokenResult.cloudId) {
+      return { success: false, error: tokenResult.error || "Not connected" };
+    }
+
+    const projects = await getJiraProjects(
+      tokenResult.accessToken,
+      tokenResult.cloudId
+    );
+
+    return { success: true, projects };
+  } catch (error) {
+    console.error("Error fetching Jira projects:", error);
+    return { success: false, error: "Failed to fetch projects" };
+  }
+}
+
+// Get issues from a Jira project
+export async function getProjectIssues(
+  projectKey: string,
+  options?: { status?: string; maxResults?: number }
+): Promise<{
+  success: boolean;
+  issues?: JiraIssue[];
+  total?: number;
+  error?: string;
+}> {
+  try {
+    const tokenResult = await getJiraToken();
+    if (!tokenResult.success || !tokenResult.accessToken || !tokenResult.cloudId) {
+      return { success: false, error: tokenResult.error || "Not connected" };
+    }
+
+    const result = await getJiraIssues(
+      tokenResult.accessToken,
+      tokenResult.cloudId,
+      projectKey,
+      options
+    );
+
+    return { success: true, issues: result.issues, total: result.total };
+  } catch (error) {
+    console.error("Error fetching Jira issues:", error);
+    return { success: false, error: "Failed to fetch issues" };
+  }
+}
+
+// Import Jira issues as TaskOS tasks
+export async function importJiraIssuesAsTasks(data: {
+  workspaceId: string;
+  projectKey: string;
+  issueKeys: string[];
+}): Promise<{ success: boolean; imported?: number; error?: string }> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  try {
+    const tokenResult = await getJiraToken();
+    if (!tokenResult.success || !tokenResult.accessToken || !tokenResult.cloudId) {
+      return { success: false, error: tokenResult.error || "Not connected" };
+    }
+
+    let imported = 0;
+
+    for (const issueKey of data.issueKeys) {
+      // Fetch full issue details
+      const issuesResult = await getJiraIssues(
+        tokenResult.accessToken,
+        tokenResult.cloudId,
+        data.projectKey,
+        { jql: `key = ${issueKey}` }
+      );
+
+      const issue = issuesResult.issues[0];
+      if (!issue) continue;
+
+      // Map Jira status to TaskOS status
+      const status = mapJiraStatusToTaskStatus(
+        issue.fields.status.name,
+        issue.fields.status.statusCategory.key
+      );
+
+      // Map priority
+      const priority = mapJiraPriorityToTaskPriority(issue.fields.priority?.name);
+
+      // Extract description text
+      let description = "";
+      if (issue.fields.description?.content) {
+        description = extractTextFromADF(issue.fields.description);
+      }
+
+      // Create task
+      const [newTask] = await db.insert(tasks).values({
+        workspaceId: data.workspaceId,
+        title: issue.fields.summary,
+        description,
+        status: status as any,
+        priority: priority as any,
+        dueDate: issue.fields.duedate || null,
+        createdBy: session.user.id,
+        metadata: JSON.stringify({
+          jira: {
+            issueId: issue.id,
+            issueKey: issue.key,
+            projectKey: data.projectKey,
+            cloudId: tokenResult.cloudId,
+            url: `https://${tokenResult.integration?.providerUsername}.atlassian.net/browse/${issue.key}`,
+          },
+        }),
+      }).returning();
+
+      // Log activity
+      await db.insert(activityLogs).values({
+        workspaceId: data.workspaceId,
+        userId: session.user.id,
+        taskId: newTask.id,
+        action: "imported_from_jira",
+        entityType: "task",
+        entityId: newTask.id,
+        metadata: JSON.stringify({
+          jira: {
+            issueKey: issue.key,
+            projectKey: data.projectKey,
+            cloudId: tokenResult.cloudId,
+          },
+        }),
+      });
+
+      imported++;
+    }
+
+    revalidatePath(`/app/${data.workspaceId}`);
+    return { success: true, imported };
+  } catch (error) {
+    console.error("Error importing Jira issues:", error);
+    return { success: false, error: "Failed to import issues" };
+  }
+}
+
+// Create a Jira issue from a TaskOS task
+export async function createJiraIssueFromTask(data: {
+  taskId: string;
+  projectKey: string;
+}): Promise<{
+  success: boolean;
+  issue?: { key: string; url: string };
+  error?: string;
+}> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  try {
+    const tokenResult = await getJiraToken();
+    if (!tokenResult.success || !tokenResult.accessToken || !tokenResult.cloudId) {
+      return { success: false, error: tokenResult.error || "Not connected" };
+    }
+
+    // Get the task
+    const task = await db.query.tasks.findFirst({
+      where: eq(tasks.id, data.taskId),
+    });
+
+    if (!task) {
+      return { success: false, error: "Task not found" };
+    }
+
+    // Map TaskOS priority to Jira priority
+    const priorityMap: Record<string, string> = {
+      urgent: "Highest",
+      high: "High",
+      medium: "Medium",
+      low: "Low",
+    };
+
+    // Create the issue
+    const result = await createJiraIssue(
+      tokenResult.accessToken,
+      tokenResult.cloudId,
+      data.projectKey,
+      {
+        summary: task.title,
+        description: task.description || undefined,
+        priority: priorityMap[task.priority] || "Medium",
+        issueType: "Task",
+      }
+    );
+
+    const issueUrl = `https://${tokenResult.integration?.providerUsername}.atlassian.net/browse/${result.key}`;
+
+    // Update task with Jira metadata
+    await db.update(tasks).set({
+      metadata: JSON.stringify({
+        jira: {
+          issueId: result.id,
+          issueKey: result.key,
+          projectKey: data.projectKey,
+          cloudId: tokenResult.cloudId,
+          url: issueUrl,
+        },
+      }),
+      updatedAt: new Date(),
+    }).where(eq(tasks.id, data.taskId));
+
+    // Log activity
+    await db.insert(activityLogs).values({
+      workspaceId: task.workspaceId,
+      userId: session.user.id,
+      taskId: task.id,
+      action: "created_jira_issue",
+      entityType: "task",
+      entityId: task.id,
+      metadata: JSON.stringify({
+        jira: {
+          issueKey: result.key,
+          projectKey: data.projectKey,
+          url: issueUrl,
+        },
+      }),
+    });
+
+    revalidatePath(`/app/${task.workspaceId}`);
+    return {
+      success: true,
+      issue: { key: result.key, url: issueUrl },
+    };
+  } catch (error) {
+    console.error("Error creating Jira issue:", error);
+    return { success: false, error: "Failed to create Jira issue" };
+  }
+}
+
+// Sync task status to Jira
+export async function syncTaskToJira(taskId: string): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  try {
+    const tokenResult = await getJiraToken();
+    if (!tokenResult.success || !tokenResult.accessToken || !tokenResult.cloudId) {
+      return { success: false, error: tokenResult.error || "Not connected" };
+    }
+
+    // Get the task
+    const task = await db.query.tasks.findFirst({
+      where: eq(tasks.id, taskId),
+    });
+
+    if (!task || !task.metadata) {
+      return { success: false, error: "Task not found or not linked to Jira" };
+    }
+
+    let jiraInfo;
+    try {
+      const metadata = JSON.parse(task.metadata as string);
+      jiraInfo = metadata.jira;
+    } catch {
+      return { success: false, error: "Invalid task metadata" };
+    }
+
+    if (!jiraInfo?.issueKey) {
+      return { success: false, error: "Task not linked to Jira" };
+    }
+
+    // Get available transitions
+    const transitions = await getJiraIssueTransitions(
+      tokenResult.accessToken,
+      tokenResult.cloudId,
+      jiraInfo.issueKey
+    );
+
+    // Find the appropriate transition based on task status
+    let targetTransition;
+    if (task.status === "done") {
+      targetTransition = transitions.find(
+        (t) =>
+          t.to.name.toLowerCase().includes("done") ||
+          t.to.name.toLowerCase().includes("closed") ||
+          t.to.name.toLowerCase().includes("resolved")
+      );
+    } else if (task.status === "in_progress") {
+      targetTransition = transitions.find(
+        (t) =>
+          t.to.name.toLowerCase().includes("progress") ||
+          t.to.name.toLowerCase().includes("start")
+      );
+    } else if (task.status === "todo") {
+      targetTransition = transitions.find(
+        (t) =>
+          t.to.name.toLowerCase().includes("to do") ||
+          t.to.name.toLowerCase().includes("open") ||
+          t.to.name.toLowerCase().includes("reopen")
+      );
+    }
+
+    if (targetTransition) {
+      await transitionJiraIssue(
+        tokenResult.accessToken,
+        tokenResult.cloudId,
+        jiraInfo.issueKey,
+        targetTransition.id
+      );
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error syncing to Jira:", error);
+    return { success: false, error: "Failed to sync to Jira" };
+  }
+}
+
+// Get Jira info for a task
+export async function getTaskJiraInfo(taskId: string): Promise<{
+  success: boolean;
+  jiraInfo?: {
+    issueKey: string;
+    issueUrl: string;
+    projectKey: string;
+  };
+  error?: string;
+}> {
+  try {
+    const task = await db.query.tasks.findFirst({
+      where: eq(tasks.id, taskId),
+    });
+
+    if (!task?.metadata) {
+      return { success: false };
+    }
+
+    try {
+      const metadata = JSON.parse(task.metadata as string);
+      if (metadata.jira) {
+        return {
+          success: true,
+          jiraInfo: {
+            issueKey: metadata.jira.issueKey,
+            issueUrl: metadata.jira.url,
+            projectKey: metadata.jira.projectKey,
+          },
+        };
+      }
+    } catch {}
+
+    return { success: false };
+  } catch (error) {
+    console.error("Error getting Jira info:", error);
+    return { success: false, error: "Failed to get Jira info" };
+  }
+}
+
+// Helper to extract text from Atlassian Document Format
+function extractTextFromADF(adf: any): string {
+  if (!adf?.content) return "";
+
+  let text = "";
+
+  function traverse(nodes: any[]) {
+    for (const node of nodes) {
+      if (node.type === "text") {
+        text += node.text;
+      } else if (node.type === "hardBreak") {
+        text += "\n";
+      } else if (node.content) {
+        traverse(node.content);
+      }
+      if (node.type === "paragraph") {
+        text += "\n";
+      }
+    }
+  }
+
+  traverse(adf.content);
+  return text.trim();
+}
