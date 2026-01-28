@@ -308,24 +308,26 @@ export const AppShell = ({ children, locale }: AppShellProps) => {
 
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-6 overflow-y-auto">
-            {/* Main nav */}
-            <div className="space-y-1">
-              {mainNavItems.map((item) => {
-                const href = getHref(item);
-                return (
-                  <NavLink
-                    key={item.labelKey}
-                    item={item}
-                    active={isActive(href)}
-                    href={href}
-                    label={navLabels[item.labelKey as keyof typeof navLabels]}
-                    onClick={() => navigateTo(href)}
-                  />
-                );
-              })}
-            </div>
+            {/* Show main nav only when NOT in workspace */}
+            {!isInWorkspace && (
+              <div className="space-y-1">
+                {mainNavItems.map((item) => {
+                  const href = getHref(item);
+                  return (
+                    <NavLink
+                      key={item.labelKey}
+                      item={item}
+                      active={isActive(href)}
+                      href={href}
+                      label={navLabels[item.labelKey as keyof typeof navLabels]}
+                      onClick={() => navigateTo(href)}
+                    />
+                  );
+                })}
+              </div>
+            )}
 
-            {/* Workspace nav */}
+            {/* Workspace nav - show when IN workspace */}
             {isInWorkspace && (
               <div className="space-y-1">
                 {workspaceNavItems.map((item) => {
