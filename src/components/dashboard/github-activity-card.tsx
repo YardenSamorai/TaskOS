@@ -35,6 +35,7 @@ import type { GitHubCommit, GitHubPullRequest } from "@/lib/github";
 interface GitHubActivityCardProps {
   workspaceId: string;
   onOpenIntegrations?: () => void;
+  refreshKey?: number;
 }
 
 type ActivityItem = {
@@ -46,7 +47,8 @@ type ActivityItem = {
 
 export function GitHubActivityCard({ 
   workspaceId, 
-  onOpenIntegrations 
+  onOpenIntegrations,
+  refreshKey = 0,
 }: GitHubActivityCardProps) {
   const [loading, setLoading] = useState(true);
   const [connected, setConnected] = useState(false);
@@ -57,7 +59,7 @@ export function GitHubActivityCard({
 
   useEffect(() => {
     checkConnectionAndFetch();
-  }, [workspaceId]);
+  }, [workspaceId, refreshKey]);
 
   const checkConnectionAndFetch = async () => {
     setLoading(true);

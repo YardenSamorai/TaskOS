@@ -49,6 +49,7 @@ const DashboardPage = () => {
   const [mounted, setMounted] = useState(false);
   const [greeting, setGreeting] = useState("Hello");
   const [currentDate, setCurrentDate] = useState("");
+  const [githubRefreshKey, setGithubRefreshKey] = useState(0);
 
   const workspace = data?.workspace;
   const members = data?.members || [];
@@ -179,6 +180,7 @@ const DashboardPage = () => {
           <GitHubActivityCard 
             workspaceId={workspaceId}
             onOpenIntegrations={() => setIntegrationsOpen(true)}
+            refreshKey={githubRefreshKey}
           />
           <RemindersCard />
           <TodosCard />
@@ -276,6 +278,8 @@ const DashboardPage = () => {
         open={repositoriesOpen}
         onOpenChange={setRepositoriesOpen}
         workspaceId={workspaceId}
+        onLinkSuccess={() => setGithubRefreshKey(k => k + 1)}
+        onUnlinkSuccess={() => setGithubRefreshKey(k => k + 1)}
       />
     </div>
   );
