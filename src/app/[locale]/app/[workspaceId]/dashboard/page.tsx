@@ -28,6 +28,7 @@ import { GoalsCard } from "@/components/dashboard/goals-card";
 import { GitHubActivityCard } from "@/components/dashboard/github-activity-card";
 import { GitHubOnboardingDialog } from "@/components/github/github-onboarding-dialog";
 import { RepositoriesDialog } from "@/components/github/repositories-dialog";
+import { JiraOnboardingDialog } from "@/components/jira/jira-onboarding-dialog";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
@@ -45,6 +46,7 @@ const DashboardPage = () => {
   const [createTaskOpen, setCreateTaskOpen] = useState(false);
   const [integrationsOpen, setIntegrationsOpen] = useState(false);
   const [githubOnboardingOpen, setGithubOnboardingOpen] = useState(false);
+  const [jiraOnboardingOpen, setJiraOnboardingOpen] = useState(false);
   const [repositoriesOpen, setRepositoriesOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [greeting, setGreeting] = useState("Hello");
@@ -85,19 +87,25 @@ const DashboardPage = () => {
     setCurrentDate(format(new Date(), "EEE, d MMM"));
   }, []);
 
-  // Check for new GitHub connection
+  // Check for new integration connection
   useEffect(() => {
     const integration = searchParams.get("integration");
     const status = searchParams.get("status");
     const isNew = searchParams.get("new");
 
-    if (integration === "github" && status === "connected") {
-      if (isNew === "true") {
-        // First time connection - show onboarding
-        setGithubOnboardingOpen(true);
-      } else {
-        // Reconnection - just show toast
-        toast.success("GitHub reconnected successfully!");
+    if (status === "connected") {
+      if (integration === "github") {
+        if (isNew === "true") {
+          setGithubOnboardingOpen(true);
+        } else {
+          toast.success("GitHub reconnected successfully!");
+        }
+      } else if (integration === "jira") {
+        if (isNew === "true") {
+          setJiraOnboardingOpen(true);
+        } else {
+          toast.success("Jira reconnected successfully!");
+        }
       }
       
       // Clean URL
@@ -280,6 +288,14 @@ const DashboardPage = () => {
         workspaceId={workspaceId}
         onLinkSuccess={() => setGithubRefreshKey(k => k + 1)}
         onUnlinkSuccess={() => setGithubRefreshKey(k => k + 1)}
+      />
+      <JiraOnboardingDialog
+        open={jiraOnboardingOpen}
+        onOpenChange={setJiraOnboardingOpen}
+        onLinkProject={() => {
+          // TODO: Open Jira projects dialog when ready
+          toast.info("Jira projects dialog coming soon!");
+        }}
       />
     </div>
   );

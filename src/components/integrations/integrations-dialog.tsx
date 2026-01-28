@@ -55,6 +55,13 @@ interface IntegrationProvider {
   connectUrl?: string;
 }
 
+// Jira icon component
+const JiraIcon = () => (
+  <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M11.571 11.513H0a5.218 5.218 0 0 0 5.232 5.215h2.13v2.057A5.215 5.215 0 0 0 12.575 24V12.518a1.005 1.005 0 0 0-1.005-1.005zm5.723-5.756H5.736a5.215 5.215 0 0 0 5.215 5.214h2.129v2.058a5.218 5.218 0 0 0 5.215 5.214V6.758a1.001 1.001 0 0 0-1.001-1.001zM23.013 0H11.455a5.215 5.215 0 0 0 5.215 5.215h2.129v2.057A5.215 5.215 0 0 0 24 12.483V1.005A1.005 1.005 0 0 0 23.013 0z"/>
+  </svg>
+);
+
 const providers: IntegrationProvider[] = [
   {
     id: "github",
@@ -63,6 +70,15 @@ const providers: IntegrationProvider[] = [
     icon: <Github className="w-6 h-6" />,
     color: "text-[#24292e] dark:text-white",
     bgColor: "bg-[#24292e]/10 dark:bg-white/10",
+    available: true,
+  },
+  {
+    id: "jira",
+    name: "Jira",
+    description: "Import and sync Jira issues with TaskOS tasks for seamless project management",
+    icon: <JiraIcon />,
+    color: "text-[#0052CC]",
+    bgColor: "bg-[#0052CC]/10",
     available: true,
   },
   {
@@ -165,13 +181,20 @@ export const IntegrationsDialog = ({
 
     // For GitHub, redirect to our API route which handles the OAuth flow
     if (provider.id === "github") {
-      // Build the API route URL with optional workspace ID
       const apiUrl = new URL("/api/integrations/github", window.location.origin);
       if (workspaceId) {
         apiUrl.searchParams.set("workspaceId", workspaceId);
       }
-      
-      // Redirect to our API route which will handle OAuth securely
+      window.location.href = apiUrl.toString();
+      return;
+    }
+
+    // For Jira, redirect to our API route which handles the OAuth flow
+    if (provider.id === "jira") {
+      const apiUrl = new URL("/api/integrations/jira", window.location.origin);
+      if (workspaceId) {
+        apiUrl.searchParams.set("workspaceId", workspaceId);
+      }
       window.location.href = apiUrl.toString();
       return;
     }
