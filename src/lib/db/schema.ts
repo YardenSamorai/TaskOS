@@ -230,6 +230,7 @@ export const tasks = pgTable(
       .notNull()
       .references(() => users.id),
     updatedBy: uuid("updated_by").references(() => users.id),
+    metadata: text("metadata"), // JSON string for integration data (GitHub, Jira, etc.)
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
