@@ -241,8 +241,10 @@ export async function importJiraIssuesAsTasks(data: {
         summary: issue.fields.summary,
         priority: issue.fields.priority?.name,
         duedate: issue.fields.duedate,
+        duedateType: typeof issue.fields.duedate,
         hasDescription: !!issue.fields.description,
         descriptionType: typeof issue.fields.description,
+        allFieldKeys: Object.keys(issue.fields),
       });
 
       // Extract description text
@@ -256,6 +258,20 @@ export async function importJiraIssuesAsTasks(data: {
       }
       
       console.log(`[Jira Import] Extracted description (${description.length} chars):`, description.substring(0, 100));
+      
+      const taskData = {
+        workspaceId: data.workspaceId,
+        title: issue.fields.summary,
+        description: description || null,
+        status: status as any,
+        priority: priority as any,
+        dueDate: issue.fields.duedate || null,
+        createdBy: session.user.id,
+      };
+      console.log(`[Jira Import] Creating task with data:`, {
+        ...taskData,
+        descriptionLength: taskData.description?.length || 0,
+      });
 
       // Create task
       const [newTask] = await db.insert(tasks).values({
