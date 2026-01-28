@@ -215,8 +215,9 @@ export function GitHubActivityCard({
               className="h-8 w-8 p-0"
               onClick={checkConnectionAndFetch}
               title="Refresh"
+              disabled={loading}
             >
-              <RefreshCw className="w-4 h-4" />
+              <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
             </Button>
           </div>
         </div>
@@ -225,7 +226,11 @@ export function GitHubActivityCard({
         </p>
       </CardHeader>
       <CardContent>
-        {activity.length === 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : activity.length === 0 ? (
           <div className="text-center py-6 text-muted-foreground text-sm">
             <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
             <p>No recent activity</p>
@@ -245,6 +250,7 @@ export function GitHubActivityCard({
         open={reposDialogOpen}
         onOpenChange={setReposDialogOpen}
         workspaceId={workspaceId}
+        onRepositoryChange={checkConnectionAndFetch}
       />
       <ImportIssuesDialog
         open={importDialogOpen}
