@@ -141,15 +141,22 @@ export async function getJiraIssues(
   const url = `${JIRA_API_BASE}/${cloudId}/rest/api/3/search/jql`;
   console.log("[Jira API] Calling:", url);
   
-  // Use EXACTLY the same fields as debug endpoint that works
-  const requestBody = {
+  // Use EXACTLY the same format as debug endpoint that works
+  // Don't include startAt if it's 0 (default)
+  const requestBody: Record<string, unknown> = {
     jql: query,
     maxResults,
-    startAt,
     fields: ["summary", "status", "issuetype"],
   };
   
+  // Only add startAt if it's not 0
+  if (startAt > 0) {
+    requestBody.startAt = startAt;
+  }
+  
   console.log("[Jira API] Request body:", JSON.stringify(requestBody));
+  console.log("[Jira API] CloudId:", cloudId);
+  console.log("[Jira API] Token length:", accessToken?.length);
   
   const response = await fetch(url, {
     method: "POST",
