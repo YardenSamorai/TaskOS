@@ -8,6 +8,7 @@ import { revalidatePath } from "next/cache";
 import {
   getJiraProjects,
   getJiraIssues,
+  getJiraIssue,
   createJiraIssue,
   updateJiraIssue,
   transitionJiraIssue,
@@ -213,15 +214,18 @@ export async function importJiraIssuesAsTasks(data: {
     let imported = 0;
 
     for (const issueKey of data.issueKeys) {
-      // Fetch full issue details
-      const issuesResult = await getJiraIssues(
-        tokenResult.accessToken,
-        tokenResult.cloudId,
-        data.projectKey,
-        { jql: `key = ${issueKey}` }
-      );
-
-      const issue = issuesResult.issues[0];
+      // Fetch full issue details using getJiraIssue (gets ALL fields)
+      let issue;
+      try {
+        issue = await getJiraIssue(
+          tokenResult.accessToken,
+          tokenResult.cloudId,
+          issueKey
+        );
+      } catch (e) {
+        console.error(`Failed to fetch issue ${issueKey}:`, e);
+        continue;
+      }
       if (!issue) continue;
 
       // Map Jira status to TaskOS status
@@ -232,18 +236,32 @@ export async function importJiraIssuesAsTasks(data: {
 
       // Map priority
       const priority = mapJiraPriorityToTaskPriority(issue.fields.priority?.name);
+      
+      console.log(`[Jira Import] Issue ${issueKey}:`, {
+        summary: issue.fields.summary,
+        priority: issue.fields.priority?.name,
+        duedate: issue.fields.duedate,
+        hasDescription: !!issue.fields.description,
+        descriptionType: typeof issue.fields.description,
+      });
 
       // Extract description text
       let description = "";
-      if (issue.fields.description?.content) {
-        description = extractTextFromADF(issue.fields.description);
+      if (issue.fields.description) {
+        if (typeof issue.fields.description === "string") {
+          description = issue.fields.description;
+        } else if (issue.fields.description.content) {
+          description = extractTextFromADF(issue.fields.description);
+        }
       }
+      
+      console.log(`[Jira Import] Extracted description (${description.length} chars):`, description.substring(0, 100));
 
       // Create task
       const [newTask] = await db.insert(tasks).values({
         workspaceId: data.workspaceId,
         title: issue.fields.summary,
-        description,
+        description: description || null,
         status: status as any,
         priority: priority as any,
         dueDate: issue.fields.duedate || null,
@@ -279,7 +297,12 @@ export async function importJiraIssuesAsTasks(data: {
       imported++;
     }
 
+    // Revalidate all relevant paths to ensure UI updates
     revalidatePath(`/app/${data.workspaceId}`);
+    revalidatePath(`/app/${data.workspaceId}/tasks`);
+    revalidatePath(`/app/${data.workspaceId}/board`);
+    revalidatePath(`/app/${data.workspaceId}/dashboard`);
+    
     return { success: true, imported };
   } catch (error) {
     console.error("Error importing Jira issues:", error);
