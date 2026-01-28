@@ -181,40 +181,68 @@ const DashboardPage = () => {
       {/* Main Grid Layout */}
       <div className="grid lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Left Column */}
-        <div className="space-y-4 sm:space-y-6">
-          <ProjectsCard 
-            locale={locale} 
-            currentWorkspaceId={workspaceId}
-            onCreateWorkspace={() => setCreateWorkspaceOpen(true)} 
-          />
-          <CalendarCard 
-            locale={locale} 
-            workspaceId={workspaceId} 
-            tasks={tasks as any[]} 
-          />
-          <GitHubActivityCard 
-            workspaceId={workspaceId}
-            onOpenIntegrations={() => setIntegrationsOpen(true)}
-            refreshKey={githubRefreshKey}
-          />
-          <JiraActivityCard
-            workspaceId={workspaceId}
-            onOpenIntegrations={() => setIntegrationsOpen(true)}
-            refreshKey={jiraRefreshKey}
-          />
-          <RemindersCard />
-          <TodosCard />
+        <div className="flex flex-col gap-4 sm:gap-6">
+          {/* Projects - order 1 on mobile, stays first */}
+          <div className="order-1">
+            <ProjectsCard 
+              locale={locale} 
+              currentWorkspaceId={workspaceId}
+              onCreateWorkspace={() => setCreateWorkspaceOpen(true)} 
+            />
+          </div>
+          {/* My Tasks - order 2 on mobile (before Calendar), hidden on lg (shown in right column) */}
+          <div className="order-2 lg:hidden">
+            <MyTasksCard 
+              locale={locale} 
+              workspaceId={workspaceId} 
+              tasks={myTasks as any[]} 
+              onCreateTask={() => setCreateTaskOpen(true)}
+              onRefresh={() => refetchTasks()}
+            />
+          </div>
+          {/* Calendar - order 3 on mobile */}
+          <div className="order-3">
+            <CalendarCard 
+              locale={locale} 
+              workspaceId={workspaceId} 
+              tasks={tasks as any[]} 
+            />
+          </div>
+          {/* Rest of left column */}
+          <div className="order-4">
+            <GitHubActivityCard 
+              workspaceId={workspaceId}
+              onOpenIntegrations={() => setIntegrationsOpen(true)}
+              refreshKey={githubRefreshKey}
+            />
+          </div>
+          <div className="order-5">
+            <JiraActivityCard
+              workspaceId={workspaceId}
+              onOpenIntegrations={() => setIntegrationsOpen(true)}
+              refreshKey={jiraRefreshKey}
+            />
+          </div>
+          <div className="order-6">
+            <RemindersCard />
+          </div>
+          <div className="order-7">
+            <TodosCard />
+          </div>
         </div>
 
         {/* Right Column */}
         <div className="space-y-4 sm:space-y-6">
-          <MyTasksCard 
-            locale={locale} 
-            workspaceId={workspaceId} 
-            tasks={myTasks as any[]} 
-            onCreateTask={() => setCreateTaskOpen(true)}
-            onRefresh={() => refetchTasks()}
-          />
+          {/* My Tasks - hidden on mobile (shown in left column), visible on lg */}
+          <div className="hidden lg:block">
+            <MyTasksCard 
+              locale={locale} 
+              workspaceId={workspaceId} 
+              tasks={myTasks as any[]} 
+              onCreateTask={() => setCreateTaskOpen(true)}
+              onRefresh={() => refetchTasks()}
+            />
+          </div>
           <GoalsCard workspaceId={workspaceId} />
 
           {/* Quick Stats Summary */}
