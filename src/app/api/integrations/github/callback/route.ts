@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { integrations } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth/auth-options";
+import { auth } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   try {
@@ -27,7 +26,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get current user session
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.redirect(
         new URL(`/en/sign-in?callbackUrl=/en/app/dashboard`, request.url)
