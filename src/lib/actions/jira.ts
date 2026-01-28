@@ -119,8 +119,14 @@ export async function getJiraToken() {
     try {
       const metadata = JSON.parse(integration.metadata as string);
       cloudId = metadata.cloudId || cloudId;
-    } catch {}
+      console.log("[Jira] Metadata:", metadata);
+    } catch (e) {
+      console.error("[Jira] Error parsing metadata:", e);
+    }
   }
+
+  console.log("[Jira] Using cloudId:", cloudId);
+  console.log("[Jira] Provider Account ID:", integration.providerAccountId);
 
   return {
     success: true,

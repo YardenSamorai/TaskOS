@@ -124,6 +124,8 @@ export async function GET(request: NextRequest) {
     }
 
     console.log("[Jira Callback] Primary site:", primaryResource.name);
+    console.log("[Jira Callback] Cloud ID:", primaryResource.id);
+    console.log("[Jira Callback] Full resource:", JSON.stringify(primaryResource));
 
     // Check if integration already exists
     const existingIntegration = await db.query.integrations.findFirst({

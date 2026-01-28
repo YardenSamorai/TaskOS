@@ -2,6 +2,32 @@
 
 const JIRA_API_BASE = "https://api.atlassian.com/ex/jira";
 
+// Helper to make authenticated Jira API requests
+async function jiraFetch(cloudId: string, path: string, accessToken: string, options?: RequestInit) {
+  const url = `${JIRA_API_BASE}/${cloudId}${path}`;
+  console.log("[Jira API] Calling:", url);
+  
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      ...options?.headers,
+    },
+  });
+  
+  console.log("[Jira API] Response status:", response.status);
+  
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("[Jira API] Error:", response.status, errorText);
+    throw new Error(`Jira API error: ${response.status} ${response.statusText}`);
+  }
+  
+  return response.json();
+}
+
 export interface JiraProject {
   id: string;
   key: string;
@@ -80,21 +106,11 @@ export async function getJiraProjects(
   accessToken: string,
   cloudId: string
 ): Promise<JiraProject[]> {
-  const response = await fetch(
-    `${JIRA_API_BASE}/${cloudId}/rest/api/3/project/search`,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        Accept: "application/json",
-      },
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch projects: ${response.statusText}`);
-  }
-
-  const data = await response.json();
+  console.log("[Jira] Fetching projects for cloudId:", cloudId);
+  
+  const data = await jiraFetch(cloudId, "/rest/api/3/project/search", accessToken);
+  console.log("[Jira] Found projects:", data.values?.length || 0);
+  
   return data.values || [];
 }
 
@@ -127,24 +143,10 @@ export async function getJiraIssues(
     fields: "summary,description,status,priority,issuetype,assignee,reporter,created,updated,duedate,labels",
   });
 
-  const url = `${JIRA_API_BASE}/${cloudId}/rest/api/3/search?${params}`;
-  console.log("[Jira API] Request URL:", url);
+  console.log("[Jira] Fetching issues for cloudId:", cloudId, "project:", projectKey);
   
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      Accept: "application/json",
-    },
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("[Jira API] Error response:", response.status, errorText);
-    throw new Error(`Failed to fetch issues: ${response.status} ${response.statusText}`);
-  }
-
-  const data = await response.json();
-  console.log("[Jira API] Found", data.total, "issues");
+  const data = await jiraFetch(cloudId, `/rest/api/3/search?${params}`, accessToken);
+  console.log("[Jira] Found", data.total, "issues");
   
   return {
     issues: data.issues || [],
