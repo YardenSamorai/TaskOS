@@ -94,6 +94,8 @@ export async function getProjectIssues(
       return { success: false, error: tokenResult.error || "Not connected" };
     }
 
+    console.log("[Jira Action] Fetching issues for project:", projectKey);
+    
     const result = await getJiraIssues(
       tokenResult.accessToken,
       tokenResult.cloudId,
@@ -101,10 +103,11 @@ export async function getProjectIssues(
       options
     );
 
+    console.log("[Jira Action] Got", result.issues.length, "issues");
     return { success: true, issues: result.issues, total: result.total };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error fetching Jira issues:", error);
-    return { success: false, error: "Failed to fetch issues" };
+    return { success: false, error: error.message || "Failed to fetch issues" };
   }
 }
 

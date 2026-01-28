@@ -112,10 +112,13 @@ export async function getJiraIssues(
 ): Promise<{ issues: JiraIssue[]; total: number }> {
   const { maxResults = 50, startAt = 0, status, jql } = options || {};
 
-  let query = jql || `project = ${projectKey}`;
+  // Quote the project key in case it has special characters
+  let query = jql || `project = "${projectKey}"`;
   if (status && !jql) {
     query += ` AND status = "${status}"`;
   }
+  
+  console.log("[Jira API] Fetching issues with JQL:", query);
 
   const params = new URLSearchParams({
     jql: query,
@@ -124,21 +127,25 @@ export async function getJiraIssues(
     fields: "summary,description,status,priority,issuetype,assignee,reporter,created,updated,duedate,labels",
   });
 
-  const response = await fetch(
-    `${JIRA_API_BASE}/${cloudId}/rest/api/3/search?${params}`,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        Accept: "application/json",
-      },
-    }
-  );
+  const url = `${JIRA_API_BASE}/${cloudId}/rest/api/3/search?${params}`;
+  console.log("[Jira API] Request URL:", url);
+  
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: "application/json",
+    },
+  });
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch issues: ${response.statusText}`);
+    const errorText = await response.text();
+    console.error("[Jira API] Error response:", response.status, errorText);
+    throw new Error(`Failed to fetch issues: ${response.status} ${response.statusText}`);
   }
 
   const data = await response.json();
+  console.log("[Jira API] Found", data.total, "issues");
+  
   return {
     issues: data.issues || [],
     total: data.total || 0,
