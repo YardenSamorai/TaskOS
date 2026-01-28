@@ -718,6 +718,74 @@ export const todosRelations = relations(todos, ({ one }) => ({
   }),
 }));
 
+// ============== REMINDERS ==============
+export const reminders = pgTable("reminders", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 500 }).notNull(),
+  description: text("description"),
+  dueDate: date("due_date"),
+  dueTime: varchar("due_time", { length: 5 }), // HH:MM format
+  completed: boolean("completed").notNull().default(false),
+  linkedTaskId: uuid("linked_task_id").references(() => tasks.id, {
+    onDelete: "set null",
+  }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+export const remindersRelations = relations(reminders, ({ one }) => ({
+  user: one(users, {
+    fields: [reminders.userId],
+    references: [users.id],
+  }),
+  linkedTask: one(tasks, {
+    fields: [reminders.linkedTaskId],
+    references: [tasks.id],
+  }),
+}));
+
+// ============== GOALS ==============
+export const goals = pgTable("goals", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  workspaceId: uuid("workspace_id").references(() => workspaces.id, {
+    onDelete: "cascade",
+  }),
+  title: varchar("title", { length: 500 }).notNull(),
+  description: text("description"),
+  targetValue: integer("target_value").notNull().default(100),
+  currentValue: integer("current_value").notNull().default(0),
+  unit: varchar("unit", { length: 50 }), // e.g., "tasks", "%", "hours"
+  dueDate: date("due_date"),
+  completed: boolean("completed").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+export const goalsRelations = relations(goals, ({ one }) => ({
+  user: one(users, {
+    fields: [goals.userId],
+    references: [users.id],
+  }),
+  workspace: one(workspaces, {
+    fields: [goals.workspaceId],
+    references: [workspaces.id],
+  }),
+}));
+
 // Type exports
 export type Todo = typeof todos.$inferSelect;
 export type NewTodo = typeof todos.$inferInsert;
@@ -743,6 +811,10 @@ export type Notification = typeof notifications.$inferSelect;
 export type Template = typeof templates.$inferSelect;
 export type UserNotificationPreferences = typeof userNotificationPreferences.$inferSelect;
 export type NewUserNotificationPreferences = typeof userNotificationPreferences.$inferInsert;
+export type Reminder = typeof reminders.$inferSelect;
+export type NewReminder = typeof reminders.$inferInsert;
+export type Goal = typeof goals.$inferSelect;
+export type NewGoal = typeof goals.$inferInsert;
 export type WorkspaceRole = "owner" | "admin" | "member" | "viewer";
 export type TaskStatus = "backlog" | "todo" | "in_progress" | "review" | "done";
 export type TaskPriority = "low" | "medium" | "high" | "urgent";
