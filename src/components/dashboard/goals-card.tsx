@@ -66,6 +66,7 @@ export const GoalsCard = ({ workspaceId }: GoalsCardProps) => {
       const result = await createGoal({
         title: newGoal.title.trim(),
         targetValue: newGoal.targetValue,
+        currentValue: 0,
         unit: newGoal.unit,
         workspaceId,
       });
