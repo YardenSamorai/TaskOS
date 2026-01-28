@@ -78,15 +78,22 @@ export async function GET(request: NextRequest) {
       projectsBody = await projectsResponse.text();
     } catch {}
 
-    // Test search endpoint (issues)
-    const searchUrl = `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/search?jql=project="SCRUM"&maxResults=10`;
+    // Test search endpoint (issues) - using new POST /search/jql
+    const searchUrl = `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/search/jql`;
     console.log("[Jira Debug] Testing search URL:", searchUrl);
     
     const searchResponse = await fetch(searchUrl, {
+      method: "POST",
       headers: {
         Authorization: `Bearer ${integration.accessToken}`,
         Accept: "application/json",
+        "Content-Type": "application/json",
       },
+      body: JSON.stringify({
+        jql: "project = SCRUM",
+        maxResults: 10,
+        fields: ["summary", "status", "issuetype"],
+      }),
     });
 
     let searchBody = null;

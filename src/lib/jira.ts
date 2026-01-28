@@ -128,8 +128,8 @@ export async function getJiraIssues(
 ): Promise<{ issues: JiraIssue[]; total: number }> {
   const { maxResults = 50, startAt = 0, status, jql } = options || {};
 
-  // Quote the project key in case it has special characters
-  let query = jql || `project = "${projectKey}"`;
+  // Build JQL query
+  let query = jql || `project = ${projectKey}`;
   if (status && !jql) {
     query += ` AND status = "${status}"`;
   }
