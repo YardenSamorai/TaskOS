@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Github,
   Search,
@@ -45,6 +46,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
+import { taskKeys } from "@/lib/hooks/use-tasks";
 import {
   getLinkedRepositoriesForWorkspace,
   fetchRepositoryIssues,
@@ -71,6 +73,7 @@ export function ImportIssuesDialog({
   workspaceId,
   onImportSuccess,
 }: ImportIssuesDialogProps) {
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
   const [linkedRepos, setLinkedRepos] = useState<LinkedRepo[]>([]);
@@ -180,12 +183,14 @@ export function ImportIssuesDialog({
 
       if (result.success) {
         toast.success(`Imported ${result.count} issues as tasks`);
+        // Invalidate tasks cache so the new tasks appear immediately
+        await queryClient.invalidateQueries({ queryKey: taskKeys.all });
         onImportSuccess?.();
         onOpenChange(false);
       } else {
         toast.error(result.error || "Failed to import issues");
       }
-    } catch (error) {
+    } catch {
       toast.error("Failed to import issues");
     } finally {
       setImporting(false);

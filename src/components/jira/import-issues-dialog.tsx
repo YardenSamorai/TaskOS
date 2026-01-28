@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Search,
   Download,
@@ -35,6 +36,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { taskKeys } from "@/lib/hooks/use-tasks";
 import {
   getUserJiraProjects,
   getProjectIssues,
@@ -62,6 +64,7 @@ export function ImportJiraIssuesDialog({
   workspaceId,
   onImportSuccess,
 }: ImportIssuesDialogProps) {
+  const queryClient = useQueryClient();
   const [step, setStep] = useState<"projects" | "issues">("projects");
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
@@ -171,6 +174,8 @@ export function ImportJiraIssuesDialog({
 
       if (result.success) {
         toast.success(`Imported ${result.imported} issues as tasks!`);
+        // Invalidate tasks cache so the new tasks appear immediately
+        await queryClient.invalidateQueries({ queryKey: taskKeys.all });
         onImportSuccess?.();
         onOpenChange(false);
       } else {
