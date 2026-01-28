@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2, Calendar as CalendarIcon, Plus, Trash2 } from "lucide-react";
+import { Loader2, Calendar as CalendarIcon, Plus, Trash2, ChevronDown, ChevronRight, Layers } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +30,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 import { createTask } from "@/lib/actions/task";
 import { taskKeys } from "@/lib/hooks/use-tasks";
@@ -60,6 +61,13 @@ interface EnhancedTask {
   suggestedTags: string[];
 }
 
+interface Stage {
+  name: string;
+  description: string;
+  steps: string[];
+  isExpanded: boolean;
+}
+
 export const CreateTaskDialog = ({
   open,
   onOpenChange,
@@ -80,6 +88,8 @@ export const CreateTaskDialog = ({
   const [assigneeId, setAssigneeId] = useState<string>("");
   const [steps, setSteps] = useState<string[]>([]);
   const [acceptanceCriteria, setAcceptanceCriteria] = useState<string[]>([]);
+  const [useProcessMode, setUseProcessMode] = useState(false);
+  const [stages, setStages] = useState<Stage[]>([]);
   
   const t = useTranslations("tasks");
   const tc = useTranslations("common");
@@ -104,6 +114,8 @@ export const CreateTaskDialog = ({
       setAssigneeId("");
       setSteps([]);
       setAcceptanceCriteria([]);
+      setUseProcessMode(false);
+      setStages([]);
     }
   }, [open, defaultStatus, defaultDueDate]);
 
@@ -136,6 +148,41 @@ export const CreateTaskDialog = ({
     setSteps(steps.filter((_, i) => i !== index));
   };
 
+  // Stage management
+  const addStage = () => {
+    setStages([...stages, { name: "", description: "", steps: [], isExpanded: true }]);
+  };
+
+  const updateStage = (index: number, updates: Partial<Stage>) => {
+    setStages(stages.map((stage, i) => (i === index ? { ...stage, ...updates } : stage)));
+  };
+
+  const removeStage = (index: number) => {
+    setStages(stages.filter((_, i) => i !== index));
+  };
+
+  const addStepToStage = (stageIndex: number) => {
+    setStages(stages.map((stage, i) => 
+      i === stageIndex ? { ...stage, steps: [...stage.steps, ""] } : stage
+    ));
+  };
+
+  const updateStepInStage = (stageIndex: number, stepIndex: number, value: string) => {
+    setStages(stages.map((stage, i) => 
+      i === stageIndex 
+        ? { ...stage, steps: stage.steps.map((s, j) => j === stepIndex ? value : s) }
+        : stage
+    ));
+  };
+
+  const removeStepFromStage = (stageIndex: number, stepIndex: number) => {
+    setStages(stages.map((stage, i) => 
+      i === stageIndex 
+        ? { ...stage, steps: stage.steps.filter((_, j) => j !== stepIndex) }
+        : stage
+    ));
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
@@ -160,9 +207,23 @@ export const CreateTaskDialog = ({
       if (assigneeId) {
         formData.append("assigneeIds", assigneeId);
       }
-      // Send steps as JSON array
-      if (steps.length > 0) {
+      // Send steps as JSON array (only if not using process mode)
+      if (!useProcessMode && steps.length > 0) {
         formData.set("steps", JSON.stringify(steps.filter(s => s.trim())));
+      }
+
+      // Send stages for process mode
+      if (useProcessMode && stages.length > 0) {
+        const validStages = stages
+          .filter(s => s.name.trim())
+          .map(s => ({
+            name: s.name.trim(),
+            description: s.description.trim() || undefined,
+            steps: s.steps.filter(step => step.trim()),
+          }));
+        if (validStages.length > 0) {
+          formData.set("stages", JSON.stringify(validStages));
+        }
       }
 
       const result = await createTask(formData);
@@ -240,7 +301,7 @@ export const CreateTaskDialog = ({
               description={description}
               hasDueDate={!!dueDate}
               hasAssignee={!!assigneeId}
-              hasSteps={steps.length > 0}
+              hasSteps={steps.length > 0 || stages.some(s => s.steps.length > 0)}
               hasPriority={!!priority}
               hasAcceptanceCriteria={acceptanceCriteria.length > 0}
             />
@@ -325,8 +386,160 @@ export const CreateTaskDialog = ({
               </div>
             )}
 
-            {/* Steps/Checklist (if AI added them) */}
-            {steps.length > 0 && (
+            {/* Process Mode Toggle */}
+            <div className="pt-4 border-t">
+              <button
+                type="button"
+                onClick={() => setUseProcessMode(!useProcessMode)}
+                className={cn(
+                  "flex items-center justify-between w-full p-3 rounded-lg border-2 transition-all",
+                  useProcessMode 
+                    ? "border-primary bg-primary/5" 
+                    : "border-dashed border-muted-foreground/30 hover:border-muted-foreground/50"
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={cn(
+                    "p-2 rounded-lg",
+                    useProcessMode ? "bg-primary text-primary-foreground" : "bg-muted"
+                  )}>
+                    <Layers className="w-4 h-4" />
+                  </div>
+                  <div className="text-start">
+                    <p className="font-medium text-sm">Process Mode</p>
+                    <p className="text-xs text-muted-foreground">
+                      Break down into stages with steps
+                    </p>
+                  </div>
+                </div>
+                <div className={cn(
+                  "w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors",
+                  useProcessMode ? "border-primary bg-primary" : "border-muted-foreground/30"
+                )}>
+                  {useProcessMode && <div className="w-2 h-2 bg-white rounded-full" />}
+                </div>
+              </button>
+            </div>
+
+            {/* Process Mode Stages */}
+            {useProcessMode && (
+              <div className="space-y-3">
+                {stages.map((stage, stageIndex) => (
+                  <Collapsible
+                    key={stageIndex}
+                    open={stage.isExpanded}
+                    onOpenChange={(open) => updateStage(stageIndex, { isExpanded: open })}
+                  >
+                    <div className="border rounded-lg overflow-hidden">
+                      <CollapsibleTrigger asChild>
+                        <div className="flex items-center justify-between p-3 bg-muted/50 hover:bg-muted cursor-pointer">
+                          <div className="flex items-center gap-2">
+                            {stage.isExpanded ? (
+                              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                            ) : (
+                              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                            )}
+                            <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-medium">
+                              {stageIndex + 1}
+                            </span>
+                            <span className="font-medium text-sm">
+                              {stage.name || `Stage ${stageIndex + 1}`}
+                            </span>
+                            {stage.steps.length > 0 && (
+                              <span className="text-xs text-muted-foreground">
+                                ({stage.steps.filter(s => s.trim()).length} steps)
+                              </span>
+                            )}
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeStage(stageIndex);
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="p-3 space-y-3 border-t">
+                          <div className="space-y-2">
+                            <Label className="text-xs">Stage Name</Label>
+                            <Input
+                              value={stage.name}
+                              onChange={(e) => updateStage(stageIndex, { name: e.target.value })}
+                              placeholder="e.g., Research, Design, Development"
+                              disabled={loading}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs">Description (optional)</Label>
+                            <Input
+                              value={stage.description}
+                              onChange={(e) => updateStage(stageIndex, { description: e.target.value })}
+                              placeholder="What needs to happen in this stage?"
+                              disabled={loading}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs">Steps</Label>
+                            <div className="space-y-2">
+                              {stage.steps.map((step, stepIndex) => (
+                                <div key={stepIndex} className="flex items-center gap-2">
+                                  <span className="text-muted-foreground text-sm w-6">□</span>
+                                  <Input
+                                    value={step}
+                                    onChange={(e) => updateStepInStage(stageIndex, stepIndex, e.target.value)}
+                                    placeholder="Step description"
+                                    className="flex-1"
+                                    disabled={loading}
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7"
+                                    onClick={() => removeStepFromStage(stageIndex, stepIndex)}
+                                  >
+                                    <Trash2 className="w-3 h-3 text-destructive" />
+                                  </Button>
+                                </div>
+                              ))}
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => addStepToStage(stageIndex)}
+                                className="text-xs"
+                              >
+                                <Plus className="w-3 h-3 me-1" />
+                                Add step
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </CollapsibleContent>
+                    </div>
+                  </Collapsible>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={addStage}
+                  className="w-full"
+                >
+                  <Plus className="w-4 h-4 me-2" />
+                  Add Stage
+                </Button>
+              </div>
+            )}
+
+            {/* Steps/Checklist (if AI added them) - hide when process mode is on */}
+            {!useProcessMode && steps.length > 0 && (
               <div className="space-y-2">
                 <Label>Checklist</Label>
                 <div className="space-y-2">

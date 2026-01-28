@@ -42,6 +42,13 @@ const createTaskSchema = z.object({
   assigneeIds: z.array(z.string().uuid()).optional(),
 });
 
+// Stage schema for process mode
+const stageInputSchema = z.object({
+  name: z.string().min(1),
+  description: z.string().optional(),
+  steps: z.array(z.string()).optional(),
+});
+
 const updateTaskSchema = z.object({
   taskId: z.string().uuid(),
   title: z.string().min(1).max(500).optional(),
@@ -83,6 +90,10 @@ export const createTask = async (formData: FormData) => {
     // Get steps from formData (JSON string array)
     const stepsJson = formData.get("steps") as string;
     const stepsList: string[] = stepsJson ? JSON.parse(stepsJson) : [];
+
+    // Get stages from formData (JSON string array of stage objects)
+    const stagesJson = formData.get("stages") as string;
+    const stagesList: z.infer<typeof stageInputSchema>[] = stagesJson ? JSON.parse(stagesJson) : [];
 
     const data = createTaskSchema.parse({
       workspaceId,
@@ -183,6 +194,36 @@ export const createTask = async (formData: FormData) => {
           orderIndex: index,
         }))
       );
+    }
+
+    // Add stages (Process Mode)
+    if (stagesList.length > 0) {
+      for (let stageIndex = 0; stageIndex < stagesList.length; stageIndex++) {
+        const stageData = stagesList[stageIndex];
+        const [stage] = await db
+          .insert(taskStages)
+          .values({
+            taskId: task.id,
+            name: stageData.name,
+            description: stageData.description || null,
+            status: stageIndex === 0 ? "active" : "pending",
+            orderIndex: stageIndex,
+          })
+          .returning();
+
+        // Add steps to this stage
+        if (stageData.steps && stageData.steps.length > 0) {
+          await db.insert(taskSteps).values(
+            stageData.steps.map((stepContent, stepIndex) => ({
+              taskId: task.id,
+              stageId: stage.id,
+              content: stepContent,
+              completed: false,
+              orderIndex: stepIndex,
+            }))
+          );
+        }
+      }
     }
 
     // Log activity
