@@ -137,6 +137,7 @@ const DashboardPage = () => {
         <div className="space-y-6">
           <ProjectsCard 
             locale={locale} 
+            currentWorkspaceId={workspaceId}
             onCreateWorkspace={() => setCreateWorkspaceOpen(true)} 
           />
           <CalendarCard 

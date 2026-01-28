@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Building2, Plus, ChevronDown, Users, ListTodo } from "lucide-react";
+import { Building2, Plus, ChevronDown, Users, ListTodo, Check } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,6 +25,7 @@ interface Workspace {
 
 interface ProjectsCardProps {
   locale: string;
+  currentWorkspaceId?: string;
   onCreateWorkspace?: () => void;
 }
 
@@ -44,7 +46,7 @@ const getColorFromString = (str: string) => {
   return colors[Math.abs(hash) % colors.length];
 };
 
-export const ProjectsCard = ({ locale, onCreateWorkspace }: ProjectsCardProps) => {
+export const ProjectsCard = ({ locale, currentWorkspaceId, onCreateWorkspace }: ProjectsCardProps) => {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState<"recents" | "name">("recents");
@@ -119,37 +121,62 @@ export const ProjectsCard = ({ locale, onCreateWorkspace }: ProjectsCardProps) =
             ))}
           </div>
         ) : (
-          sortedWorkspaces.slice(0, 5).map((workspace) => (
-            <Link
-              key={workspace.id}
-              href={`/${locale}/app/${workspace.id}/dashboard`}
-              className="flex items-center justify-between p-3 rounded-xl hover:bg-muted/50 transition-colors group"
-            >
-              <div className="flex items-center gap-3">
-                <div className={cn(
-                  "w-8 h-8 rounded-lg bg-gradient-to-br flex items-center justify-center text-white font-semibold text-sm",
-                  getColorFromString(workspace.name)
-                )}>
-                  {workspace.imageUrl ? (
-                    <img src={workspace.imageUrl} alt="" className="w-full h-full rounded-lg object-cover" />
-                  ) : (
-                    workspace.name.charAt(0).toUpperCase()
+          sortedWorkspaces.slice(0, 5).map((workspace) => {
+            const isSelected = workspace.id === currentWorkspaceId;
+            return (
+              <Link
+                key={workspace.id}
+                href={`/${locale}/app/${workspace.id}/dashboard`}
+                className={cn(
+                  "flex items-center justify-between p-3 rounded-xl transition-all",
+                  isSelected 
+                    ? "bg-primary/10 border-2 border-primary/30 shadow-sm" 
+                    : "hover:bg-muted/50 border-2 border-transparent"
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={cn(
+                    "w-8 h-8 rounded-lg bg-gradient-to-br flex items-center justify-center text-white font-semibold text-sm relative",
+                    getColorFromString(workspace.name)
+                  )}>
+                    {workspace.imageUrl ? (
+                      <img src={workspace.imageUrl} alt="" className="w-full h-full rounded-lg object-cover" />
+                    ) : (
+                      workspace.name.charAt(0).toUpperCase()
+                    )}
+                    {isSelected && (
+                      <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-primary flex items-center justify-center">
+                        <Check className="w-2.5 h-2.5 text-white" />
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <span className={cn(
+                      "font-medium block",
+                      isSelected && "text-primary"
+                    )}>
+                      {workspace.name}
+                    </span>
+                    {isSelected && (
+                      <span className="text-xs text-primary/70">Current</span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {!isSelected && (
+                    <div className="flex items-center gap-4 text-muted-foreground text-sm">
+                      <span className="flex items-center gap-1">
+                        <ListTodo className="w-4 h-4" />
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Users className="w-4 h-4" />
+                      </span>
+                    </div>
                   )}
                 </div>
-                <span className="font-medium">{workspace.name}</span>
-              </div>
-              <div className="flex items-center gap-4 text-muted-foreground text-sm">
-                <span className="flex items-center gap-1">
-                  <ListTodo className="w-4 h-4" />
-                  tasks
-                </span>
-                <span className="flex items-center gap-1">
-                  <Users className="w-4 h-4" />
-                  members
-                </span>
-              </div>
-            </Link>
-          ))
+              </Link>
+            );
+          })
         )}
       </CardContent>
     </Card>
