@@ -217,9 +217,7 @@ const DashboardPage = () => {
       <CreateWorkspaceDialog
         open={createWorkspaceOpen}
         onOpenChange={setCreateWorkspaceOpen}
-        onSuccess={(workspace) => {
-          router.push(`/${locale}/app/${workspace.id}/dashboard`);
-        }}
+        locale={locale}
       />
       <CreateTaskDialog
         open={createTaskOpen}
