@@ -434,7 +434,7 @@ function IssueCard({
         {issue.fields.assignee && (
           <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
             <img
-              src={issue.fields.assignee.avatarUrls["24x24"]}
+              src={issue.fields.assignee.avatarUrls["48x48"]}
               alt={issue.fields.assignee.displayName}
               className="w-4 h-4 rounded-full"
             />
