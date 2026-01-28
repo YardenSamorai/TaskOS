@@ -135,17 +135,36 @@ export async function getJiraIssues(
   }
   
   console.log("[Jira API] Fetching issues with JQL:", query);
-
-  const params = new URLSearchParams({
-    jql: query,
-    maxResults: maxResults.toString(),
-    startAt: startAt.toString(),
-    fields: "summary,description,status,priority,issuetype,assignee,reporter,created,updated,duedate,labels",
-  });
-
   console.log("[Jira] Fetching issues for cloudId:", cloudId, "project:", projectKey);
   
-  const data = await jiraFetch(cloudId, `/rest/api/3/search?${params}`, accessToken);
+  // Use the new /search/jql endpoint (POST method)
+  const url = `${JIRA_API_BASE}/${cloudId}/rest/api/3/search/jql`;
+  console.log("[Jira API] Calling:", url);
+  
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      jql: query,
+      maxResults,
+      startAt,
+      fields: ["summary", "description", "status", "priority", "issuetype", "assignee", "reporter", "created", "updated", "duedate", "labels"],
+    }),
+  });
+
+  console.log("[Jira API] Response status:", response.status);
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("[Jira API] Error:", response.status, errorText);
+    throw new Error(`Jira API error: ${response.status} ${response.statusText}`);
+  }
+
+  const data = await response.json();
   console.log("[Jira] Found", data.total, "issues");
   
   return {
