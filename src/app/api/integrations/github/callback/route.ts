@@ -191,9 +191,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Redirect back to dashboard with success
+    const isNewConnection = !existingIntegration;
     const redirectUrl = state && state !== "global" 
-      ? `/en/app/${state}/dashboard?integration=github&status=connected`
-      : `/en/app/dashboard?integration=github&status=connected`;
+      ? `/en/app/${state}/dashboard?integration=github&status=connected${isNewConnection ? '&new=true' : ''}`
+      : `/en/app/dashboard?integration=github&status=connected${isNewConnection ? '&new=true' : ''}`;
 
     console.log("[GitHub Callback] Success! Redirecting to:", redirectUrl);
     return NextResponse.redirect(new URL(redirectUrl, request.url));

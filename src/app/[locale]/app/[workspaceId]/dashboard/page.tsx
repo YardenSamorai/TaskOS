@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, useMemo } from "react";
 import { 
   Loader2, 
@@ -26,11 +26,15 @@ import { RemindersCard } from "@/components/dashboard/reminders-card";
 import { TodosCard } from "@/components/dashboard/todos-card";
 import { GoalsCard } from "@/components/dashboard/goals-card";
 import { GitHubActivityCard } from "@/components/dashboard/github-activity-card";
+import { GitHubOnboardingDialog } from "@/components/github/github-onboarding-dialog";
+import { RepositoriesDialog } from "@/components/github/repositories-dialog";
 import { format } from "date-fns";
+import { toast } from "sonner";
 
 const DashboardPage = () => {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const workspaceId = params.workspaceId as string;
   const locale = params.locale as string;
 
@@ -40,6 +44,8 @@ const DashboardPage = () => {
   const [createWorkspaceOpen, setCreateWorkspaceOpen] = useState(false);
   const [createTaskOpen, setCreateTaskOpen] = useState(false);
   const [integrationsOpen, setIntegrationsOpen] = useState(false);
+  const [githubOnboardingOpen, setGithubOnboardingOpen] = useState(false);
+  const [repositoriesOpen, setRepositoriesOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [greeting, setGreeting] = useState("Hello");
   const [currentDate, setCurrentDate] = useState("");
@@ -77,6 +83,26 @@ const DashboardPage = () => {
     // Set current date
     setCurrentDate(format(new Date(), "EEE, d MMM"));
   }, []);
+
+  // Check for new GitHub connection
+  useEffect(() => {
+    const integration = searchParams.get("integration");
+    const status = searchParams.get("status");
+    const isNew = searchParams.get("new");
+
+    if (integration === "github" && status === "connected") {
+      if (isNew === "true") {
+        // First time connection - show onboarding
+        setGithubOnboardingOpen(true);
+      } else {
+        // Reconnection - just show toast
+        toast.success("GitHub reconnected successfully!");
+      }
+      
+      // Clean URL
+      router.replace(`/${locale}/app/${workspaceId}/dashboard`, { scroll: false });
+    }
+  }, [searchParams, locale, workspaceId, router]);
 
   if (isLoading || !mounted) {
     return (
@@ -239,6 +265,16 @@ const DashboardPage = () => {
       <IntegrationsDialog
         open={integrationsOpen}
         onOpenChange={setIntegrationsOpen}
+        workspaceId={workspaceId}
+      />
+      <GitHubOnboardingDialog
+        open={githubOnboardingOpen}
+        onOpenChange={setGithubOnboardingOpen}
+        onLinkRepository={() => setRepositoriesOpen(true)}
+      />
+      <RepositoriesDialog
+        open={repositoriesOpen}
+        onOpenChange={setRepositoriesOpen}
         workspaceId={workspaceId}
       />
     </div>
