@@ -86,16 +86,16 @@ export function JiraActivityCard({
 
   if (loading) {
     return (
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-medium flex items-center gap-2">
-            <JiraIcon className="w-5 h-5 text-[#0052CC]" />
+      <Card className="overflow-hidden">
+        <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6 pt-3 sm:pt-6">
+          <CardTitle className="text-sm sm:text-base font-medium flex items-center gap-1.5 sm:gap-2">
+            <JiraIcon className="w-4 h-4 sm:w-5 sm:h-5 text-[#0052CC]" />
             Jira
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="w-6 h-6 animate-spin text-[#0052CC]" />
+        <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+          <div className="flex items-center justify-center py-6 sm:py-8">
+            <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin text-[#0052CC]" />
           </div>
         </CardContent>
       </Card>
@@ -104,25 +104,26 @@ export function JiraActivityCard({
 
   if (!connected) {
     return (
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-medium flex items-center gap-2">
-            <JiraIcon className="w-5 h-5 text-[#0052CC]" />
+      <Card className="overflow-hidden">
+        <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6 pt-3 sm:pt-6">
+          <CardTitle className="text-sm sm:text-base font-medium flex items-center gap-1.5 sm:gap-2">
+            <JiraIcon className="w-4 h-4 sm:w-5 sm:h-5 text-[#0052CC]" />
             Jira
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="text-center py-6">
-            <JiraIcon className="w-12 h-12 mx-auto text-muted-foreground/30 mb-3" />
-            <p className="text-sm text-muted-foreground mb-4">
-              Connect Jira to import and sync issues
+        <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+          <div className="text-center py-4 sm:py-6">
+            <JiraIcon className="w-10 h-10 sm:w-12 sm:h-12 mx-auto text-muted-foreground/30 mb-2 sm:mb-3" />
+            <p className="text-xs sm:text-sm text-muted-foreground mb-3 sm:mb-4 px-2">
+              Connect Jira to sync issues
             </p>
             <Button
               onClick={onOpenIntegrations}
-              className="bg-[#0052CC] hover:bg-[#0052CC]/90"
+              className="bg-[#0052CC] hover:bg-[#0052CC]/90 text-xs sm:text-sm"
+              size="sm"
             >
-              <Plus className="w-4 h-4 mr-2" />
-              Connect Jira
+              <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
+              Connect
             </Button>
           </div>
         </CardContent>
@@ -132,69 +133,69 @@ export function JiraActivityCard({
 
   return (
     <>
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base font-medium flex items-center gap-2">
-              <JiraIcon className="w-5 h-5 text-[#0052CC]" />
-              Jira
-              <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+      <Card className="overflow-hidden">
+        <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6 pt-3 sm:pt-6">
+          <div className="flex items-center justify-between gap-2">
+            <CardTitle className="text-sm sm:text-base font-medium flex items-center gap-1.5 sm:gap-2 flex-wrap min-w-0">
+              <JiraIcon className="w-4 h-4 sm:w-5 sm:h-5 text-[#0052CC] shrink-0" />
+              <span>Jira</span>
+              <Badge variant="secondary" className="text-[10px] sm:text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 shrink-0">
                 Connected
               </Badge>
             </CardTitle>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-0.5 shrink-0">
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8"
+                className="h-7 w-7 sm:h-8 sm:w-8"
                 onClick={checkConnectionAndFetch}
                 title="Refresh"
               >
-                <RefreshCw className="w-4 h-4" />
+                <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </Button>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8"
+                className="h-7 w-7 sm:h-8 sm:w-8"
                 onClick={() => setImportDialogOpen(true)}
                 title="Import Issues"
               >
-                <Download className="w-4 h-4" />
+                <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </Button>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8"
+                className="h-7 w-7 sm:h-8 sm:w-8"
                 onClick={() => setProjectsDialogOpen(true)}
                 title="Browse Projects"
               >
-                <FolderKanban className="w-4 h-4" />
+                <FolderKanban className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </Button>
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
           {projects.length === 0 ? (
-            <div className="text-center py-4">
-              <p className="text-sm text-muted-foreground">No projects found</p>
+            <div className="text-center py-3 sm:py-4">
+              <p className="text-xs sm:text-sm text-muted-foreground">No projects found</p>
               <Button
                 variant="link"
                 size="sm"
                 onClick={() => setProjectsDialogOpen(true)}
-                className="text-[#0052CC]"
+                className="text-[#0052CC] text-xs sm:text-sm"
               >
                 Browse Projects
               </Button>
             </div>
           ) : (
-            <ScrollArea className="h-[200px]">
-              <div className="space-y-2">
+            <ScrollArea className="h-[160px] sm:h-[200px]">
+              <div className="space-y-1.5 sm:space-y-2 pr-2">
                 {projects.map((project) => (
                   <div
                     key={project.id}
                     className={cn(
-                      "flex items-center gap-3 p-2 rounded-lg",
-                      "hover:bg-muted/50 transition-colors cursor-pointer"
+                      "flex items-center gap-2 sm:gap-3 p-1.5 sm:p-2 rounded-lg",
+                      "hover:bg-muted/50 transition-colors cursor-pointer overflow-hidden"
                     )}
                     onClick={() => {
                       if (jiraUrl) {
@@ -206,18 +207,18 @@ export function JiraActivityCard({
                       <img
                         src={project.avatarUrls["24x24"]}
                         alt={project.name}
-                        className="w-6 h-6 rounded"
+                        className="w-5 h-5 sm:w-6 sm:h-6 rounded shrink-0"
                       />
                     ) : (
-                      <div className="w-6 h-6 rounded bg-[#0052CC]/10 flex items-center justify-center">
-                        <JiraIcon className="w-3 h-3 text-[#0052CC]" />
+                      <div className="w-5 h-5 sm:w-6 sm:h-6 rounded bg-[#0052CC]/10 flex items-center justify-center shrink-0">
+                        <JiraIcon className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-[#0052CC]" />
                       </div>
                     )}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{project.name}</p>
-                      <p className="text-xs text-muted-foreground">{project.key}</p>
+                    <div className="flex-1 min-w-0 overflow-hidden">
+                      <p className="text-xs sm:text-sm font-medium truncate">{project.name}</p>
+                      <p className="text-[10px] sm:text-xs text-muted-foreground">{project.key}</p>
                     </div>
-                    <ExternalLink className="w-3 h-3 text-muted-foreground" />
+                    <ExternalLink className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-muted-foreground shrink-0" />
                   </div>
                 ))}
               </div>
@@ -225,24 +226,26 @@ export function JiraActivityCard({
           )}
 
           {/* Quick Actions */}
-          <div className="flex gap-2 mt-4 pt-4 border-t">
+          <div className="flex gap-2 mt-3 sm:mt-4 pt-3 sm:pt-4 border-t">
             <Button
               variant="outline"
               size="sm"
-              className="flex-1"
+              className="flex-1 text-xs sm:text-sm h-8 sm:h-9"
               onClick={() => setImportDialogOpen(true)}
             >
-              <Download className="w-4 h-4 mr-2" />
-              Import Issues
+              <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+              <span className="hidden xs:inline">Import</span>
+              <span className="xs:hidden">Import</span>
             </Button>
             <Button
               variant="outline"
               size="sm"
-              className="flex-1"
+              className="flex-1 text-xs sm:text-sm h-8 sm:h-9"
               onClick={() => setProjectsDialogOpen(true)}
             >
-              <FolderKanban className="w-4 h-4 mr-2" />
-              Projects
+              <FolderKanban className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+              <span className="hidden xs:inline">Projects</span>
+              <span className="xs:hidden">Projects</span>
             </Button>
           </div>
         </CardContent>
