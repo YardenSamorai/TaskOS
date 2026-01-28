@@ -565,6 +565,20 @@ export const updateTaskStatus = async (
     revalidateTag(CACHE_TAGS.stats(existingTask.workspaceId));
     revalidatePath(`/app/${existingTask.workspaceId}`);
 
+    // Sync to Jira if task is linked
+    if (existingTask.metadata && status !== existingTask.status) {
+      try {
+        const metadata = JSON.parse(existingTask.metadata as string);
+        if (metadata.jira?.issueKey) {
+          // Dynamic import to avoid circular dependencies
+          const { syncTaskToJira } = await import("@/lib/actions/jira");
+          syncTaskToJira(taskId).catch(console.error);
+        }
+      } catch {
+        // Ignore parse errors
+      }
+    }
+
     return { success: true, task };
   } catch (error) {
     console.error("Error updating task status:", error);
