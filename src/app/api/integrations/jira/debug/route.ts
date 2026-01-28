@@ -62,6 +62,38 @@ export async function GET(request: NextRequest) {
       resources = await resourcesResponse.json();
     } catch {}
 
+    // Test projects endpoint
+    const projectsUrl = `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/project/search`;
+    console.log("[Jira Debug] Testing projects URL:", projectsUrl);
+    
+    const projectsResponse = await fetch(projectsUrl, {
+      headers: {
+        Authorization: `Bearer ${integration.accessToken}`,
+        Accept: "application/json",
+      },
+    });
+
+    let projectsBody = null;
+    try {
+      projectsBody = await projectsResponse.text();
+    } catch {}
+
+    // Test search endpoint (issues)
+    const searchUrl = `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/search?jql=project="SCRUM"&maxResults=10`;
+    console.log("[Jira Debug] Testing search URL:", searchUrl);
+    
+    const searchResponse = await fetch(searchUrl, {
+      headers: {
+        Authorization: `Bearer ${integration.accessToken}`,
+        Accept: "application/json",
+      },
+    });
+
+    let searchBody = null;
+    try {
+      searchBody = await searchResponse.text();
+    } catch {}
+
     return NextResponse.json({
       integration: {
         id: integration.id,
@@ -80,6 +112,16 @@ export async function GET(request: NextRequest) {
         url: testUrl,
         status: testStatus,
         body: testBody?.substring(0, 500),
+      },
+      projectsTest: {
+        url: projectsUrl,
+        status: projectsResponse.status,
+        body: projectsBody?.substring(0, 1000),
+      },
+      searchTest: {
+        url: searchUrl,
+        status: searchResponse.status,
+        body: searchBody?.substring(0, 1000),
       },
       accessibleResources: {
         status: resourcesResponse.status,
