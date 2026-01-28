@@ -160,6 +160,130 @@ async function handleIssueUpdated(payload: any) {
 
     console.log("[Jira Webhook] Task title updated:", taskId);
   }
+
+  // Check for priority changes
+  const priorityChange = changelog?.items?.find(
+    (item: any) => item.field === "priority"
+  );
+
+  if (priorityChange) {
+    const jiraPriority = issue?.fields?.priority?.name?.toLowerCase();
+    let taskPriority = task.priority;
+
+    // Map Jira priority to TaskOS priority
+    if (jiraPriority === "highest" || jiraPriority === "high") {
+      taskPriority = "high";
+    } else if (jiraPriority === "medium" || jiraPriority === "normal") {
+      taskPriority = "medium";
+    } else if (jiraPriority === "low" || jiraPriority === "lowest") {
+      taskPriority = "low";
+    }
+
+    if (taskPriority !== task.priority) {
+      await db.update(tasks).set({
+        priority: taskPriority as any,
+        updatedAt: new Date(),
+      }).where(eq(tasks.id, taskId));
+
+      console.log("[Jira Webhook] Task priority updated:", taskId, taskPriority);
+
+      // Log activity
+      await db.insert(activityLogs).values({
+        workspaceId: task.workspaceId,
+        userId: task.createdBy,
+        taskId: taskId,
+        action: "priority_changed_by_jira",
+        entityType: "task",
+        entityId: taskId,
+        metadata: JSON.stringify({
+          from: task.priority,
+          to: taskPriority,
+          jira: {
+            action: "issue_priority_changed",
+            issueKey,
+            newPriority: issue?.fields?.priority?.name,
+          },
+        }),
+      });
+    }
+  }
+
+  // Check for description changes
+  const descriptionChange = changelog?.items?.find(
+    (item: any) => item.field === "description"
+  );
+
+  if (descriptionChange) {
+    let description = "";
+    if (issue?.fields?.description?.content) {
+      // Extract text from Atlassian Document Format (ADF)
+      description = extractTextFromADF(issue.fields.description);
+    } else if (typeof issue?.fields?.description === "string") {
+      description = issue.fields.description;
+    }
+
+    if (description !== task.description) {
+      await db.update(tasks).set({
+        description,
+        updatedAt: new Date(),
+      }).where(eq(tasks.id, taskId));
+
+      console.log("[Jira Webhook] Task description updated:", taskId);
+    }
+  }
+
+  // Check for due date changes
+  const dueDateChange = changelog?.items?.find(
+    (item: any) => item.field === "duedate"
+  );
+
+  if (dueDateChange) {
+    const newDueDate = issue?.fields?.duedate || null;
+    
+    if (newDueDate !== task.dueDate) {
+      await db.update(tasks).set({
+        dueDate: newDueDate,
+        updatedAt: new Date(),
+      }).where(eq(tasks.id, taskId));
+
+      console.log("[Jira Webhook] Task due date updated:", taskId, newDueDate);
+    }
+  }
+}
+
+// Helper function to extract text from Atlassian Document Format
+function extractTextFromADF(adf: any): string {
+  if (!adf?.content) return "";
+  
+  let text = "";
+  const processNode = (node: any) => {
+    if (node.type === "text") {
+      text += node.text || "";
+    } else if (node.type === "paragraph" || node.type === "heading") {
+      if (node.content) {
+        node.content.forEach(processNode);
+      }
+      text += "\n";
+    } else if (node.type === "bulletList" || node.type === "orderedList") {
+      if (node.content) {
+        node.content.forEach((item: any, index: number) => {
+          if (node.type === "orderedList") {
+            text += `${index + 1}. `;
+          } else {
+            text += "• ";
+          }
+          if (item.content) {
+            item.content.forEach(processNode);
+          }
+        });
+      }
+    } else if (node.content) {
+      node.content.forEach(processNode);
+    }
+  };
+  
+  adf.content.forEach(processNode);
+  return text.trim();
 }
 
 async function handleIssueDeleted(payload: any) {
