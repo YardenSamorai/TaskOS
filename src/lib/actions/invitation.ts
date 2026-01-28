@@ -257,7 +257,7 @@ export const acceptInvitation = async (token: string) => {
     // Invalidate caches
     revalidateTag(CACHE_TAGS.workspaces(user.id));
     revalidateTag(CACHE_TAGS.members(invitation.workspaceId));
-    revalidatePath("/app/workspaces");
+    revalidatePath("/app/dashboard");
     revalidatePath(`/app/${invitation.workspaceId}/members`);
 
     return { success: true, workspace: invitation.workspace };

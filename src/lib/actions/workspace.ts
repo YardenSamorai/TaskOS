@@ -72,7 +72,7 @@ export const createWorkspace = async (formData: FormData) => {
 
     // Invalidate user's workspaces cache
     revalidateTag(CACHE_TAGS.workspaces(user.id));
-    revalidatePath("/app/workspaces");
+    revalidatePath("/app/dashboard");
 
     return { success: true, workspace };
   } catch (error) {
@@ -168,7 +168,7 @@ export const deleteWorkspace = async (workspaceId: string) => {
     // Invalidate all related caches
     revalidateTag(CACHE_TAGS.workspace(workspaceId));
     revalidateTag(CACHE_TAGS.workspaces(user.id));
-    revalidatePath("/app/workspaces");
+    revalidatePath("/app/dashboard");
 
     return { success: true };
   } catch (error) {
@@ -234,7 +234,7 @@ export const joinWorkspaceByInvite = async (inviteCode: string) => {
     // Invalidate caches
     revalidateTag(CACHE_TAGS.workspaces(user.id));
     revalidateTag(CACHE_TAGS.members(workspace.id));
-    revalidatePath("/app/workspaces");
+    revalidatePath("/app/dashboard");
 
     return { success: true, workspace };
   } catch (error) {
@@ -336,7 +336,7 @@ export const leaveWorkspace = async (workspaceId: string) => {
 
     await db.delete(workspaceMembers).where(eq(workspaceMembers.id, membership.id));
 
-    revalidatePath("/app/workspaces");
+    revalidatePath("/app/dashboard");
 
     return { success: true };
   } catch (error) {

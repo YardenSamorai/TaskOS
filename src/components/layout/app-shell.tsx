@@ -45,7 +45,7 @@ interface NavItem {
 }
 
 const mainNavItems: NavItem[] = [
-  { icon: FolderKanban, labelKey: "workspaces", href: "/app/workspaces" },
+  { icon: FolderKanban, labelKey: "dashboard", href: "/app/dashboard" },
 ];
 
 const workspaceNavItems: NavItem[] = [
@@ -178,7 +178,7 @@ export const AppShell = ({ children, locale }: AppShellProps) => {
       });
     }
     // Prefetch workspaces and account
-    router.prefetch(`/${locale}/app/workspaces`);
+    router.prefetch(`/${locale}/app/dashboard`);
     router.prefetch(`/${locale}/app/account`);
   }, [workspaceId, locale, router]);
 
@@ -212,8 +212,8 @@ export const AppShell = ({ children, locale }: AppShellProps) => {
     
     // Always start with Workspaces
     crumbs.push({
-      label: t("workspaces.title"),
-      href: `/${locale}/app/workspaces`,
+      label: t("dashboard"),
+      href: `/${locale}/app/dashboard`,
       icon: FolderKanban,
     });
 

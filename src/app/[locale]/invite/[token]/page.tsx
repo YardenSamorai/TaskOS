@@ -195,7 +195,7 @@ const PublicInvitePage = () => {
   };
 
   const goToWorkspaces = () => {
-    router.push(`/${locale}/app/workspaces`);
+    router.push(`/${locale}/app/dashboard`);
   };
 
   // Loading state (including auto-accept in progress)

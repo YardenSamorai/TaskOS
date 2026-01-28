@@ -190,7 +190,7 @@ const DashboardPage = () => {
           {/* Focus Mode CTA */}
           <Card 
             className="cursor-pointer hover:border-primary/50 transition-colors"
-            onClick={() => router.push(`/${locale}/app/workspaces`)}
+            onClick={() => router.push(`/${locale}/app/dashboard`)}
           >
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">

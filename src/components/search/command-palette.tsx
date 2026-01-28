@@ -211,7 +211,7 @@ export const CommandPalette = () => {
         <CommandGroup heading="Quick Actions">
           <CommandItem
             onSelect={() => runCommand(() => 
-              router.push(`/${locale}/app/workspaces`)
+              router.push(`/${locale}/app/dashboard`)
             )}
           >
             <FolderKanban className="mr-2 h-4 w-4" />

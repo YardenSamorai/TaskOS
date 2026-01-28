@@ -83,7 +83,7 @@ const SettingsPage = () => {
       const result = await deleteWorkspace(workspaceId);
       if (result.success) {
         toast.success("Workspace deleted");
-        router.push(`/${locale}/app/workspaces`);
+        router.push(`/${locale}/app/dashboard`);
       } else {
         toast.error(result.error || "Failed to delete workspace");
       }

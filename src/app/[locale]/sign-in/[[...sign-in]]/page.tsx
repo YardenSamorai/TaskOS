@@ -55,7 +55,7 @@ export default function SignInPage() {
       
       // Success - show toast and redirect
       toast.success("Welcome back!");
-      const url = callbackUrl || "/en/app/workspaces";
+      const url = callbackUrl || "/en/app/dashboard";
       setRedirectUrl(url);
       setLoginSuccess(true);
       
@@ -73,7 +73,7 @@ export default function SignInPage() {
     setIsGoogleLoading(true);
     // Use client-side signIn for Google
     await signIn("google", { 
-      callbackUrl: callbackUrl || "/en/app/workspaces" 
+      callbackUrl: callbackUrl || "/en/app/dashboard" 
     });
   };
 
@@ -95,10 +95,10 @@ export default function SignInPage() {
               Click here if not redirected
             </Button>
             <Link
-              href={redirectUrl || "/en/app/workspaces"}
+              href={redirectUrl || "/en/app/dashboard"}
               className="block text-sm text-indigo-600 hover:underline"
             >
-              Or click this link: {redirectUrl || "/en/app/workspaces"}
+              Or click this link: {redirectUrl || "/en/app/dashboard"}
             </Link>
           </div>
         </div>

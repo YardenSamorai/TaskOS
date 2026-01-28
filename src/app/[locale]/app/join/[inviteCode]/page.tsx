@@ -68,7 +68,7 @@ const JoinWorkspacePage = () => {
   };
 
   const goToWorkspaces = () => {
-    router.push(`/${locale}/app/workspaces`);
+    router.push(`/${locale}/app/dashboard`);
   };
 
   return (

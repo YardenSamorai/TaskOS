@@ -225,7 +225,7 @@ const LandingPage = () => {
                 </Link>
               </SignedOut>
               <SignedIn>
-                <Link href={`/${locale}/app/workspaces`}>
+                <Link href={`/${locale}/app/dashboard`}>
                   <Button className="bg-gradient-to-r from-blue-600 via-violet-600 to-purple-600 hover:from-blue-500 hover:via-violet-500 hover:to-purple-500 text-white border-0 shadow-lg shadow-violet-500/25 font-medium px-6">
                     Go to App
                     <ArrowRight className="w-4 h-4 ms-2" />
@@ -262,7 +262,7 @@ const LandingPage = () => {
                   </Link>
                 </SignedOut>
                 <SignedIn>
-                  <Link href={`/${locale}/app/workspaces`} className="block">
+                  <Link href={`/${locale}/app/dashboard`} className="block">
                     <Button className="w-full bg-gradient-to-r from-blue-600 to-violet-600">Go to App</Button>
                   </Link>
                 </SignedIn>
@@ -315,7 +315,7 @@ const LandingPage = () => {
                 </Link>
               </SignedOut>
               <SignedIn>
-                <Link href={`/${locale}/app/workspaces`}>
+                <Link href={`/${locale}/app/dashboard`}>
                   <Button size="lg" className="w-full sm:w-auto bg-gradient-to-r from-blue-600 via-violet-600 to-purple-600 text-white text-lg px-10 h-14 border-0 shadow-2xl shadow-violet-500/30">
                     Open Dashboard
                     <ArrowRight className="w-5 h-5 ms-2" />
@@ -1036,7 +1036,7 @@ const LandingPage = () => {
               </Link>
             </SignedOut>
             <SignedIn>
-              <Link href={`/${locale}/app/workspaces`}>
+              <Link href={`/${locale}/app/dashboard`}>
                 <Button size="lg" className="w-full sm:w-auto bg-gradient-to-r from-blue-600 via-violet-600 to-purple-600 text-white text-lg px-12 h-14 border-0 shadow-2xl shadow-violet-500/30">
                   Open Your Dashboard
                   <ArrowRight className="w-5 h-5 ms-2" />

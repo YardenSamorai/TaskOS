@@ -122,7 +122,7 @@ export async function loginUser(formData: FormData) {
 }
 
 export async function loginWithGoogle(callbackUrl?: string) {
-  await signIn("google", { redirectTo: callbackUrl || "/en/app/workspaces" });
+  await signIn("google", { redirectTo: callbackUrl || "/en/app/dashboard" });
 }
 
 export async function logoutUser() {
