@@ -165,16 +165,18 @@ export const IntegrationsDialog = ({
 
     // For GitHub, redirect to OAuth
     if (provider.id === "github") {
+      // Redirect to our API route which will handle the OAuth flow
+      const redirectUri = `${window.location.origin}/api/integrations/github/callback`;
+      const scope = "repo,read:user,user:email";
+      const state = workspaceId || "global";
+      
+      // Check if GitHub is configured by trying to start auth
       const clientId = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID;
       if (!clientId) {
-        toast.error("GitHub integration not configured");
+        toast.error("GitHub integration not configured. Please add GITHUB_CLIENT_ID to environment variables.");
         setConnecting(null);
         return;
       }
-
-      const redirectUri = `${window.location.origin}/api/integrations/github/callback`;
-      const scope = "repo,read:user";
-      const state = workspaceId || "global";
       
       const authUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}&state=${state}`;
       
