@@ -22,6 +22,7 @@ import { ProjectsCard } from "@/components/dashboard/projects-card";
 import { CalendarCard } from "@/components/dashboard/calendar-card";
 import { MyTasksCard } from "@/components/dashboard/my-tasks-card";
 import { RemindersCard } from "@/components/dashboard/reminders-card";
+import { TodosCard } from "@/components/dashboard/todos-card";
 import { GoalsCard } from "@/components/dashboard/goals-card";
 import { format } from "date-fns";
 
@@ -146,6 +147,7 @@ const DashboardPage = () => {
             tasks={tasks as any[]} 
           />
           <RemindersCard />
+          <TodosCard />
         </div>
 
         {/* Right Column */}
