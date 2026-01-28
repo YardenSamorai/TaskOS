@@ -458,6 +458,21 @@ export const updateTask = async (formData: FormData) => {
       );
     }
 
+    // Sync to GitHub if task is linked and status changed
+    if (changes.status && existingTask.metadata) {
+      try {
+        const metadata = JSON.parse(existingTask.metadata as string);
+        if (metadata.github?.issueNumber && metadata.github?.repositoryFullName) {
+          // Import dynamically to avoid circular dependencies
+          const { syncTaskToGitHub } = await import("./github");
+          await syncTaskToGitHub(taskId);
+        }
+      } catch (githubError) {
+        console.error("Error syncing to GitHub:", githubError);
+        // Don't fail the task update if GitHub sync fails
+      }
+    }
+
     // Invalidate caches
     revalidateTag(CACHE_TAGS.tasks(existingTask.workspaceId));
     revalidateTag(CACHE_TAGS.task(taskId));

@@ -18,6 +18,7 @@ import {
 import { toast } from "sonner";
 import { updateTask, addAssignee, removeAssignee } from "@/lib/actions/task";
 import type { Task, User as UserType, WorkspaceMember } from "@/lib/db/schema";
+import { TaskGitHubActivity } from "@/components/github/task-github-activity";
 
 interface TaskWithRelations extends Task {
   assignees: { id: string; userId: string; user: UserType }[];
@@ -265,6 +266,12 @@ export const TaskDetails = ({ task, members }: TaskDetailsProps) => {
             </div>
           </div>
         )}
+
+        {/* GitHub Activity */}
+        <TaskGitHubActivity
+          taskId={task.id}
+          metadata={task.metadata ? JSON.parse(task.metadata as string) : undefined}
+        />
       </CardContent>
     </Card>
   );

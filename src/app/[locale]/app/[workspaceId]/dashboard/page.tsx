@@ -25,6 +25,7 @@ import { MyTasksCard } from "@/components/dashboard/my-tasks-card";
 import { RemindersCard } from "@/components/dashboard/reminders-card";
 import { TodosCard } from "@/components/dashboard/todos-card";
 import { GoalsCard } from "@/components/dashboard/goals-card";
+import { GitHubActivityCard } from "@/components/dashboard/github-activity-card";
 import { format } from "date-fns";
 
 const DashboardPage = () => {
@@ -148,6 +149,10 @@ const DashboardPage = () => {
             locale={locale} 
             workspaceId={workspaceId} 
             tasks={tasks as any[]} 
+          />
+          <GitHubActivityCard 
+            workspaceId={workspaceId}
+            onOpenIntegrations={() => setIntegrationsOpen(true)}
           />
           <RemindersCard />
           <TodosCard />
