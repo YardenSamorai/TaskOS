@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { useQueryClient } from "@tanstack/react-query";
 import { format, parseISO, isPast, isToday } from "date-fns";
 import {
   Calendar,
@@ -11,6 +13,7 @@ import {
   ExternalLink,
   Plus,
   ListTodo,
+  Loader2,
 } from "lucide-react";
 import {
   Table,
@@ -29,7 +32,20 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 import { CreateTaskDialog } from "./create-task-dialog";
+import { deleteTask } from "@/lib/actions/task";
+import { taskKeys } from "@/lib/hooks/use-tasks";
 import { cn } from "@/lib/utils";
 import type { Task, User, WorkspaceMember } from "@/lib/db/schema";
 
@@ -62,7 +78,40 @@ const statusColors: Record<string, string> = {
 
 export const TasksTable = ({ tasks, locale, workspaceId, members }: TasksTableProps) => {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const router = useRouter();
+  const queryClient = useQueryClient();
   const t = useTranslations("tasks");
+
+  const handleDeleteClick = (taskId: string) => {
+    setTaskToDelete(taskId);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!taskToDelete) return;
+    
+    setDeleting(true);
+    try {
+      const result = await deleteTask(taskToDelete);
+      if (result.success) {
+        toast.success("Task deleted");
+        await queryClient.invalidateQueries({ queryKey: taskKeys.all });
+        await queryClient.invalidateQueries({ queryKey: taskKeys.stats(workspaceId) });
+        router.refresh();
+      } else {
+        toast.error(result.error || "Failed to delete task");
+      }
+    } catch {
+      toast.error("Something went wrong");
+    } finally {
+      setDeleting(false);
+      setDeleteDialogOpen(false);
+      setTaskToDelete(null);
+    }
+  };
 
   if (tasks.length === 0) {
     return (
@@ -210,7 +259,10 @@ export const TasksTable = ({ tasks, locale, workspaceId, members }: TasksTablePr
                             Open
                           </Link>
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive focus:text-destructive">
+                        <DropdownMenuItem 
+                          className="text-destructive focus:text-destructive"
+                          onClick={() => handleDeleteClick(task.id)}
+                        >
                           <Trash2 className="w-4 h-4 me-2" />
                           Delete
                         </DropdownMenuItem>
@@ -231,6 +283,36 @@ export const TasksTable = ({ tasks, locale, workspaceId, members }: TasksTablePr
         locale={locale}
         members={members}
       />
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("deleteConfirm")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the task
+              and all its data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="w-4 h-4 me-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };
