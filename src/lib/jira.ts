@@ -141,6 +141,16 @@ export async function getJiraIssues(
   const url = `${JIRA_API_BASE}/${cloudId}/rest/api/3/search/jql`;
   console.log("[Jira API] Calling:", url);
   
+  // Use minimal fields that are guaranteed to exist
+  const requestBody = {
+    jql: query,
+    maxResults,
+    startAt,
+    fields: ["summary", "status", "issuetype", "assignee", "created", "updated"],
+  };
+  
+  console.log("[Jira API] Request body:", JSON.stringify(requestBody));
+  
   const response = await fetch(url, {
     method: "POST",
     headers: {
@@ -148,12 +158,7 @@ export async function getJiraIssues(
       Accept: "application/json",
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      jql: query,
-      maxResults,
-      startAt,
-      fields: ["summary", "description", "status", "priority", "issuetype", "assignee", "reporter", "created", "updated", "duedate", "labels"],
-    }),
+    body: JSON.stringify(requestBody),
   });
 
   console.log("[Jira API] Response status:", response.status);
@@ -161,6 +166,7 @@ export async function getJiraIssues(
   if (!response.ok) {
     const errorText = await response.text();
     console.error("[Jira API] Error:", response.status, errorText);
+    console.error("[Jira API] Full error details - URL:", url, "Body:", JSON.stringify(requestBody));
     throw new Error(`Jira API error: ${response.status} ${response.statusText}`);
   }
 
