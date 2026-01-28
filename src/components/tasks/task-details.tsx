@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
 import { Calendar, User, Tag, Loader2, Pencil, Check, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { updateTask, addAssignee, removeAssignee, updateTaskFields } from "@/lib/actions/task";
+import { taskKeys } from "@/lib/hooks/use-tasks";
 import type { Task, User as UserType, WorkspaceMember } from "@/lib/db/schema";
 import { TaskGitHubActivity } from "@/components/github/task-github-activity";
 import { CreateIssueButton } from "@/components/github/create-issue-button";
@@ -42,6 +44,7 @@ export const TaskDetails = ({ task, members, workspaceId }: TaskDetailsProps) =>
   const [editedDescription, setEditedDescription] = useState(task.description || "");
   const [savingDescription, setSavingDescription] = useState(false);
   const router = useRouter();
+  const queryClient = useQueryClient();
   const t = useTranslations("tasks");
 
   const handleSaveDescription = async () => {
@@ -76,10 +79,14 @@ export const TaskDetails = ({ task, members, workspaceId }: TaskDetailsProps) =>
       formData.set("taskId", task.id);
       formData.set("status", status);
       const result = await updateTask(formData);
-      if (!result.success) {
+      if (result.success) {
+        // Invalidate cache so Board updates immediately
+        await queryClient.invalidateQueries({ queryKey: taskKeys.all });
+        router.refresh();
+      } else {
         toast.error(result.error || "Failed to update status");
       }
-    } catch (error) {
+    } catch {
       toast.error("Something went wrong");
     } finally {
       setUpdating(false);
@@ -93,10 +100,14 @@ export const TaskDetails = ({ task, members, workspaceId }: TaskDetailsProps) =>
       formData.set("taskId", task.id);
       formData.set("priority", priority);
       const result = await updateTask(formData);
-      if (!result.success) {
+      if (result.success) {
+        // Invalidate cache so Board updates immediately
+        await queryClient.invalidateQueries({ queryKey: taskKeys.all });
+        router.refresh();
+      } else {
         toast.error(result.error || "Failed to update priority");
       }
-    } catch (error) {
+    } catch {
       toast.error("Something went wrong");
     } finally {
       setUpdating(false);
@@ -107,10 +118,13 @@ export const TaskDetails = ({ task, members, workspaceId }: TaskDetailsProps) =>
     setUpdating(true);
     try {
       const result = await addAssignee(task.id, userId);
-      if (!result.success) {
+      if (result.success) {
+        await queryClient.invalidateQueries({ queryKey: taskKeys.all });
+        router.refresh();
+      } else {
         toast.error(result.error || "Failed to add assignee");
       }
-    } catch (error) {
+    } catch {
       toast.error("Something went wrong");
     } finally {
       setUpdating(false);
@@ -121,10 +135,13 @@ export const TaskDetails = ({ task, members, workspaceId }: TaskDetailsProps) =>
     setUpdating(true);
     try {
       const result = await removeAssignee(task.id, userId);
-      if (!result.success) {
+      if (result.success) {
+        await queryClient.invalidateQueries({ queryKey: taskKeys.all });
+        router.refresh();
+      } else {
         toast.error(result.error || "Failed to remove assignee");
       }
-    } catch (error) {
+    } catch {
       toast.error("Something went wrong");
     } finally {
       setUpdating(false);
