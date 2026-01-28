@@ -11,6 +11,7 @@ import {
   ArrowLeft,
   ExternalLink,
   Filter,
+  RefreshCw,
 } from "lucide-react";
 import {
   Dialog,
@@ -82,9 +83,17 @@ export function ImportJiraIssuesDialog({
       setStep("projects");
       setSelectedProject(null);
       setSelectedIssues(new Set());
+      setIssues([]); // Clear issues to ensure fresh data
+      setError(null);
       fetchProjects();
     }
   }, [open]);
+
+  const handleRefreshIssues = () => {
+    if (selectedProject) {
+      fetchIssues(selectedProject);
+    }
+  };
 
   const fetchProjects = async () => {
     setLoading(true);
@@ -299,6 +308,15 @@ export function ImportJiraIssuesDialog({
                   <SelectItem value="done">Done</SelectItem>
                 </SelectContent>
               </Select>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleRefreshIssues}
+                disabled={loading}
+                title="Refresh issues from Jira"
+              >
+                <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
+              </Button>
             </div>
 
             {/* Select All */}
