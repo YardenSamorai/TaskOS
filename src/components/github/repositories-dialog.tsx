@@ -43,6 +43,8 @@ interface RepositoriesDialogProps {
   onOpenChange: (open: boolean) => void;
   workspaceId: string;
   onRepositoryChange?: () => void;
+  onLinkSuccess?: () => void;
+  onUnlinkSuccess?: () => void;
 }
 
 export function RepositoriesDialog({
@@ -50,6 +52,8 @@ export function RepositoriesDialog({
   onOpenChange,
   workspaceId,
   onRepositoryChange,
+  onLinkSuccess,
+  onUnlinkSuccess,
 }: RepositoriesDialogProps) {
   const [loading, setLoading] = useState(true);
   const [repositories, setRepositories] = useState<GitHubRepo[]>([]);
@@ -107,7 +111,8 @@ export function RepositoriesDialog({
       if (result.success) {
         setLinkedRepoIds(prev => new Set([...prev, repo.id.toString()]));
         toast.success(`${repo.name} linked successfully`);
-        onRepositoryChange?.(); // Notify parent to refresh
+        onRepositoryChange?.();
+        onLinkSuccess?.();
       } else {
         toast.error(result.error || "Failed to link repository");
       }
@@ -142,7 +147,8 @@ export function RepositoriesDialog({
           return newSet;
         });
         toast.success("Repository unlinked");
-        onRepositoryChange?.(); // Notify parent to refresh
+        onRepositoryChange?.();
+        onUnlinkSuccess?.();
       } else {
         toast.error(result.error || "Failed to unlink repository");
       }
