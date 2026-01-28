@@ -18,6 +18,7 @@ import { useWorkspace } from "@/lib/hooks/use-workspaces";
 import { useTasks } from "@/lib/hooks/use-tasks";
 import { CreateWorkspaceDialog } from "@/components/workspaces/create-workspace-dialog";
 import { CreateTaskDialog } from "@/components/tasks/create-task-dialog";
+import { IntegrationsDialog } from "@/components/integrations/integrations-dialog";
 import { ProjectsCard } from "@/components/dashboard/projects-card";
 import { CalendarCard } from "@/components/dashboard/calendar-card";
 import { MyTasksCard } from "@/components/dashboard/my-tasks-card";
@@ -37,6 +38,7 @@ const DashboardPage = () => {
   
   const [createWorkspaceOpen, setCreateWorkspaceOpen] = useState(false);
   const [createTaskOpen, setCreateTaskOpen] = useState(false);
+  const [integrationsOpen, setIntegrationsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [greeting, setGreeting] = useState("Hello");
   const [currentDate, setCurrentDate] = useState("");
@@ -125,6 +127,7 @@ const DashboardPage = () => {
             variant="outline" 
             className="gap-2"
             size="sm"
+            onClick={() => setIntegrationsOpen(true)}
           >
             <Link2 className="w-4 h-4" />
             Connect apps
@@ -227,6 +230,11 @@ const DashboardPage = () => {
         workspaceName={workspace.name}
         locale={locale}
         members={members}
+      />
+      <IntegrationsDialog
+        open={integrationsOpen}
+        onOpenChange={setIntegrationsOpen}
+        workspaceId={workspaceId}
       />
     </div>
   );

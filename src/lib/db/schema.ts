@@ -786,6 +786,75 @@ export const goalsRelations = relations(goals, ({ one }) => ({
   }),
 }));
 
+// ============== INTEGRATIONS ==============
+export const integrations = pgTable("integrations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  workspaceId: uuid("workspace_id").references(() => workspaces.id, {
+    onDelete: "cascade",
+  }),
+  provider: varchar("provider", { length: 50 }).notNull(), // github, bitbucket, azure_devops, slack, etc.
+  providerAccountId: varchar("provider_account_id", { length: 255 }), // External account ID
+  providerUsername: varchar("provider_username", { length: 255 }), // External username
+  accessToken: text("access_token"), // Encrypted access token
+  refreshToken: text("refresh_token"), // Encrypted refresh token
+  tokenExpiresAt: timestamp("token_expires_at", { withTimezone: true }),
+  scope: text("scope"), // OAuth scopes granted
+  metadata: text("metadata"), // JSON string for additional provider-specific data
+  isActive: boolean("is_active").notNull().default(true),
+  lastSyncAt: timestamp("last_sync_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+export const integrationsRelations = relations(integrations, ({ one }) => ({
+  user: one(users, {
+    fields: [integrations.userId],
+    references: [users.id],
+  }),
+  workspace: one(workspaces, {
+    fields: [integrations.workspaceId],
+    references: [workspaces.id],
+  }),
+}));
+
+// Linked repositories from integrations
+export const linkedRepositories = pgTable("linked_repositories", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  integrationId: uuid("integration_id")
+    .notNull()
+    .references(() => integrations.id, { onDelete: "cascade" }),
+  workspaceId: uuid("workspace_id")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  externalId: varchar("external_id", { length: 255 }).notNull(), // Repo ID from provider
+  name: varchar("name", { length: 255 }).notNull(),
+  fullName: varchar("full_name", { length: 500 }), // e.g., "owner/repo"
+  url: text("url"),
+  defaultBranch: varchar("default_branch", { length: 100 }),
+  isPrivate: boolean("is_private").default(false),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+export const linkedRepositoriesRelations = relations(linkedRepositories, ({ one }) => ({
+  integration: one(integrations, {
+    fields: [linkedRepositories.integrationId],
+    references: [integrations.id],
+  }),
+  workspace: one(workspaces, {
+    fields: [linkedRepositories.workspaceId],
+    references: [workspaces.id],
+  }),
+}));
+
 // Type exports
 export type Todo = typeof todos.$inferSelect;
 export type NewTodo = typeof todos.$inferInsert;
@@ -815,6 +884,11 @@ export type Reminder = typeof reminders.$inferSelect;
 export type NewReminder = typeof reminders.$inferInsert;
 export type Goal = typeof goals.$inferSelect;
 export type NewGoal = typeof goals.$inferInsert;
+export type Integration = typeof integrations.$inferSelect;
+export type NewIntegration = typeof integrations.$inferInsert;
+export type LinkedRepository = typeof linkedRepositories.$inferSelect;
+export type NewLinkedRepository = typeof linkedRepositories.$inferInsert;
+export type IntegrationProvider = "github" | "bitbucket" | "azure_devops" | "gitlab" | "slack" | "google_calendar";
 export type WorkspaceRole = "owner" | "admin" | "member" | "viewer";
 export type TaskStatus = "backlog" | "todo" | "in_progress" | "review" | "done";
 export type TaskPriority = "low" | "medium" | "high" | "urgent";
