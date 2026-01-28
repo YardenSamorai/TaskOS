@@ -134,51 +134,54 @@ const DashboardPage = () => {
   }
 
   return (
-    <div className="space-y-6 pb-8">
+    <div className="space-y-4 sm:space-y-6 pb-8">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:gap-4">
         <div>
-          <p className="text-muted-foreground text-sm">{currentDate}</p>
-          <h1 className="text-2xl md:text-3xl font-bold mt-1">
+          <p className="text-muted-foreground text-xs sm:text-sm">{currentDate}</p>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mt-1">
             {greeting}, {userName}!
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-muted-foreground text-sm mt-1 hidden sm:block">
             How can I help you today?
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button 
-            className="gap-2"
+            className="gap-2 flex-1 sm:flex-none"
             size="sm"
           >
             <Sparkles className="w-4 h-4" />
-            Ask AI
+            <span className="hidden xs:inline">Ask AI</span>
+            <span className="xs:hidden">AI</span>
           </Button>
           <Button 
             variant="outline" 
-            className="gap-2"
+            className="gap-2 flex-1 sm:flex-none"
             size="sm"
             onClick={() => setCreateWorkspaceOpen(true)}
           >
             <FolderPlus className="w-4 h-4" />
-            Create workspace
+            <span className="hidden sm:inline">Create workspace</span>
+            <span className="sm:hidden">New</span>
           </Button>
           <Button 
             variant="outline" 
-            className="gap-2"
+            className="gap-2 w-full sm:w-auto"
             size="sm"
             onClick={() => setIntegrationsOpen(true)}
           >
             <Link2 className="w-4 h-4" />
-            Connect apps
+            <span className="hidden sm:inline">Connect apps</span>
+            <span className="sm:hidden">Connect</span>
           </Button>
         </div>
       </div>
 
       {/* Main Grid Layout */}
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Left Column */}
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           <ProjectsCard 
             locale={locale} 
             currentWorkspaceId={workspaceId}
@@ -204,7 +207,7 @@ const DashboardPage = () => {
         </div>
 
         {/* Right Column */}
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           <MyTasksCard 
             locale={locale} 
             workspaceId={workspaceId} 
@@ -215,29 +218,29 @@ const DashboardPage = () => {
           <GoalsCard workspaceId={workspaceId} />
 
           {/* Quick Stats Summary */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
             <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 rounded-xl bg-primary/10">
-                    <ListTodo className="w-5 h-5" style={{ color: "var(--accent-color)" }} />
+              <CardContent className="p-4 sm:pt-6 sm:px-6">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="p-2 sm:p-2.5 rounded-lg sm:rounded-xl bg-primary/10 shrink-0">
+                    <ListTodo className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: "var(--accent-color)" }} />
                   </div>
-                  <div>
-                    <p className="text-muted-foreground text-sm">Total Tasks</p>
-                    <p className="text-2xl font-bold">{tasks.length}</p>
+                  <div className="min-w-0">
+                    <p className="text-muted-foreground text-xs sm:text-sm truncate">Tasks</p>
+                    <p className="text-xl sm:text-2xl font-bold">{tasks.length}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
             <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 rounded-xl bg-primary/10">
-                    <Users className="w-5 h-5" style={{ color: "var(--accent-color)" }} />
+              <CardContent className="p-4 sm:pt-6 sm:px-6">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="p-2 sm:p-2.5 rounded-lg sm:rounded-xl bg-primary/10 shrink-0">
+                    <Users className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: "var(--accent-color)" }} />
                   </div>
-                  <div>
-                    <p className="text-muted-foreground text-sm">Team Members</p>
-                    <p className="text-2xl font-bold">{members.length}</p>
+                  <div className="min-w-0">
+                    <p className="text-muted-foreground text-xs sm:text-sm truncate">Members</p>
+                    <p className="text-xl sm:text-2xl font-bold">{members.length}</p>
                   </div>
                 </div>
               </CardContent>
@@ -249,18 +252,18 @@ const DashboardPage = () => {
             className="cursor-pointer hover:border-primary/50 transition-colors bg-gradient-to-br from-violet-500/5 to-indigo-500/5"
             onClick={() => router.push(`/${locale}/app/${workspaceId}/focus-mode`)}
           >
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600">
-                    <Zap className="w-5 h-5 text-white" />
+            <CardContent className="p-4 sm:pt-6 sm:px-6">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                  <div className="p-2 sm:p-2.5 rounded-lg sm:rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 shrink-0">
+                    <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                   </div>
-                  <div>
-                    <p className="font-medium">Focus Mode</p>
-                    <p className="text-muted-foreground text-sm">25 min Pomodoro with ambient music</p>
+                  <div className="min-w-0">
+                    <p className="font-medium text-sm sm:text-base">Focus Mode</p>
+                    <p className="text-muted-foreground text-xs sm:text-sm truncate">25 min Pomodoro</p>
                   </div>
                 </div>
-                <ArrowRight className="w-5 h-5 text-muted-foreground" />
+                <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground shrink-0" />
               </div>
             </CardContent>
           </Card>

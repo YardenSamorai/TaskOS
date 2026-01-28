@@ -106,36 +106,36 @@ export const MyTasksCard = ({ locale, workspaceId, tasks, onCreateTask, onRefres
 
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <ListTodo className="w-5 h-5 text-muted-foreground" />
-            My tasks
+      <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6 pt-3 sm:pt-6">
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="flex items-center gap-1.5 sm:gap-2 text-base sm:text-lg">
+            <ListTodo className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
+            <span className="truncate">My tasks</span>
             {filteredTasks.length > 0 && (
-              <Badge variant="secondary" className="text-xs ml-1">
+              <Badge variant="secondary" className="text-[10px] sm:text-xs ml-1 shrink-0">
                 {filteredTasks.length}
               </Badge>
             )}
           </CardTitle>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-8 w-8"
+              className="h-7 w-7 sm:h-8 sm:w-8"
               onClick={onCreateTask}
               title="Create task"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </Button>
             <Link href={`/${locale}/app/${workspaceId}/tasks`}>
-              <Button variant="ghost" size="icon" className="h-8 w-8" title="View all tasks">
-                <Maximize2 className="w-4 h-4" />
+              <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8" title="View all tasks">
+                <Maximize2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </Button>
             </Link>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <MoreHorizontal className="w-4 h-4" />
+                <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8">
+                  <MoreHorizontal className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
@@ -185,23 +185,23 @@ export const MyTasksCard = ({ locale, workspaceId, tasks, onCreateTask, onRefres
           </div>
         </div>
         {/* Sort indicator */}
-        <p className="text-xs text-muted-foreground mt-1">
+        <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1">
           Sorted by {sortLabels[sortBy].toLowerCase()}
         </p>
       </CardHeader>
-      <CardContent className="space-y-2">
+      <CardContent className="space-y-1.5 sm:space-y-2 px-3 sm:px-6 pb-3 sm:pb-6">
         {sortedTasks.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <ListTodo className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p className="text-sm">
-              {showCompleted ? "No tasks found" : "No active tasks assigned to you"}
+          <div className="text-center py-6 sm:py-8 text-muted-foreground">
+            <ListTodo className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 sm:mb-3 opacity-30" />
+            <p className="text-xs sm:text-sm">
+              {showCompleted ? "No tasks found" : "No active tasks"}
             </p>
             {!showCompleted && tasks.some(t => t.status === "done") && (
               <button 
                 onClick={() => setShowCompleted(true)}
                 className="text-xs text-primary hover:underline mt-2"
               >
-                Show completed tasks
+                Show completed
               </button>
             )}
           </div>
@@ -211,48 +211,49 @@ export const MyTasksCard = ({ locale, workspaceId, tasks, onCreateTask, onRefres
               key={task.id}
               href={`/${locale}/app/${task.workspaceId}/tasks/${task.id}`}
               className={cn(
-                "flex items-center justify-between p-3 rounded-xl hover:bg-muted/50 transition-colors group",
+                "flex items-center justify-between p-2.5 sm:p-3 rounded-lg sm:rounded-xl hover:bg-muted/50 transition-colors group gap-2",
                 task.status === "done" && "opacity-60"
               )}
             >
               <div className="flex-1 min-w-0">
                 <h4 className={cn(
-                  "font-medium truncate",
+                  "font-medium text-sm sm:text-base truncate",
                   task.status === "done" && "line-through text-muted-foreground"
                 )}>
                   {task.title}
                 </h4>
-                <p className="text-muted-foreground text-sm mt-0.5">
+                <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">
                   {task.dueDate 
-                    ? format(parseISO(task.dueDate), "d MMM") + " · " + format(parseISO(task.dueDate), "hh:mm a")
+                    ? format(parseISO(task.dueDate), "d MMM")
                     : "No due date"
                   }
                 </p>
               </div>
-              <div className="flex items-center gap-3 ml-4">
+              <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                 <Badge 
                   variant="outline" 
                   className={cn(
-                    "text-xs font-medium border",
+                    "text-[10px] sm:text-xs font-medium border px-1.5 sm:px-2",
                     priorityConfig[task.priority]?.className || priorityConfig.low.className
                   )}
                 >
-                  {priorityConfig[task.priority]?.label || "Low"}
+                  <span className="hidden sm:inline">{priorityConfig[task.priority]?.label || "Low"}</span>
+                  <span className="sm:hidden">{(priorityConfig[task.priority]?.label || "Low").slice(0, 1)}</span>
                 </Badge>
-                {/* Assignee avatars stack */}
+                {/* Assignee avatars stack - hidden on very small screens */}
                 {task.assignees && task.assignees.length > 0 && (
-                  <div className="flex -space-x-2">
-                    {task.assignees.slice(0, 3).map((assignee, i) => (
-                      <Avatar key={i} className="w-7 h-7 border-2 border-background">
+                  <div className="hidden xs:flex -space-x-1.5 sm:-space-x-2">
+                    {task.assignees.slice(0, 2).map((assignee, i) => (
+                      <Avatar key={i} className="w-5 h-5 sm:w-7 sm:h-7 border-2 border-background">
                         <AvatarImage src={assignee.user.image || undefined} />
-                        <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                        <AvatarFallback className="bg-primary text-primary-foreground text-[10px] sm:text-xs">
                           {assignee.user.name?.charAt(0) || "?"}
                         </AvatarFallback>
                       </Avatar>
                     ))}
-                    {task.assignees.length > 3 && (
-                      <div className="w-7 h-7 rounded-full bg-muted border-2 border-background flex items-center justify-center">
-                        <span className="text-xs text-muted-foreground">+{task.assignees.length - 3}</span>
+                    {task.assignees.length > 2 && (
+                      <div className="w-5 h-5 sm:w-7 sm:h-7 rounded-full bg-muted border-2 border-background flex items-center justify-center">
+                        <span className="text-[10px] sm:text-xs text-muted-foreground">+{task.assignees.length - 2}</span>
                       </div>
                     )}
                   </div>

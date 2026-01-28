@@ -75,17 +75,17 @@ export const ProjectsCard = ({ locale, currentWorkspaceId, onCreateWorkspace }: 
 
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Building2 className="w-5 h-5 text-muted-foreground" />
+      <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6 pt-3 sm:pt-6">
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="flex items-center gap-1.5 sm:gap-2 text-base sm:text-lg">
+            <Building2 className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
             Projects
           </CardTitle>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="text-muted-foreground gap-1">
+              <Button variant="ghost" size="sm" className="text-muted-foreground gap-1 h-7 sm:h-8 text-xs sm:text-sm px-2 sm:px-3">
                 {sortBy === "recents" ? "Recents" : "Name"}
-                <ChevronDown className="w-4 h-4" />
+                <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -99,28 +99,28 @@ export const ProjectsCard = ({ locale, currentWorkspaceId, onCreateWorkspace }: 
           </DropdownMenu>
         </div>
       </CardHeader>
-      <CardContent className="space-y-2">
+      <CardContent className="space-y-1.5 sm:space-y-2 px-3 sm:px-6 pb-3 sm:pb-6">
         {/* Create new project button */}
         <Button
           variant="ghost"
-          className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground h-12"
+          className="w-full justify-start gap-2 sm:gap-3 text-muted-foreground hover:text-foreground h-10 sm:h-12 text-sm"
           onClick={onCreateWorkspace}
         >
-          <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
-            <Plus className="w-4 h-4" style={{ color: "var(--accent-color)" }} />
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
+            <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" style={{ color: "var(--accent-color)" }} />
           </div>
-          Create new project
+          <span className="truncate">Create new project</span>
         </Button>
 
         {/* Workspace list */}
         {loading ? (
-          <div className="space-y-2">
+          <div className="space-y-1.5 sm:space-y-2">
             {[1, 2].map((i) => (
-              <div key={i} className="h-14 bg-muted rounded-xl animate-pulse" />
+              <div key={i} className="h-12 sm:h-14 bg-muted rounded-lg sm:rounded-xl animate-pulse" />
             ))}
           </div>
         ) : workspaces.length === 0 ? (
-          <div className="text-center py-4 text-muted-foreground text-sm">
+          <div className="text-center py-3 sm:py-4 text-muted-foreground text-xs sm:text-sm">
             No projects yet. Create your first one!
           </div>
         ) : (
@@ -131,22 +131,22 @@ export const ProjectsCard = ({ locale, currentWorkspaceId, onCreateWorkspace }: 
                 key={workspace.id}
                 href={`/${locale}/app/${workspace.id}/dashboard`}
                 className={cn(
-                  "flex items-center justify-between p-3 rounded-xl transition-all border-2",
+                  "flex items-center justify-between p-2.5 sm:p-3 rounded-lg sm:rounded-xl transition-all border-2 gap-2",
                   isSelected 
                     ? "bg-primary/10 border-primary/30 shadow-sm" 
                     : "bg-muted/30 hover:bg-muted/50 border-transparent hover:border-muted"
                 )}
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                   {/* Workspace Icon */}
                   <div className={cn(
-                    "w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold text-sm relative shrink-0",
+                    "w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center text-white font-bold text-xs sm:text-sm relative shrink-0",
                     getColorFromString(workspace.name)
                   )}>
                     {workspace.name.charAt(0).toUpperCase()}
                     {isSelected && (
-                      <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-primary flex items-center justify-center shadow-sm">
-                        <Check className="w-2.5 h-2.5 text-white" />
+                      <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-primary flex items-center justify-center shadow-sm">
+                        <Check className="w-2 h-2 sm:w-2.5 sm:h-2.5 text-white" />
                       </div>
                     )}
                   </div>
@@ -154,20 +154,20 @@ export const ProjectsCard = ({ locale, currentWorkspaceId, onCreateWorkspace }: 
                   {/* Workspace Name */}
                   <div className="min-w-0">
                     <p className={cn(
-                      "font-medium truncate",
+                      "font-medium text-sm sm:text-base truncate",
                       isSelected ? "text-primary" : "text-foreground"
                     )}>
                       {workspace.name}
                     </p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {isSelected ? "Current workspace" : workspace.role}
+                    <p className="text-[10px] sm:text-xs text-muted-foreground truncate">
+                      {isSelected ? "Current" : workspace.role}
                     </p>
                   </div>
                 </div>
 
-                {/* Right side icons */}
+                {/* Right side icons - hidden on small screens */}
                 {!isSelected && (
-                  <div className="flex items-center gap-3 text-muted-foreground">
+                  <div className="hidden sm:flex items-center gap-3 text-muted-foreground shrink-0">
                     <ListTodo className="w-4 h-4" />
                     <Users className="w-4 h-4" />
                   </div>
