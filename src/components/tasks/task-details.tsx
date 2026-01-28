@@ -23,6 +23,7 @@ import { TaskGitHubActivity } from "@/components/github/task-github-activity";
 interface TaskWithRelations extends Task {
   assignees: { id: string; userId: string; user: UserType }[];
   tags: { tag: { id: string; name: string; color: string } }[];
+  metadata?: string | null;
 }
 
 interface TaskDetailsProps {
