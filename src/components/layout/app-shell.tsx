@@ -45,7 +45,8 @@ interface NavItem {
 }
 
 const mainNavItems: NavItem[] = [
-  // No separate home item - dashboard is the main landing page
+  { icon: LayoutDashboard, labelKey: "dashboard", href: "/app/dashboard" },
+  { icon: Settings, labelKey: "profile", href: "/app/account" },
 ];
 
 const workspaceNavItems: NavItem[] = [
@@ -194,6 +195,7 @@ export const AppShell = ({ children, locale }: AppShellProps) => {
     templates: t("templates.title"),
     settings: t("settings.title"),
     members: t("common.members") || "Members",
+    profile: t("common.profile") || "Profile",
   }), [t]);
 
   const getHref = useCallback((item: NavItem) => {
