@@ -79,8 +79,20 @@ export async function GET(request: NextRequest) {
     } catch {}
 
     // Test search endpoint (issues) - using new POST /search/jql
+    // Use the same approach as getJiraIssues function
+    const projectKey = "SCRUM";
+    const jqlQuery = `project = ${projectKey}`;
+    
     const searchUrl = `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/search/jql`;
     console.log("[Jira Debug] Testing search URL:", searchUrl);
+    console.log("[Jira Debug] JQL Query:", jqlQuery);
+    
+    const searchBody2 = {
+      jql: jqlQuery,
+      maxResults: 10,
+      fields: ["summary", "status", "issuetype"],
+    };
+    console.log("[Jira Debug] Request body:", JSON.stringify(searchBody2));
     
     const searchResponse = await fetch(searchUrl, {
       method: "POST",
@@ -89,11 +101,7 @@ export async function GET(request: NextRequest) {
         Accept: "application/json",
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        jql: "project = SCRUM",
-        maxResults: 10,
-        fields: ["summary", "status", "issuetype"],
-      }),
+      body: JSON.stringify(searchBody2),
     });
 
     let searchBody = null;
@@ -127,8 +135,10 @@ export async function GET(request: NextRequest) {
       },
       searchTest: {
         url: searchUrl,
+        jqlUsed: jqlQuery,
+        requestBody: searchBody2,
         status: searchResponse.status,
-        body: searchBody?.substring(0, 1000),
+        responseBody: searchBody?.substring(0, 1000),
       },
       accessibleResources: {
         status: resourcesResponse.status,

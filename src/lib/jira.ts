@@ -141,12 +141,12 @@ export async function getJiraIssues(
   const url = `${JIRA_API_BASE}/${cloudId}/rest/api/3/search/jql`;
   console.log("[Jira API] Calling:", url);
   
-  // Use minimal fields that are guaranteed to exist
+  // Use EXACTLY the same fields as debug endpoint that works
   const requestBody = {
     jql: query,
     maxResults,
     startAt,
-    fields: ["summary", "status", "issuetype", "assignee", "created", "updated"],
+    fields: ["summary", "status", "issuetype"],
   };
   
   console.log("[Jira API] Request body:", JSON.stringify(requestBody));
