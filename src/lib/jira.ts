@@ -15,6 +15,7 @@ async function jiraFetch(cloudId: string, path: string, accessToken: string, opt
       "Content-Type": "application/json",
       ...options?.headers,
     },
+    cache: "no-store", // Always fetch fresh data from Jira
   });
   
   console.log("[Jira API] Response status:", response.status);
@@ -166,6 +167,7 @@ export async function getJiraIssues(
       "Content-Type": "application/json",
     },
     body: JSON.stringify(requestBody),
+    cache: "no-store", // Ensure fresh data from Jira
   });
 
   console.log("[Jira API] Response status:", response.status);
@@ -199,6 +201,7 @@ export async function getJiraIssue(
         Authorization: `Bearer ${accessToken}`,
         Accept: "application/json",
       },
+      cache: "no-store",
     }
   );
 
