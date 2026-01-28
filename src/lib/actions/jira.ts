@@ -18,6 +18,67 @@ import {
   type JiraIssue,
 } from "@/lib/jira";
 
+// Refresh Jira access token
+async function refreshJiraToken(integration: any): Promise<string | null> {
+  if (!integration.refreshToken) {
+    console.log("[Jira] No refresh token available");
+    return null;
+  }
+
+  const clientId = process.env.JIRA_CLIENT_ID;
+  const clientSecret = process.env.JIRA_CLIENT_SECRET;
+
+  if (!clientId || !clientSecret) {
+    console.error("[Jira] Missing client credentials for token refresh");
+    return null;
+  }
+
+  try {
+    console.log("[Jira] Refreshing access token...");
+    
+    const response = await fetch("https://auth.atlassian.com/oauth/token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        grant_type: "refresh_token",
+        client_id: clientId,
+        client_secret: clientSecret,
+        refresh_token: integration.refreshToken,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("[Jira] Token refresh failed:", response.status, errorText);
+      return null;
+    }
+
+    const tokenData = await response.json();
+    const { access_token, refresh_token, expires_in } = tokenData;
+
+    // Calculate new expiration
+    const tokenExpiresAt = expires_in
+      ? new Date(Date.now() + expires_in * 1000)
+      : null;
+
+    // Update the integration with new tokens
+    await db.update(integrations).set({
+      accessToken: access_token,
+      refreshToken: refresh_token || integration.refreshToken,
+      tokenExpiresAt,
+      updatedAt: new Date(),
+    }).where(eq(integrations.id, integration.id));
+
+    console.log("[Jira] Token refreshed successfully");
+    return access_token;
+  } catch (error) {
+    console.error("[Jira] Error refreshing token:", error);
+    return null;
+  }
+}
+
 // Get Jira access token for current user
 export async function getJiraToken() {
   const session = await auth();
@@ -37,6 +98,21 @@ export async function getJiraToken() {
     return { success: false, error: "Jira not connected" };
   }
 
+  // Check if token is expired or about to expire (within 5 minutes)
+  let accessToken = integration.accessToken;
+  const tokenExpiry = integration.tokenExpiresAt;
+  const fiveMinutesFromNow = new Date(Date.now() + 5 * 60 * 1000);
+
+  if (tokenExpiry && new Date(tokenExpiry) < fiveMinutesFromNow) {
+    console.log("[Jira] Token expired or expiring soon, refreshing...");
+    const newToken = await refreshJiraToken(integration);
+    if (newToken) {
+      accessToken = newToken;
+    } else {
+      return { success: false, error: "Token expired. Please reconnect to Jira." };
+    }
+  }
+
   // Parse metadata to get cloudId
   let cloudId = integration.providerAccountId;
   if (integration.metadata) {
@@ -48,7 +124,7 @@ export async function getJiraToken() {
 
   return {
     success: true,
-    accessToken: integration.accessToken,
+    accessToken,
     cloudId,
     integration,
   };
