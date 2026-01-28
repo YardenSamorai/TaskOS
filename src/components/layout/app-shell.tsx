@@ -53,7 +53,7 @@ const workspaceNavItems: NavItem[] = [
   { icon: Kanban, labelKey: "board", href: "/board", requiresWorkspace: true },
   { icon: ListTodo, labelKey: "tasks", href: "/tasks", requiresWorkspace: true },
   { icon: Calendar, labelKey: "calendar", href: "/calendar", requiresWorkspace: true },
-  { icon: Target, labelKey: "focus", href: "/focus", requiresWorkspace: true },
+  { icon: Target, labelKey: "focus", href: "/focus-mode", requiresWorkspace: true },
   { icon: Users, labelKey: "members", href: "/members", requiresWorkspace: true },
   { icon: Settings, labelKey: "settings", href: "/settings", requiresWorkspace: true },
 ];
@@ -63,7 +63,7 @@ const mobileNavItems = [
   { icon: Kanban, labelKey: "board", href: "/board" },
   { icon: ListTodo, labelKey: "tasks", href: "/tasks" },
   { icon: Calendar, labelKey: "calendar", href: "/calendar" },
-  { icon: Target, labelKey: "focus", href: "/focus" },
+  { icon: Target, labelKey: "focus", href: "/focus-mode" },
 ];
 
 // Memoized NavLink for performance

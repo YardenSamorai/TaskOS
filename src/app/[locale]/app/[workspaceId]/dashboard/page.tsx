@@ -192,18 +192,18 @@ const DashboardPage = () => {
 
           {/* Focus Mode CTA */}
           <Card 
-            className="cursor-pointer hover:border-primary/50 transition-colors"
-            onClick={() => router.push(`/${locale}/app/${workspaceId}/focus`)}
+            className="cursor-pointer hover:border-primary/50 transition-colors bg-gradient-to-br from-violet-500/5 to-indigo-500/5"
+            onClick={() => router.push(`/${locale}/app/${workspaceId}/focus-mode`)}
           >
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-primary/10">
-                    <Zap className="w-5 h-5" style={{ color: "var(--accent-color)" }} />
+                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600">
+                    <Zap className="w-5 h-5 text-white" />
                   </div>
                   <div>
                     <p className="font-medium">Focus Mode</p>
-                    <p className="text-muted-foreground text-sm">Start a focused work session</p>
+                    <p className="text-muted-foreground text-sm">25 min Pomodoro with ambient music</p>
                   </div>
                 </div>
                 <ArrowRight className="w-5 h-5 text-muted-foreground" />
