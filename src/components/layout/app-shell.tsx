@@ -45,7 +45,7 @@ interface NavItem {
 }
 
 const mainNavItems: NavItem[] = [
-  { icon: Home, labelKey: "home", href: "/app/dashboard" },
+  // No separate home item - dashboard is the main landing page
 ];
 
 const workspaceNavItems: NavItem[] = [
