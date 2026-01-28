@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2, Calendar as CalendarIcon, Plus, Trash2, ChevronDown, ChevronRight, Layers } from "lucide-react";
+import { Loader2, Calendar as CalendarIcon, Plus, Trash2, ChevronDown, ChevronRight, Layers, Github } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +35,8 @@ import { toast } from "sonner";
 import { createTask } from "@/lib/actions/task";
 import { taskKeys } from "@/lib/hooks/use-tasks";
 import { useWorkspace } from "@/lib/hooks/use-workspaces";
+import { getLinkedRepositoriesForWorkspace, createGitHubIssueFromTask } from "@/lib/actions/github";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { TaskEnhancer } from "@/components/ai/task-enhancer";
 import { ClarityScore } from "@/components/ai/clarity-score";
@@ -91,6 +93,11 @@ export const CreateTaskDialog = ({
   const [useProcessMode, setUseProcessMode] = useState(false);
   const [stages, setStages] = useState<Stage[]>([]);
   
+  // GitHub integration
+  const [createGitHubIssue, setCreateGitHubIssue] = useState(false);
+  const [selectedRepoId, setSelectedRepoId] = useState<string>("");
+  const [linkedRepos, setLinkedRepos] = useState<{id: string; name: string; fullName: string}[]>([]);
+  
   const t = useTranslations("tasks");
   const tc = useTranslations("common");
   const queryClient = useQueryClient();
@@ -98,6 +105,22 @@ export const CreateTaskDialog = ({
   // Fetch members if not provided
   const { data: workspaceData } = useWorkspace(workspaceId);
   const members = propMembers || workspaceData?.members || [];
+
+  // Fetch linked repositories
+  useEffect(() => {
+    if (open) {
+      getLinkedRepositoriesForWorkspace(workspaceId).then(result => {
+        if (result.repositories) {
+          const repos = result.repositories.map((r: any) => ({
+            id: r.id,
+            name: r.name,
+            fullName: r.fullName,
+          }));
+          setLinkedRepos(repos);
+        }
+      });
+    }
+  }, [open, workspaceId]);
 
   // Reset form when dialog opens/closes
   useEffect(() => {
@@ -116,6 +139,8 @@ export const CreateTaskDialog = ({
       setAcceptanceCriteria([]);
       setUseProcessMode(false);
       setStages([]);
+      setCreateGitHubIssue(false);
+      setSelectedRepoId("");
     }
   }, [open, defaultStatus, defaultDueDate]);
 
@@ -229,7 +254,24 @@ export const CreateTaskDialog = ({
       const result = await createTask(formData);
 
       if (result.success && result.task) {
-        toast.success("Task created successfully!");
+        // Create GitHub issue if selected
+        if (createGitHubIssue && selectedRepoId) {
+          try {
+            const ghResult = await createGitHubIssueFromTask({
+              taskId: result.task.id,
+              repositoryId: selectedRepoId,
+            });
+            if (ghResult.success) {
+              toast.success("Task created and linked to GitHub issue!");
+            } else {
+              toast.success("Task created, but GitHub issue creation failed");
+            }
+          } catch {
+            toast.success("Task created, but GitHub issue creation failed");
+          }
+        } else {
+          toast.success("Task created successfully!");
+        }
         
         // Invalidate ALL task-related queries to ensure fresh data
         await queryClient.invalidateQueries({ queryKey: taskKeys.all });
@@ -383,6 +425,43 @@ export const CreateTaskDialog = ({
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+            )}
+
+            {/* GitHub Integration */}
+            {linkedRepos.length > 0 && (
+              <div className="space-y-3 pt-4 border-t">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Github className="w-4 h-4" />
+                    <Label className="cursor-pointer">Create GitHub Issue</Label>
+                  </div>
+                  <Switch
+                    checked={createGitHubIssue}
+                    onCheckedChange={setCreateGitHubIssue}
+                  />
+                </div>
+                
+                {createGitHubIssue && (
+                  <div className="space-y-2">
+                    <Label className="text-sm text-muted-foreground">Select Repository</Label>
+                    <Select value={selectedRepoId} onValueChange={setSelectedRepoId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select repository" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {linkedRepos.map((repo) => (
+                          <SelectItem key={repo.id} value={repo.id}>
+                            {repo.fullName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      A new issue will be created in the selected repository with this task's details
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 

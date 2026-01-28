@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { updateTask, addAssignee, removeAssignee } from "@/lib/actions/task";
 import type { Task, User as UserType, WorkspaceMember } from "@/lib/db/schema";
 import { TaskGitHubActivity } from "@/components/github/task-github-activity";
+import { CreateIssueButton } from "@/components/github/create-issue-button";
 
 interface TaskWithRelations extends Task {
   assignees: { id: string; userId: string; user: UserType }[];
@@ -28,9 +29,10 @@ interface TaskWithRelations extends Task {
 interface TaskDetailsProps {
   task: TaskWithRelations;
   members: (WorkspaceMember & { user: UserType })[];
+  workspaceId: string;
 }
 
-export const TaskDetails = ({ task, members }: TaskDetailsProps) => {
+export const TaskDetails = ({ task, members, workspaceId }: TaskDetailsProps) => {
   const [updating, setUpdating] = useState(false);
   const t = useTranslations("tasks");
 
@@ -266,6 +268,18 @@ export const TaskDetails = ({ task, members }: TaskDetailsProps) => {
             </div>
           </div>
         )}
+
+        {/* GitHub Integration */}
+        <div>
+          <h4 className="text-sm font-medium text-muted-foreground mb-2">
+            GitHub
+          </h4>
+          <CreateIssueButton
+            taskId={task.id}
+            workspaceId={workspaceId}
+            taskTitle={task.title}
+          />
+        </div>
 
         {/* GitHub Activity */}
         <TaskGitHubActivity taskId={task.id} />

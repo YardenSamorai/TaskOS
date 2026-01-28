@@ -34,7 +34,7 @@ const TaskPage = async ({ params }: TaskPageProps) => {
         {/* Main content */}
         <div className="lg:col-span-2 space-y-6">
           {/* Task Details */}
-          <TaskDetails task={task} members={workspace.members || []} />
+          <TaskDetails task={task} members={workspace.members || []} workspaceId={workspaceId} />
 
           {/* Process Mode */}
           <ProcessMode task={task} locale={locale} workspaceId={workspaceId} />
