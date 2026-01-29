@@ -213,17 +213,18 @@ const FocusModePage = () => {
       <audio ref={audioRef} />
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
         <Button 
           variant="ghost" 
-          className="gap-2"
+          className="gap-2 self-start"
           onClick={() => router.push(`/${locale}/app/${workspaceId}/dashboard`)}
         >
           <ArrowLeft className="w-4 h-4" />
-          Back to Dashboard
+          <span className="hidden sm:inline">Back to Dashboard</span>
+          <span className="sm:hidden">Back</span>
         </Button>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 self-end sm:self-auto">
           {/* Sound controls */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -316,9 +317,9 @@ const FocusModePage = () => {
         </div>
 
         {/* Timer circle */}
-        <div className="relative mb-8">
+        <div className="relative mb-6 sm:mb-8">
           {/* Background circle */}
-          <svg className="w-72 h-72 md:w-80 md:h-80 transform -rotate-90">
+          <svg className="w-64 h-64 sm:w-72 sm:h-72 md:w-80 md:h-80 transform -rotate-90">
             <circle
               cx="50%"
               cy="50%"
@@ -350,7 +351,7 @@ const FocusModePage = () => {
 
           {/* Timer display */}
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <div className="text-6xl md:text-7xl font-bold font-mono tracking-tight">
+            <div className="text-5xl sm:text-6xl md:text-7xl font-bold font-mono tracking-tight">
               {formatTime(timeLeft)}
             </div>
             <div className="text-muted-foreground mt-2 flex items-center gap-2">

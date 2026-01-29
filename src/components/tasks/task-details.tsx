@@ -384,7 +384,7 @@ export const TaskDetails = ({ task, members, workspaceId }: TaskDetailsProps) =>
           <h4 className="text-sm font-medium text-muted-foreground mb-2">
             Integrations
           </h4>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-col xs:flex-row flex-wrap gap-2">
             <CreateIssueButton
               taskId={task.id}
               workspaceId={workspaceId}

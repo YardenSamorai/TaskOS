@@ -349,7 +349,7 @@ export const CreateTaskDialog = ({
             />
 
             {/* Status & Priority */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 xs:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>{t("status")}</Label>
                 <Select value={status} onValueChange={(v) => setStatus(v as TaskStatus)}>

@@ -151,15 +151,16 @@ export const TaskHeader = ({ task, locale, workspaceId }: TaskHeaderProps) => {
 
   return (
     <>
-      <div className="flex items-start justify-between gap-4">
-        <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+        <div className="space-y-4 min-w-0 flex-1">
           {/* Back link */}
           <Link
             href={`/${locale}/app/${workspaceId}/board`}
             className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to Board
+            <span className="hidden xs:inline">Back to Board</span>
+            <span className="xs:hidden">Back</span>
           </Link>
 
           {/* Title & badges */}
@@ -173,13 +174,14 @@ export const TaskHeader = ({ task, locale, workspaceId }: TaskHeaderProps) => {
                   onKeyDown={handleTitleKeyDown}
                   onBlur={handleSaveTitle}
                   disabled={savingTitle}
-                  className="text-2xl md:text-3xl font-bold h-auto py-1 px-2"
+                  className="text-xl sm:text-2xl md:text-3xl font-bold h-auto py-1 px-2 flex-1"
                 />
                 <Button
                   size="icon"
                   variant="ghost"
                   onClick={handleSaveTitle}
                   disabled={savingTitle}
+                  className="shrink-0"
                 >
                   <Check className="w-4 h-4 text-green-500" />
                 </Button>
@@ -191,17 +193,18 @@ export const TaskHeader = ({ task, locale, workspaceId }: TaskHeaderProps) => {
                     setEditedTitle(task.title);
                   }}
                   disabled={savingTitle}
+                  className="shrink-0"
                 >
                   <X className="w-4 h-4 text-red-500" />
                 </Button>
               </div>
             ) : (
-              <div className="group flex items-center gap-2">
-                <h1 className="text-2xl md:text-3xl font-bold">{task.title}</h1>
+              <div className="group flex items-start gap-2">
+                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold break-words">{task.title}</h1>
                 <Button
                   size="icon"
                   variant="ghost"
-                  className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="h-8 w-8 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                   onClick={() => setEditingTitle(true)}
                 >
                   <Pencil className="w-4 h-4" />
@@ -218,7 +221,7 @@ export const TaskHeader = ({ task, locale, workspaceId }: TaskHeaderProps) => {
               <Badge variant="secondary" className={priorityColors[task.priority]}>
                 {task.priority}
               </Badge>
-              <span className="text-sm text-muted-foreground">
+              <span className="text-xs sm:text-sm text-muted-foreground truncate max-w-[150px] sm:max-w-none">
                 Created by {task.creator.name || task.creator.email}
               </span>
             </div>

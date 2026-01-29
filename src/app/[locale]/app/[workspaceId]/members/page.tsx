@@ -431,7 +431,7 @@ const MembersPage = () => {
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 shrink-0">
+                    <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                       {canManage && !isOwner ? (
                         <Select
                           value={member.role}
@@ -439,7 +439,7 @@ const MembersPage = () => {
                             handleRoleChange(member.id, value as "admin" | "member" | "viewer")
                           }
                         >
-                          <SelectTrigger className="w-32">
+                          <SelectTrigger className="w-24 sm:w-32">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>

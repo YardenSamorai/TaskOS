@@ -138,15 +138,15 @@ const SettingsPage = () => {
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-8">
+    <div className="max-w-3xl mx-auto space-y-6 sm:space-y-8">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center">
-          <Settings className="w-6 h-6 text-white" />
+        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center shrink-0">
+          <Settings className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
         </div>
-        <div>
-          <h1 className="text-2xl font-bold">{t("settings.title")}</h1>
-          <p className="text-muted-foreground">Manage your workspace settings</p>
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold">{t("settings.title")}</h1>
+          <p className="text-sm text-muted-foreground truncate">Manage your workspace settings</p>
         </div>
       </div>
 
@@ -194,13 +194,13 @@ const SettingsPage = () => {
           <CardDescription>Share this link to invite people to your workspace</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <Input
               value={`${typeof window !== "undefined" ? window.location.origin : ""}/${locale}/app/join/${workspace.inviteCode}`}
               readOnly
-              className="font-mono text-sm"
+              className="font-mono text-xs sm:text-sm flex-1"
             />
-            <Button variant="outline" size="icon" onClick={copyInviteLink}>
+            <Button variant="outline" size="icon" onClick={copyInviteLink} className="self-end sm:self-auto shrink-0">
               {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
             </Button>
           </div>

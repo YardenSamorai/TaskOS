@@ -35,10 +35,10 @@ const BoardPage = () => {
 
   return (
     <div className="h-[calc(100vh-8rem)]">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 sm:mb-6">
         <div>
-          <h1 className="text-2xl font-bold">Board</h1>
-          <p className="text-muted-foreground">Drag and drop tasks between columns</p>
+          <h1 className="text-xl sm:text-2xl font-bold">Board</h1>
+          <p className="text-sm text-muted-foreground">Drag and drop tasks between columns</p>
         </div>
       </div>
       <KanbanBoard 

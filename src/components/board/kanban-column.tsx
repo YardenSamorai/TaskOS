@@ -51,7 +51,7 @@ export const KanbanColumn = ({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex flex-col w-72 min-w-72 rounded-xl border-2 transition-all duration-200",
+        "flex flex-col w-[280px] min-w-[280px] sm:w-72 sm:min-w-72 rounded-xl border-2 transition-all duration-200",
         isDraggingOver 
           ? "border-primary bg-primary/5 shadow-lg" 
           : "border-border bg-muted/30",
