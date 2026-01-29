@@ -16,11 +16,11 @@ import {
   PartyPopper,
 } from "lucide-react";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/ui/responsive-dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
@@ -113,9 +113,9 @@ export function GitHubOnboardingDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
-        <DialogHeader className="text-center pb-2">
+    <ResponsiveDialog open={open} onOpenChange={handleClose}>
+      <ResponsiveDialogContent className="sm:max-w-2xl overflow-hidden">
+        <ResponsiveDialogHeader className="text-center pb-2">
           {/* Success Badge */}
           <div className="flex justify-center mb-3 sm:mb-4">
             <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20">
@@ -132,13 +132,13 @@ export function GitHubOnboardingDialog({
             </div>
           </div>
 
-          <DialogTitle className="text-xl sm:text-2xl font-bold">
+          <ResponsiveDialogTitle className="text-xl sm:text-2xl font-bold">
             GitHub Integration Ready
-          </DialogTitle>
+          </ResponsiveDialogTitle>
           <p className="text-muted-foreground mt-1.5 sm:mt-2 text-sm sm:text-base">
             Supercharge your workflow with GitHub
           </p>
-        </DialogHeader>
+        </ResponsiveDialogHeader>
 
         {/* Features Grid */}
         <div className="py-3 sm:py-4">
@@ -209,7 +209,7 @@ export function GitHubOnboardingDialog({
             <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </Button>
         </div>
-      </DialogContent>
-    </Dialog>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }

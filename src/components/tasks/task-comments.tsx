@@ -39,9 +39,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  Dialog,
-  DialogContent,
-} from "@/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+} from "@/components/ui/responsive-dialog";
 import { toast } from "sonner";
 import { createComment, updateComment, deleteComment } from "@/lib/actions/comment";
 import type { Task, TaskComment, User } from "@/lib/db/schema";
@@ -594,8 +594,8 @@ export const TaskComments = ({ task, currentUserId }: TaskCommentsProps) => {
         </AlertDialog>
 
         {/* Image viewer dialog */}
-        <Dialog open={!!viewingImage} onOpenChange={() => setViewingImage(null)}>
-          <DialogContent className="max-w-[90vw] max-h-[90vh] p-2">
+        <ResponsiveDialog open={!!viewingImage} onOpenChange={() => setViewingImage(null)}>
+          <ResponsiveDialogContent className="max-w-[90vw] max-h-[90vh] p-2">
             {viewingImage && (
               <img
                 src={viewingImage}
@@ -603,8 +603,8 @@ export const TaskComments = ({ task, currentUserId }: TaskCommentsProps) => {
                 className="max-w-full max-h-[85vh] object-contain mx-auto rounded-lg"
               />
             )}
-          </DialogContent>
-        </Dialog>
+          </ResponsiveDialogContent>
+        </ResponsiveDialog>
       </CardContent>
     </Card>
   );

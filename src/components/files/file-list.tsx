@@ -25,11 +25,11 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/ui/responsive-dialog";
 import { cn } from "@/lib/utils";
 import { deleteAttachment } from "@/lib/actions/attachment";
 import { toast } from "sonner";
@@ -236,13 +236,13 @@ export const FileList = ({
       </div>
 
       {/* Image preview dialog */}
-      <Dialog open={!!previewUrl} onOpenChange={() => setPreviewUrl(null)}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>{previewName}</DialogTitle>
-          </DialogHeader>
+      <ResponsiveDialog open={!!previewUrl} onOpenChange={() => setPreviewUrl(null)}>
+        <ResponsiveDialogContent className="max-w-4xl">
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>{previewName}</ResponsiveDialogTitle>
+          </ResponsiveDialogHeader>
           {previewUrl && (
-            <div className="flex items-center justify-center max-h-[70vh] overflow-hidden">
+            <div className="flex items-center justify-center max-h-[70vh] overflow-hidden px-4 pb-4">
               <img
                 src={previewUrl}
                 alt={previewName || "Preview"}
@@ -250,8 +250,8 @@ export const FileList = ({
               />
             </div>
           )}
-        </DialogContent>
-      </Dialog>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
     </>
   );
 };

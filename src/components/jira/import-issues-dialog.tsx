@@ -15,13 +15,13 @@ import {
   RefreshCw,
 } from "lucide-react";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+  ResponsiveDialogFooter,
+} from "@/components/ui/responsive-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -207,10 +207,10 @@ export function ImportJiraIssuesDialog({
   });
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+    <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
+      <ResponsiveDialogContent className="sm:max-w-2xl">
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogTitle className="flex items-center gap-2">
             {step === "issues" && (
               <Button
                 variant="ghost"
@@ -222,14 +222,14 @@ export function ImportJiraIssuesDialog({
               </Button>
             )}
             <JiraIcon className="w-5 h-5 text-[#0052CC]" />
-            {step === "projects" ? "Select Jira Project" : `Import from ${selectedProject?.name}`}
-          </DialogTitle>
-          <DialogDescription>
+            {step === "projects" ? "Select Project" : `Import from ${selectedProject?.name}`}
+          </ResponsiveDialogTitle>
+          <ResponsiveDialogDescription>
             {step === "projects"
-              ? "Choose a project to import issues from"
-              : "Select issues to import as TaskOS tasks"}
-          </DialogDescription>
-        </DialogHeader>
+              ? "Choose a project to import issues"
+              : "Select issues to import as tasks"}
+          </ResponsiveDialogDescription>
+        </ResponsiveDialogHeader>
 
         {step === "projects" ? (
           <>
@@ -371,7 +371,7 @@ export function ImportJiraIssuesDialog({
               </ScrollArea>
             )}
 
-            <DialogFooter>
+            <ResponsiveDialogFooter>
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
@@ -387,11 +387,11 @@ export function ImportJiraIssuesDialog({
                 )}
                 Import {selectedIssues.size} Issue{selectedIssues.size !== 1 ? "s" : ""}
               </Button>
-            </DialogFooter>
+            </ResponsiveDialogFooter>
           </>
         )}
-      </DialogContent>
-    </Dialog>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }
 

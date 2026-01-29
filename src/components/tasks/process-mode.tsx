@@ -20,13 +20,13 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/ui/responsive-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
@@ -437,15 +437,15 @@ export const ProcessMode = ({ task, locale, workspaceId }: ProcessModeProps) => 
       </Card>
 
       {/* Add Stage Dialog */}
-      <Dialog open={stageDialogOpen} onOpenChange={setStageDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("addStage")}</DialogTitle>
-            <DialogDescription>
+      <ResponsiveDialog open={stageDialogOpen} onOpenChange={setStageDialogOpen}>
+        <ResponsiveDialogContent>
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>{t("addStage")}</ResponsiveDialogTitle>
+            <ResponsiveDialogDescription>
               Add a new stage to break down this task into manageable parts
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
+            </ResponsiveDialogDescription>
+          </ResponsiveDialogHeader>
+          <div className="space-y-4 py-4 px-4 sm:px-0">
             <div className="space-y-2">
               <Label htmlFor="stageName">Stage Name</Label>
               <Input
@@ -468,7 +468,7 @@ export const ProcessMode = ({ task, locale, workspaceId }: ProcessModeProps) => 
               />
             </div>
           </div>
-          <DialogFooter>
+          <ResponsiveDialogFooter>
             <Button variant="outline" onClick={() => setStageDialogOpen(false)} disabled={loading}>
               Cancel
             </Button>
@@ -476,9 +476,9 @@ export const ProcessMode = ({ task, locale, workspaceId }: ProcessModeProps) => 
               {loading && <Loader2 className="w-4 h-4 me-2 animate-spin" />}
               Add Stage
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ResponsiveDialogFooter>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
     </>
   );
 };

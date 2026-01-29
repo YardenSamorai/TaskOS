@@ -5,12 +5,12 @@ import { useRouter } from "next/navigation";
 import { Sparkles, Crown, Zap, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/ui/responsive-dialog";
 import { PLAN_INFO, PLAN_LIMITS } from "@/lib/plans";
 import type { UserPlan } from "@/lib/db/schema";
 
@@ -57,19 +57,19 @@ export const UpgradeDialog = ({
   ];
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
+    <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
+      <ResponsiveDialogContent className="sm:max-w-md">
+        <ResponsiveDialogHeader>
           <div className="mx-auto mb-4 w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center">
             <Crown className="w-6 h-6 text-white" />
           </div>
-          <DialogTitle className="text-center text-xl">
+          <ResponsiveDialogTitle className="text-center text-xl">
             Upgrade to Pro
-          </DialogTitle>
-          <DialogDescription className="text-center">
+          </ResponsiveDialogTitle>
+          <ResponsiveDialogDescription className="text-center">
             {getMessage()}
-          </DialogDescription>
-        </DialogHeader>
+          </ResponsiveDialogDescription>
+        </ResponsiveDialogHeader>
 
         <div className="space-y-4 py-4">
           <div className="rounded-lg border bg-muted/50 p-4">
@@ -115,8 +115,8 @@ export const UpgradeDialog = ({
             14-day free trial · Cancel anytime · No credit card required
           </p>
         </div>
-      </DialogContent>
-    </Dialog>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 };
 

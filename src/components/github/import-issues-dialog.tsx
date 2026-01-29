@@ -18,13 +18,13 @@ import {
   ChevronDown,
 } from "lucide-react";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+  ResponsiveDialogFooter,
+} from "@/components/ui/responsive-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -203,17 +203,17 @@ export function ImportIssuesDialog({
   );
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+    <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
+      <ResponsiveDialogContent className="sm:max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogTitle className="flex items-center gap-2">
             <Download className="w-5 h-5" />
             Import GitHub Issues
-          </DialogTitle>
-          <DialogDescription>
-            Select issues to import as tasks in this workspace
-          </DialogDescription>
-        </DialogHeader>
+          </ResponsiveDialogTitle>
+          <ResponsiveDialogDescription>
+            Select issues to import as tasks
+          </ResponsiveDialogDescription>
+        </ResponsiveDialogHeader>
 
         {/* Repository selector and filters */}
         <div className="flex flex-wrap gap-3">
@@ -319,7 +319,7 @@ export function ImportIssuesDialog({
           </>
         )}
 
-        <DialogFooter className="border-t pt-4">
+        <ResponsiveDialogFooter className="border-t pt-4">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
@@ -334,9 +334,9 @@ export function ImportIssuesDialog({
             )}
             Import {selectedIssues.size} Issue{selectedIssues.size !== 1 ? "s" : ""}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </ResponsiveDialogFooter>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }
 

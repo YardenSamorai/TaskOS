@@ -17,12 +17,13 @@ import {
   AlertCircle
 } from "lucide-react";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+  ResponsiveDialogBody,
+} from "@/components/ui/responsive-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -234,22 +235,20 @@ export const IntegrationsDialog = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+    <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
+      <ResponsiveDialogContent className="sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0">
         {/* Header */}
-        <div className="p-4 sm:p-6 pb-0">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-lg sm:text-xl">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <Link2 className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
-              </div>
-              Connect Apps
-            </DialogTitle>
-            <DialogDescription className="text-xs sm:text-sm">
-              Enhance your workflow with powerful integrations
-            </DialogDescription>
-          </DialogHeader>
-        </div>
+        <ResponsiveDialogHeader className="p-4 sm:p-6 pb-2">
+          <ResponsiveDialogTitle className="flex items-center gap-2 text-lg sm:text-xl">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Link2 className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+            </div>
+            Connect Apps
+          </ResponsiveDialogTitle>
+          <ResponsiveDialogDescription className="text-xs sm:text-sm">
+            Enhance your workflow with powerful integrations
+          </ResponsiveDialogDescription>
+        </ResponsiveDialogHeader>
 
         <Tabs defaultValue="available" className="flex-1 overflow-hidden flex flex-col px-4 sm:px-6 pb-4 sm:pb-6">
           <TabsList className="grid w-full grid-cols-2 h-10 sm:h-11">
@@ -440,7 +439,7 @@ export const IntegrationsDialog = ({
             )}
           </TabsContent>
         </Tabs>
-      </DialogContent>
-    </Dialog>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 };

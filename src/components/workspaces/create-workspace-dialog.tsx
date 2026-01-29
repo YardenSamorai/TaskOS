@@ -7,13 +7,13 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/ui/responsive-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
@@ -73,14 +73,14 @@ export const CreateWorkspaceDialog = ({
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t("createTitle")}</DialogTitle>
-            <DialogDescription>{t("createDescription")}</DialogDescription>
-          </DialogHeader>
+      <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
+        <ResponsiveDialogContent className="sm:max-w-md">
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>{t("createTitle")}</ResponsiveDialogTitle>
+            <ResponsiveDialogDescription>{t("createDescription")}</ResponsiveDialogDescription>
+          </ResponsiveDialogHeader>
           <form onSubmit={handleSubmit}>
-            <div className="space-y-4 py-4">
+            <div className="space-y-4 py-4 px-4 sm:px-0">
               <div className="space-y-2">
                 <Label htmlFor="name">{t("name")}</Label>
                 <Input
@@ -102,7 +102,7 @@ export const CreateWorkspaceDialog = ({
                 />
               </div>
             </div>
-            <DialogFooter>
+            <ResponsiveDialogFooter>
               <Button
                 type="button"
                 variant="outline"
@@ -115,10 +115,10 @@ export const CreateWorkspaceDialog = ({
                 {loading && <Loader2 className="w-4 h-4 me-2 animate-spin" />}
                 {tc("create")}
               </Button>
-            </DialogFooter>
+            </ResponsiveDialogFooter>
           </form>
-        </DialogContent>
-      </Dialog>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
       
       <UpgradeDialog
         open={showUpgrade}
