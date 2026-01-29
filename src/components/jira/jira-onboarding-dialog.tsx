@@ -115,44 +115,44 @@ export function JiraOnboardingDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-2xl overflow-hidden">
+      <DialogContent className="sm:max-w-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
         <DialogHeader className="text-center pb-2">
           {/* Success Badge */}
-          <div className="flex justify-center mb-4">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#0052CC]/10 text-[#0052CC] border border-[#0052CC]/20">
-              <Check className="w-4 h-4" />
-              <span className="text-sm font-medium">Successfully Connected!</span>
-              <PartyPopper className="w-4 h-4" />
+          <div className="flex justify-center mb-3 sm:mb-4">
+            <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-[#0052CC]/10 text-[#0052CC] border border-[#0052CC]/20">
+              <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="text-xs sm:text-sm font-medium">Connected!</span>
+              <PartyPopper className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
 
           {/* Icon */}
-          <div className="flex justify-center mb-4">
-            <div className="p-4 rounded-2xl bg-[#0052CC]/10 border border-[#0052CC]/20">
-              <JiraIcon className="w-12 h-12 text-[#0052CC]" />
+          <div className="flex justify-center mb-3 sm:mb-4">
+            <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-[#0052CC]/10 border border-[#0052CC]/20">
+              <JiraIcon className="w-10 h-10 sm:w-12 sm:h-12 text-[#0052CC]" />
             </div>
           </div>
 
-          <DialogTitle className="text-2xl font-bold">
+          <DialogTitle className="text-xl sm:text-2xl font-bold">
             Jira Integration Ready
           </DialogTitle>
-          <p className="text-muted-foreground mt-2">
-            Seamlessly connect your Jira projects with TaskOS
+          <p className="text-muted-foreground mt-1.5 sm:mt-2 text-sm sm:text-base">
+            Connect your Jira projects with TaskOS
           </p>
         </DialogHeader>
 
         {/* Features Grid */}
-        <div className="py-4">
-          <h3 className="text-center text-sm font-medium text-muted-foreground mb-4">
+        <div className="py-3 sm:py-4">
+          <h3 className="text-center text-xs sm:text-sm font-medium text-muted-foreground mb-3 sm:mb-4">
             What you can do now
           </h3>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
             {features.map((feature, index) => (
               <div
                 key={feature.title}
                 className={cn(
-                  "group p-3 rounded-xl border bg-card transition-all duration-300",
+                  "group p-2.5 sm:p-3 rounded-lg sm:rounded-xl border bg-card transition-all duration-300",
                   "hover:border-[#0052CC]/30 hover:shadow-md hover:shadow-[#0052CC]/5",
                   "animate-in fade-in-0 slide-in-from-bottom-2",
                 )}
@@ -160,15 +160,15 @@ export function JiraOnboardingDialog({
               >
                 <div
                   className={cn(
-                    "w-9 h-9 rounded-lg flex items-center justify-center mb-2",
+                    "w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center mb-1.5 sm:mb-2",
                     "bg-[#0052CC]/10 text-[#0052CC]",
                     "group-hover:bg-[#0052CC] group-hover:text-white transition-colors"
                   )}
                 >
-                  <feature.icon className="w-4 h-4" />
+                  <feature.icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </div>
-                <h4 className="font-medium text-sm mb-0.5">{feature.title}</h4>
-                <p className="text-xs text-muted-foreground leading-snug">
+                <h4 className="font-medium text-xs sm:text-sm mb-0.5 line-clamp-1">{feature.title}</h4>
+                <p className="text-[10px] sm:text-xs text-muted-foreground leading-snug line-clamp-2">
                   {feature.description}
                 </p>
               </div>
@@ -177,36 +177,37 @@ export function JiraOnboardingDialog({
         </div>
 
         {/* Quick Start Tips */}
-        <div className="p-4 bg-muted/30 rounded-xl border">
-          <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-[#0052CC]" />
+        <div className="p-3 sm:p-4 bg-muted/30 rounded-lg sm:rounded-xl border">
+          <h4 className="font-medium text-xs sm:text-sm mb-2 sm:mb-3 flex items-center gap-2">
+            <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#0052CC]" />
             Quick Start
           </h4>
-          <ol className="space-y-2 text-sm text-muted-foreground">
-            <li className="flex items-start gap-3">
-              <span className="w-6 h-6 rounded-full bg-[#0052CC] text-white text-xs flex items-center justify-center flex-shrink-0 font-medium">1</span>
-              <span>Link a Jira project to your workspace from the dashboard</span>
+          <ol className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm text-muted-foreground">
+            <li className="flex items-start gap-2 sm:gap-3">
+              <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-[#0052CC] text-white text-[10px] sm:text-xs flex items-center justify-center flex-shrink-0 font-medium">1</span>
+              <span>Link a Jira project from the dashboard</span>
             </li>
-            <li className="flex items-start gap-3">
-              <span className="w-6 h-6 rounded-full bg-[#0052CC] text-white text-xs flex items-center justify-center flex-shrink-0 font-medium">2</span>
-              <span>Import existing issues or create new tasks with Jira sync</span>
+            <li className="flex items-start gap-2 sm:gap-3">
+              <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-[#0052CC] text-white text-[10px] sm:text-xs flex items-center justify-center flex-shrink-0 font-medium">2</span>
+              <span>Import issues or create tasks with sync</span>
             </li>
-            <li className="flex items-start gap-3">
-              <span className="w-6 h-6 rounded-full bg-[#0052CC] text-white text-xs flex items-center justify-center flex-shrink-0 font-medium">3</span>
-              <span>Status changes sync automatically between platforms!</span>
+            <li className="flex items-start gap-2 sm:gap-3">
+              <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-[#0052CC] text-white text-[10px] sm:text-xs flex items-center justify-center flex-shrink-0 font-medium">3</span>
+              <span>Status changes sync automatically!</span>
             </li>
           </ol>
         </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-between pt-4 border-t mt-4">
-          <Button variant="ghost" onClick={handleClose}>
-            I'll explore later
+        <div className="flex flex-col-reverse xs:flex-row items-center justify-between gap-2 pt-3 sm:pt-4 border-t mt-3 sm:mt-4">
+          <Button variant="ghost" onClick={handleClose} size="sm" className="w-full xs:w-auto">
+            Explore later
           </Button>
-          <Button onClick={handleGetStarted} className="gap-2 bg-[#0052CC] hover:bg-[#0052CC]/90">
-            <FolderKanban className="w-4 h-4" />
-            Link a Project
-            <ArrowRight className="w-4 h-4" />
+          <Button onClick={handleGetStarted} size="sm" className="gap-1.5 sm:gap-2 w-full xs:w-auto bg-[#0052CC] hover:bg-[#0052CC]/90">
+            <FolderKanban className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <span className="hidden xs:inline">Link a Project</span>
+            <span className="xs:hidden">Link Project</span>
+            <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </Button>
         </div>
       </DialogContent>
