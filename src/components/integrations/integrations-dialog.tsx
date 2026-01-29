@@ -235,103 +235,122 @@ export const IntegrationsDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Link2 className="w-5 h-5" />
-            Connect Apps
-          </DialogTitle>
-          <DialogDescription>
-            Connect your favorite tools and services to enhance your workflow
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+        {/* Header */}
+        <div className="p-4 sm:p-6 pb-0">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-lg sm:text-xl">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Link2 className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+              </div>
+              Connect Apps
+            </DialogTitle>
+            <DialogDescription className="text-xs sm:text-sm">
+              Enhance your workflow with powerful integrations
+            </DialogDescription>
+          </DialogHeader>
+        </div>
 
-        <Tabs defaultValue="available" className="flex-1 overflow-hidden flex flex-col">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="available">Available</TabsTrigger>
-            <TabsTrigger value="connected">
+        <Tabs defaultValue="available" className="flex-1 overflow-hidden flex flex-col px-4 sm:px-6 pb-4 sm:pb-6">
+          <TabsList className="grid w-full grid-cols-2 h-10 sm:h-11">
+            <TabsTrigger value="available" className="text-xs sm:text-sm">Available</TabsTrigger>
+            <TabsTrigger value="connected" className="text-xs sm:text-sm gap-1.5">
               Connected
               {integrations.length > 0 && (
-                <Badge variant="secondary" className="ml-2">
+                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px] sm:text-xs">
                   {integrations.length}
                 </Badge>
               )}
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="available" className="flex-1 overflow-auto mt-4">
-            <div className="grid gap-4">
+          <TabsContent value="available" className="flex-1 overflow-auto mt-3 sm:mt-4 -mx-1 px-1">
+            <div className="grid gap-2.5 sm:gap-4">
               {providers.map((provider) => {
                 const connected = getConnectedProvider(provider.id);
                 
                 return (
                   <Card key={provider.id} className={cn(
-                    "transition-all",
-                    connected && "border-primary/50 bg-primary/5"
+                    "transition-all overflow-hidden",
+                    connected && "border-primary/50 bg-primary/5",
+                    !provider.comingSoon && "hover:border-primary/30 hover:shadow-sm"
                   )}>
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3">
+                    <CardHeader className="p-3 sm:p-4">
+                      {/* Mobile: Stack layout */}
+                      <div className="flex flex-col xs:flex-row xs:items-start gap-3">
+                        {/* Icon + Info */}
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
                           <div className={cn(
-                            "w-12 h-12 rounded-xl flex items-center justify-center",
+                            "w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shrink-0",
                             provider.bgColor,
-                            provider.color
+                            provider.color,
+                            "[&>svg]:w-5 [&>svg]:h-5 sm:[&>svg]:w-6 sm:[&>svg]:h-6"
                           )}>
                             {provider.icon}
                           </div>
-                          <div>
-                            <CardTitle className="text-base flex items-center gap-2">
+                          <div className="min-w-0 flex-1">
+                            <CardTitle className="text-sm sm:text-base flex items-center gap-1.5 sm:gap-2 flex-wrap">
                               {provider.name}
                               {provider.comingSoon && (
-                                <Badge variant="secondary" className="text-xs">
-                                  Coming Soon
+                                <Badge variant="secondary" className="text-[10px] sm:text-xs px-1.5 py-0">
+                                  Soon
                                 </Badge>
                               )}
                               {connected && (
-                                <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
-                                  <Check className="w-3 h-3 mr-1" />
+                                <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-[10px] sm:text-xs px-1.5 py-0">
+                                  <Check className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5" />
                                   Connected
                                 </Badge>
                               )}
                             </CardTitle>
-                            <CardDescription className="mt-1">
+                            <CardDescription className="mt-0.5 text-[11px] sm:text-sm line-clamp-2 sm:line-clamp-none">
                               {provider.description}
                             </CardDescription>
                           </div>
                         </div>
                         
-                        {connected ? (
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => handleDisconnect(connected.id)}
-                          >
-                            Disconnect
-                          </Button>
-                        ) : (
-                          <Button 
-                            size="sm"
-                            onClick={() => handleConnect(provider)}
-                            disabled={connecting === provider.id}
-                          >
-                            {connecting === provider.id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <>
-                                <Plus className="w-4 h-4 mr-1" />
-                                Connect
-                              </>
-                            )}
-                          </Button>
-                        )}
+                        {/* Action Button */}
+                        <div className="flex xs:block">
+                          {connected ? (
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              className="w-full xs:w-auto h-8 text-xs sm:text-sm"
+                              onClick={() => handleDisconnect(connected.id)}
+                            >
+                              Disconnect
+                            </Button>
+                          ) : (
+                            <Button 
+                              size="sm"
+                              className={cn(
+                                "w-full xs:w-auto h-8 text-xs sm:text-sm gap-1",
+                                provider.comingSoon && "opacity-50"
+                              )}
+                              onClick={() => handleConnect(provider)}
+                              disabled={connecting === provider.id || provider.comingSoon}
+                            >
+                              {connecting === provider.id ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <>
+                                  <Plus className="w-3.5 h-3.5" />
+                                  Connect
+                                </>
+                              )}
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </CardHeader>
                     
                     {connected && connected.providerUsername && (
-                      <CardContent className="pt-0">
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Check className="w-4 h-4 text-emerald-500" />
-                          Connected as <span className="font-medium text-foreground">{connected.providerUsername}</span>
+                      <CardContent className="pt-0 px-3 sm:px-4 pb-3 sm:pb-4">
+                        <div className="flex items-center gap-1.5 text-xs sm:text-sm text-muted-foreground">
+                          <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                          <span className="truncate">
+                            Connected as <span className="font-medium text-foreground">{connected.providerUsername}</span>
+                          </span>
                         </div>
                       </CardContent>
                     )}
@@ -341,59 +360,66 @@ export const IntegrationsDialog = ({
             </div>
           </TabsContent>
 
-          <TabsContent value="connected" className="flex-1 overflow-auto mt-4">
+          <TabsContent value="connected" className="flex-1 overflow-auto mt-3 sm:mt-4 -mx-1 px-1">
             {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+              <div className="flex items-center justify-center py-8 sm:py-12">
+                <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 animate-spin text-muted-foreground" />
               </div>
             ) : integrations.length === 0 ? (
-              <div className="text-center py-12">
-                <Link2 className="w-12 h-12 mx-auto text-muted-foreground/30 mb-4" />
-                <h3 className="font-semibold mb-1">No integrations connected</h3>
-                <p className="text-muted-foreground text-sm">
-                  Connect your first app from the Available tab
+              <div className="text-center py-8 sm:py-12">
+                <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto rounded-2xl bg-muted/50 flex items-center justify-center mb-4">
+                  <Link2 className="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground/50" />
+                </div>
+                <h3 className="font-semibold mb-1 text-sm sm:text-base">No apps connected</h3>
+                <p className="text-muted-foreground text-xs sm:text-sm">
+                  Connect your first app from Available
                 </p>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-2.5 sm:space-y-4">
                 {integrations.map((integration) => {
                   const provider = providers.find(p => p.id === integration.provider);
                   if (!provider) return null;
 
                   return (
-                    <Card key={integration.id}>
-                      <CardContent className="py-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
+                    <Card key={integration.id} className="overflow-hidden">
+                      <CardContent className="p-3 sm:py-4 sm:px-4">
+                        {/* Mobile: Stack layout */}
+                        <div className="flex flex-col xs:flex-row xs:items-center gap-3">
+                          {/* Icon + Info */}
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
                             <div className={cn(
-                              "w-10 h-10 rounded-lg flex items-center justify-center",
+                              "w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center shrink-0",
                               provider.bgColor,
-                              provider.color
+                              provider.color,
+                              "[&>svg]:w-4 [&>svg]:h-4 sm:[&>svg]:w-5 sm:[&>svg]:h-5"
                             )}>
                               {provider.icon}
                             </div>
-                            <div>
-                              <h4 className="font-medium">{provider.name}</h4>
+                            <div className="min-w-0 flex-1">
+                              <h4 className="font-medium text-sm sm:text-base">{provider.name}</h4>
                               {integration.providerUsername && (
-                                <p className="text-sm text-muted-foreground">
+                                <p className="text-xs sm:text-sm text-muted-foreground truncate">
                                   @{integration.providerUsername}
                                 </p>
                               )}
                             </div>
                           </div>
                           
-                          <div className="flex items-center gap-3">
+                          {/* Actions */}
+                          <div className="flex items-center justify-between xs:justify-end gap-3 border-t xs:border-0 pt-3 xs:pt-0">
                             <div className="flex items-center gap-2">
-                              <span className="text-sm text-muted-foreground">Active</span>
+                              <span className="text-xs sm:text-sm text-muted-foreground">Active</span>
                               <Switch
                                 checked={integration.isActive}
                                 onCheckedChange={() => handleToggle(integration.id)}
+                                className="scale-90 sm:scale-100"
                               />
                             </div>
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="text-muted-foreground hover:text-destructive"
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
                               onClick={() => handleDisconnect(integration.id)}
                             >
                               <Trash2 className="w-4 h-4" />
@@ -402,7 +428,7 @@ export const IntegrationsDialog = ({
                         </div>
                         
                         {integration.lastSyncAt && (
-                          <p className="text-xs text-muted-foreground mt-3">
+                          <p className="text-[10px] sm:text-xs text-muted-foreground mt-2 sm:mt-3">
                             Last synced: {new Date(integration.lastSyncAt).toLocaleString()}
                           </p>
                         )}
