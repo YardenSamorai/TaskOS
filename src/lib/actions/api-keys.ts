@@ -115,15 +115,15 @@ export async function getUserApiKeys() {
       orderBy: [desc(apiKeys.createdAt)],
     });
 
-    // Remove sensitive data
+    // Remove sensitive data and convert Dates to strings
     return {
       success: true,
       keys: keys.map((key) => ({
         id: key.id,
         name: key.name,
-        lastUsedAt: key.lastUsedAt,
-        expiresAt: key.expiresAt,
-        createdAt: key.createdAt,
+        lastUsedAt: key.lastUsedAt ? key.lastUsedAt.toISOString() : null,
+        expiresAt: key.expiresAt ? key.expiresAt.toISOString() : null,
+        createdAt: key.createdAt.toISOString(),
         isExpired: key.expiresAt ? new Date(key.expiresAt) < new Date() : false,
       })),
     };
