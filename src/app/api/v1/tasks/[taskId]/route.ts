@@ -42,7 +42,7 @@ export async function GET(
             tag: true,
           },
         },
-        createdByUser: {
+        creator: {
           columns: {
             id: true,
             name: true,
@@ -96,10 +96,10 @@ export async function GET(
           color: tt.tag.color,
         })),
         createdBy: {
-          id: task.createdByUser?.id,
-          name: task.createdByUser?.name,
-          email: task.createdByUser?.email,
-          image: task.createdByUser?.image,
+          id: task.creator?.id,
+          name: task.creator?.name,
+          email: task.creator?.email,
+          image: task.creator?.image,
         },
         comments: task.comments.map((c) => ({
           id: c.id,
@@ -231,7 +231,7 @@ export async function PUT(
             tag: true,
           },
         },
-        createdByUser: {
+        creator: {
           columns: {
             id: true,
             name: true,
@@ -268,10 +268,10 @@ export async function PUT(
           color: tt.tag.color,
         })),
         createdBy: {
-          id: updatedTask!.createdByUser?.id,
-          name: updatedTask!.createdByUser?.name,
-          email: updatedTask!.createdByUser?.email,
-          image: updatedTask!.createdByUser?.image,
+          id: updatedTask!.creator?.id,
+          name: updatedTask!.creator?.name,
+          email: updatedTask!.creator?.email,
+          image: updatedTask!.creator?.image,
         },
       },
     });

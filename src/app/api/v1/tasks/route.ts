@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
             tag: true,
           },
         },
-        createdByUser: {
+        creator: {
           columns: {
             id: true,
             name: true,
@@ -119,10 +119,10 @@ export async function GET(request: NextRequest) {
         color: tt.tag.color,
       })),
       createdBy: {
-        id: task.createdByUser?.id,
-        name: task.createdByUser?.name,
-        email: task.createdByUser?.email,
-        image: task.createdByUser?.image,
+        id: task.creator?.id,
+        name: task.creator?.name,
+        email: task.creator?.email,
+        image: task.creator?.image,
       },
     }));
 
@@ -230,7 +230,7 @@ export async function POST(request: NextRequest) {
             tag: true,
           },
         },
-        createdByUser: {
+        creator: {
           columns: {
             id: true,
             name: true,
@@ -268,10 +268,10 @@ export async function POST(request: NextRequest) {
             color: tt.tag.color,
           })),
           createdBy: {
-            id: fullTask!.createdByUser?.id,
-            name: fullTask!.createdByUser?.name,
-            email: fullTask!.createdByUser?.email,
-            image: fullTask!.createdByUser?.image,
+            id: fullTask!.creator?.id,
+            name: fullTask!.creator?.name,
+            email: fullTask!.creator?.email,
+            image: fullTask!.creator?.image,
           },
         },
       },
