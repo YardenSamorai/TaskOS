@@ -8,7 +8,7 @@ import { z } from "zod";
 // GET /api/v1/tasks/:id - Get task details
 export async function GET(
   request: NextRequest,
-  { params }: { params: { taskId: string } }
+  { params }: { params: Promise<{ taskId: string }> }
 ) {
   try {
     // Authenticate request
@@ -20,8 +20,10 @@ export async function GET(
       );
     }
 
+    const { taskId } = await params;
+
     const task = await db.query.tasks.findFirst({
-      where: eq(tasks.id, params.taskId),
+      where: eq(tasks.id, taskId),
       with: {
         assignees: {
           with: {
@@ -124,7 +126,7 @@ export async function GET(
 // PUT /api/v1/tasks/:id - Update task
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { taskId: string } }
+  { params }: { params: Promise<{ taskId: string }> }
 ) {
   try {
     // Authenticate request
@@ -136,6 +138,7 @@ export async function PUT(
       );
     }
 
+    const { taskId } = await params;
     const body = await request.json();
 
     // Validate input
@@ -154,7 +157,7 @@ export async function PUT(
 
     // Check if task exists
     const existingTask = await db.query.tasks.findFirst({
-      where: eq(tasks.id, params.taskId),
+      where: eq(tasks.id, taskId),
     });
 
     if (!existingTask) {
@@ -173,18 +176,18 @@ export async function PUT(
     if (data.dueDate !== undefined) updateData.dueDate = data.dueDate;
     if (data.startDate !== undefined) updateData.startDate = data.startDate;
 
-    await db.update(tasks).set(updateData).where(eq(tasks.id, params.taskId));
+    await db.update(tasks).set(updateData).where(eq(tasks.id, taskId));
 
     // Update assignees if provided
     if (data.assigneeIds !== undefined) {
       // Delete existing assignees
-      await db.delete(taskAssignees).where(eq(taskAssignees.taskId, params.taskId));
+      await db.delete(taskAssignees).where(eq(taskAssignees.taskId, taskId));
 
       // Add new assignees
       if (data.assigneeIds.length > 0) {
         await db.insert(taskAssignees).values(
           data.assigneeIds.map((assigneeId) => ({
-            taskId: params.taskId,
+            taskId: taskId,
             userId: assigneeId,
           }))
         );
@@ -194,13 +197,13 @@ export async function PUT(
     // Update tags if provided
     if (data.tagIds !== undefined) {
       // Delete existing tags
-      await db.delete(taskTags).where(eq(taskTags.taskId, params.taskId));
+      await db.delete(taskTags).where(eq(taskTags.taskId, taskId));
 
       // Add new tags
       if (data.tagIds.length > 0) {
         await db.insert(taskTags).values(
           data.tagIds.map((tagId) => ({
-            taskId: params.taskId,
+            taskId: taskId,
             tagId: tagId,
           }))
         );
@@ -209,7 +212,7 @@ export async function PUT(
 
     // Fetch updated task
     const updatedTask = await db.query.tasks.findFirst({
-      where: eq(tasks.id, params.taskId),
+      where: eq(tasks.id, taskId),
       with: {
         assignees: {
           with: {
@@ -290,7 +293,7 @@ export async function PUT(
 // DELETE /api/v1/tasks/:id - Delete task
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { taskId: string } }
+  { params }: { params: Promise<{ taskId: string }> }
 ) {
   try {
     // Authenticate request
@@ -302,9 +305,11 @@ export async function DELETE(
       );
     }
 
+    const { taskId } = await params;
+
     // Check if task exists
     const existingTask = await db.query.tasks.findFirst({
-      where: eq(tasks.id, params.taskId),
+      where: eq(tasks.id, taskId),
     });
 
     if (!existingTask) {
@@ -312,7 +317,7 @@ export async function DELETE(
     }
 
     // Delete task (cascade will handle related records)
-    await db.delete(tasks).where(eq(tasks.id, params.taskId));
+    await db.delete(tasks).where(eq(tasks.id, taskId));
 
     return NextResponse.json({
       success: true,
