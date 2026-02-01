@@ -70,7 +70,7 @@ export async function createApiKey(data: {
   expiresInDays?: number; // null = never expires
 }) {
   try {
-    const { user } = await getCurrentUser();
+    const user = await getCurrentUser();
 
     const key = generateApiKey();
     const keyHash = hashApiKey(key);
@@ -108,7 +108,7 @@ export async function createApiKey(data: {
 // Get user's API keys (without hashes)
 export async function getUserApiKeys() {
   try {
-    const { user } = await getCurrentUser();
+    const user = await getCurrentUser();
 
     const keys = await db.query.apiKeys.findMany({
       where: eq(apiKeys.userId, user.id),
@@ -139,7 +139,7 @@ export async function getUserApiKeys() {
 // Delete API key
 export async function deleteApiKey(keyId: string) {
   try {
-    const { user } = await getCurrentUser();
+    const user = await getCurrentUser();
 
     // Verify ownership
     const apiKey = await db.query.apiKeys.findFirst({
