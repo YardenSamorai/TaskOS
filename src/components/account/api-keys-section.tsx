@@ -158,7 +158,10 @@ export function ApiKeysSection() {
                 API Keys
               </CardTitle>
               <CardDescription>
-                Manage API keys for IDE extensions and integrations
+                Manage API keys for IDE extensions and integrations.{" "}
+                <a href="/en/app/extensions" className="text-primary hover:underline inline-flex items-center gap-1">
+                  Install Extension <ExternalLink className="w-3 h-3" />
+                </a>
               </CardDescription>
             </div>
             <Button onClick={() => setCreateDialogOpen(true)} className="gap-2">

@@ -22,6 +22,7 @@ import {
   Users,
   ChevronRight,
   Home,
+  Code2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -46,6 +47,7 @@ interface NavItem {
 
 const mainNavItems: NavItem[] = [
   { icon: LayoutDashboard, labelKey: "dashboard", href: "/app/dashboard" },
+  { icon: Code2, labelKey: "extensions", href: "/app/extensions" },
   { icon: Settings, labelKey: "profile", href: "/app/account" },
 ];
 
