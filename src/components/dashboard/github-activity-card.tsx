@@ -238,8 +238,8 @@ export function GitHubActivityCard({
             <p>No recent activity</p>
           </div>
         ) : (
-          <div className="h-[240px] sm:h-[300px] overflow-y-auto overflow-x-hidden -mx-1">
-            <div className="space-y-1 sm:space-y-2 px-1">
+          <div className="h-[240px] sm:h-[300px] overflow-y-auto overflow-x-hidden">
+            <div className="space-y-1 sm:space-y-2">
               {activity.slice(0, 10).map((item, index) => (
                 <ActivityItemCard key={`${item.type}-${index}`} item={item} />
               ))}
@@ -288,21 +288,21 @@ function ActivityItemCard({ item }: { item: ActivityItem }) {
         href={commit.html_url}
         target="_blank"
         rel="noopener noreferrer"
-        className="block w-full p-1.5 sm:p-2 rounded-lg hover:bg-muted/50 transition-colors group"
+        className="block p-1.5 sm:p-2 rounded-lg hover:bg-muted/50 transition-colors group overflow-hidden"
       >
-        <div className="flex items-start gap-2 sm:gap-3 w-full min-w-0">
+        <div className="flex items-start gap-2 sm:gap-3">
           <GitCommit className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground shrink-0 mt-0.5" />
-          <div className="flex-1 min-w-0 overflow-hidden">
-            <p className="text-xs sm:text-sm truncate group-hover:text-primary transition-colors">
+          <div className="min-w-0 flex-1">
+            <p className="text-xs sm:text-sm text-foreground group-hover:text-primary transition-colors truncate">
               {message}
             </p>
-            <div className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-muted-foreground mt-0.5">
-              <code className="hidden xs:inline bg-muted px-1 rounded font-mono text-[9px] sm:text-[10px]">
+            <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
+              <code className="hidden xs:inline bg-muted px-1 rounded font-mono text-[9px] sm:text-[10px] mr-1">
                 {commit.sha.slice(0, 7)}
               </code>
-              <span className="hidden xs:inline">•</span>
+              <span className="hidden xs:inline mr-1">•</span>
               <span>{formatTime(item.timestamp)}</span>
-            </div>
+            </p>
           </div>
         </div>
       </a>
@@ -323,19 +323,17 @@ function ActivityItemCard({ item }: { item: ActivityItem }) {
         href={pr.html_url}
         target="_blank"
         rel="noopener noreferrer"
-        className="block w-full p-1.5 sm:p-2 rounded-lg hover:bg-muted/50 transition-colors group"
+        className="block p-1.5 sm:p-2 rounded-lg hover:bg-muted/50 transition-colors group overflow-hidden"
       >
-        <div className="flex items-start gap-2 sm:gap-3 w-full min-w-0">
+        <div className="flex items-start gap-2 sm:gap-3">
           <div className="shrink-0 mt-0.5">{getIcon()}</div>
-          <div className="flex-1 min-w-0 overflow-hidden">
-            <p className="text-xs sm:text-sm truncate group-hover:text-primary transition-colors">
+          <div className="min-w-0 flex-1">
+            <p className="text-xs sm:text-sm text-foreground group-hover:text-primary transition-colors truncate">
               {pr.title}
             </p>
-            <div className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-muted-foreground mt-0.5">
-              <span>#{pr.number}</span>
-              <span>•</span>
-              <span>{formatTime(item.timestamp)}</span>
-            </div>
+            <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
+              #{pr.number} • {formatTime(item.timestamp)}
+            </p>
           </div>
         </div>
       </a>
