@@ -198,6 +198,7 @@ export const AppShell = ({ children, locale }: AppShellProps) => {
     settings: t("settings.title"),
     members: t("common.members") || "Members",
     profile: t("common.profile") || "Profile",
+    extensions: t("common.extensions") || "Extensions",
   }), [t]);
 
   const getHref = useCallback((item: NavItem) => {

@@ -2,13 +2,11 @@
 
 import { useState } from "react";
 import { useParams } from "next/navigation";
-import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { 
   Download, 
-  ExternalLink, 
   Code2, 
   Zap, 
   RefreshCw, 
@@ -21,9 +19,7 @@ import {
   Sparkles,
   Monitor,
   Key,
-  FolderOpen,
   HelpCircle,
-  ArrowRight,
   Github
 } from "lucide-react";
 import { toast } from "sonner";
@@ -41,8 +37,7 @@ export default function ExtensionsPage() {
   };
 
   return (
-    <AppShell locale={locale}>
-      <div className="container max-w-4xl px-4 sm:px-6 py-6 sm:py-8">
+    <div className="container max-w-4xl px-4 sm:px-6 py-6 sm:py-8">
         {/* Hero Section */}
         <div className="relative mb-8 sm:mb-10 p-5 sm:p-8 rounded-2xl bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 text-white overflow-hidden">
           <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzRoLTJ2LTRoMnYyaDR2Mmgtdi00eiIvPjwvZz48L2c+PC9zdmc+')] opacity-30"></div>
@@ -409,6 +404,5 @@ export default function ExtensionsPage() {
           </CardHeader>
         </Card>
       </div>
-    </AppShell>
   );
 }
