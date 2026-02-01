@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useParams } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { 
   Download, 
   ExternalLink, 
@@ -14,12 +16,23 @@ import {
   Settings,
   CheckCircle2,
   Copy,
-  Terminal
+  Terminal,
+  Eye,
+  ListTodo,
+  Sparkles,
+  Monitor,
+  Key,
+  FolderOpen,
+  HelpCircle,
+  ArrowRight,
+  Github
 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function ExtensionsPage() {
   const [copied, setCopied] = useState<string | null>(null);
+  const params = useParams();
+  const locale = params.locale as string || "en";
 
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
@@ -31,196 +44,267 @@ export default function ExtensionsPage() {
   return (
     <AppShell>
       <div className="container max-w-4xl py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-3 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600">
-              <Code2 className="h-8 w-8 text-white" />
+        {/* Hero Section */}
+        <div className="relative mb-10 p-8 rounded-2xl bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 text-white overflow-hidden">
+          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzRoLTJ2LTRoMnYyaDR2Mmgtdi00eiIvPjwvZz48L2c+PC9zdmc+')] opacity-30"></div>
+          <div className="relative">
+            <div className="flex items-center gap-2 mb-4">
+              <Badge className="bg-white/20 text-white border-0">Pro Feature</Badge>
+              <Badge className="bg-green-500/80 text-white border-0">v0.1.0</Badge>
             </div>
-            <div>
-              <h1 className="text-3xl font-bold">IDE Extensions</h1>
-              <p className="text-muted-foreground">
-                Manage your tasks directly from your favorite code editor
-              </p>
+            <h1 className="text-4xl font-bold mb-3">TaskOS for VS Code & Cursor</h1>
+            <p className="text-xl text-white/90 mb-6 max-w-2xl">
+              Manage your tasks, view progress, and stay productive — all without leaving your code editor.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <Button 
+                size="lg" 
+                className="bg-white text-indigo-600 hover:bg-white/90 gap-2 font-semibold"
+                asChild
+              >
+                <a href="https://github.com/YardenSamorai/TaskOS/releases/latest/download/taskos-0.1.0.vsix">
+                  <Download className="h-5 w-5" />
+                  Download Extension
+                </a>
+              </Button>
+              <Button 
+                size="lg" 
+                variant="outline" 
+                className="border-white/30 text-white hover:bg-white/10 gap-2"
+                asChild
+              >
+                <a href="https://github.com/YardenSamorai/TaskOS/releases" target="_blank" rel="noopener noreferrer">
+                  <Github className="h-5 w-5" />
+                  View on GitHub
+                </a>
+              </Button>
             </div>
           </div>
         </div>
 
-        {/* VS Code Extension Card */}
-        <Card className="mb-8 overflow-hidden">
-          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-white/20 rounded-xl">
-                  <svg viewBox="0 0 24 24" className="h-10 w-10" fill="currentColor">
-                    <path d="M23.15 2.587L18.21.21a1.494 1.494 0 0 0-1.705.29l-9.46 8.63-4.12-3.128a.999.999 0 0 0-1.276.057L.327 7.261A1 1 0 0 0 .326 8.74L3.899 12 .326 15.26a1 1 0 0 0 .001 1.479L1.65 17.94a.999.999 0 0 0 1.276.057l4.12-3.128 9.46 8.63a1.492 1.492 0 0 0 1.704.29l4.942-2.377A1.5 1.5 0 0 0 24 20.06V3.939a1.5 1.5 0 0 0-.85-1.352zm-5.146 14.861L10.826 12l7.178-5.448v10.896z"/>
-                  </svg>
-                </div>
-                <div>
-                  <h2 className="text-2xl font-bold">TaskOS for VS Code / Cursor</h2>
-                  <p className="text-white/80">Version 0.1.0</p>
-                </div>
+        {/* Features Grid */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+          <Card className="border-0 shadow-md bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-950/20 dark:to-orange-950/20">
+            <CardContent className="p-4 text-center">
+              <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-yellow-500/20 flex items-center justify-center">
+                <Eye className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
               </div>
-              <Badge className="bg-white/20 text-white hover:bg-white/30">
-                Pro Feature
-              </Badge>
-            </div>
-          </div>
-          
-          <CardContent className="p-6">
-            {/* Features */}
-            <div className="grid md:grid-cols-2 gap-4 mb-8">
-              <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50">
-                <Zap className="h-5 w-5 text-yellow-500 mt-0.5" />
-                <div>
-                  <h3 className="font-semibold">Quick Task Management</h3>
-                  <p className="text-sm text-muted-foreground">
-                    View, create, and update tasks without leaving your editor
-                  </p>
-                </div>
+              <h3 className="font-semibold mb-1">View Tasks</h3>
+              <p className="text-xs text-muted-foreground">See all your tasks in the sidebar</p>
+            </CardContent>
+          </Card>
+          <Card className="border-0 shadow-md bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20">
+            <CardContent className="p-4 text-center">
+              <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-green-500/20 flex items-center justify-center">
+                <RefreshCw className="h-6 w-6 text-green-600 dark:text-green-400" />
               </div>
-              <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50">
-                <RefreshCw className="h-5 w-5 text-green-500 mt-0.5" />
-                <div>
-                  <h3 className="font-semibold">Live Sync</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Auto-refresh keeps your tasks in sync with the web app
-                  </p>
-                </div>
+              <h3 className="font-semibold mb-1">Live Sync</h3>
+              <p className="text-xs text-muted-foreground">Auto-updates every 15 seconds</p>
+            </CardContent>
+          </Card>
+          <Card className="border-0 shadow-md bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20">
+            <CardContent className="p-4 text-center">
+              <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-blue-500/20 flex items-center justify-center">
+                <ListTodo className="h-6 w-6 text-blue-600 dark:text-blue-400" />
               </div>
-              <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50">
-                <Code2 className="h-5 w-5 text-blue-500 mt-0.5" />
-                <div>
-                  <h3 className="font-semibold">AI Code Generation</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Generate code snippets based on your task descriptions
-                  </p>
-                </div>
+              <h3 className="font-semibold mb-1">Manage Tasks</h3>
+              <p className="text-xs text-muted-foreground">Create, edit, update status</p>
+            </CardContent>
+          </Card>
+          <Card className="border-0 shadow-md bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20">
+            <CardContent className="p-4 text-center">
+              <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                <Sparkles className="h-6 w-6 text-purple-600 dark:text-purple-400" />
               </div>
-              <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50">
-                <Settings className="h-5 w-5 text-purple-500 mt-0.5" />
-                <div>
-                  <h3 className="font-semibold">Full Integration</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Access your workspace, projects, and team tasks
-                  </p>
-                </div>
-              </div>
-            </div>
+              <h3 className="font-semibold mb-1">AI Powered</h3>
+              <p className="text-xs text-muted-foreground">Generate code from tasks</p>
+            </CardContent>
+          </Card>
+        </div>
 
-            {/* Installation Steps */}
-            <div className="space-y-6">
-              <h3 className="text-xl font-bold flex items-center gap-2">
-                <Download className="h-5 w-5" />
-                Installation Guide
-              </h3>
-
-              {/* Step 1 */}
-              <div className="border rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">
-                    1
-                  </div>
-                  <h4 className="font-semibold">Download the Extension</h4>
-                </div>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Download the latest .vsix file from our releases:
+        {/* Installation Guide */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-2xl">
+              <Download className="h-6 w-6" />
+              Installation Guide
+            </CardTitle>
+            <CardDescription>
+              Follow these simple steps to get started in under 5 minutes
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            
+            {/* Step 1: Download */}
+            <div className="relative pl-10 pb-8 border-l-2 border-indigo-200 dark:border-indigo-800 ml-4">
+              <div className="absolute -left-5 top-0 w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-lg">
+                1
+              </div>
+              <div className="bg-muted/50 rounded-xl p-5">
+                <h4 className="font-semibold text-lg mb-2 flex items-center gap-2">
+                  <Download className="h-5 w-5 text-indigo-600" />
+                  Download the Extension
+                </h4>
+                <p className="text-muted-foreground mb-4">
+                  Click the button below to download the .vsix file to your computer:
                 </p>
                 <Button asChild className="gap-2">
-                  <a 
-                    href="https://github.com/YardenSamorai/TaskOS/releases/latest/download/taskos-0.1.0.vsix"
-                    download
-                  >
+                  <a href="https://github.com/YardenSamorai/TaskOS/releases/latest/download/taskos-0.1.0.vsix">
                     <Download className="h-4 w-4" />
-                    Download taskos-0.1.0.vsix
+                    Download taskos-0.1.0.vsix (26 KB)
                   </a>
                 </Button>
               </div>
+            </div>
 
-              {/* Step 2 */}
-              <div className="border rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">
-                    2
-                  </div>
-                  <h4 className="font-semibold">Install in VS Code / Cursor</h4>
-                </div>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Open VS Code or Cursor and install the extension using one of these methods:
-                </p>
+            {/* Step 2: Install */}
+            <div className="relative pl-10 pb-8 border-l-2 border-indigo-200 dark:border-indigo-800 ml-4">
+              <div className="absolute -left-5 top-0 w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-lg">
+                2
+              </div>
+              <div className="bg-muted/50 rounded-xl p-5">
+                <h4 className="font-semibold text-lg mb-2 flex items-center gap-2">
+                  <Monitor className="h-5 w-5 text-indigo-600" />
+                  Install in VS Code / Cursor
+                </h4>
                 
                 <div className="space-y-4">
-                  <div className="bg-muted rounded-lg p-4">
-                    <p className="text-sm font-medium mb-2">Option A: Via Command Palette</p>
-                    <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
-                      <li>Press <kbd className="px-2 py-0.5 bg-background rounded border text-xs">Ctrl+Shift+P</kbd> (or <kbd className="px-2 py-0.5 bg-background rounded border text-xs">Cmd+Shift+P</kbd> on Mac)</li>
-                      <li>Type &quot;Install from VSIX&quot; and select it</li>
-                      <li>Navigate to the downloaded .vsix file</li>
-                      <li>Click &quot;Install&quot;</li>
+                  {/* Option A */}
+                  <div className="bg-background rounded-lg p-4 border">
+                    <p className="font-medium mb-3 flex items-center gap-2">
+                      <span className="w-6 h-6 rounded bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 text-xs flex items-center justify-center font-bold">A</span>
+                      Via Command Palette (Recommended)
+                    </p>
+                    <ol className="space-y-2 text-sm">
+                      <li className="flex items-start gap-2">
+                        <span className="text-indigo-600 font-bold">1.</span>
+                        <span>Press <kbd className="px-2 py-1 bg-muted rounded border text-xs font-mono">Ctrl+Shift+P</kbd> (Mac: <kbd className="px-2 py-1 bg-muted rounded border text-xs font-mono">Cmd+Shift+P</kbd>)</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-indigo-600 font-bold">2.</span>
+                        <span>Type <code className="px-2 py-0.5 bg-muted rounded text-xs">Extensions: Install from VSIX</code></span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-indigo-600 font-bold">3.</span>
+                        <span>Select the downloaded <code className="px-2 py-0.5 bg-muted rounded text-xs">taskos-0.1.0.vsix</code> file</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-indigo-600 font-bold">4.</span>
+                        <span>Click <strong>&quot;Reload&quot;</strong> when prompted</span>
+                      </li>
                     </ol>
                   </div>
 
-                  <div className="bg-muted rounded-lg p-4">
-                    <p className="text-sm font-medium mb-2">Option B: Via Terminal</p>
-                    <div className="flex items-center gap-2 bg-background rounded border p-3 font-mono text-sm">
-                      <Terminal className="h-4 w-4 text-muted-foreground" />
-                      <code className="flex-1">code --install-extension taskos-0.1.0.vsix</code>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => copyToClipboard("code --install-extension taskos-0.1.0.vsix", "terminal")}
-                      >
-                        {copied === "terminal" ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-                      </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      For Cursor, use <code className="bg-background px-1 rounded">cursor</code> instead of <code className="bg-background px-1 rounded">code</code>
+                  {/* Option B */}
+                  <div className="bg-background rounded-lg p-4 border">
+                    <p className="font-medium mb-3 flex items-center gap-2">
+                      <span className="w-6 h-6 rounded bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 text-xs flex items-center justify-center font-bold">B</span>
+                      Via Terminal
                     </p>
+                    <div className="space-y-2">
+                      <p className="text-sm text-muted-foreground">For VS Code:</p>
+                      <div className="flex items-center gap-2 bg-zinc-900 text-zinc-100 rounded-lg p-3 font-mono text-sm">
+                        <Terminal className="h-4 w-4 text-zinc-400" />
+                        <code className="flex-1">code --install-extension ~/Downloads/taskos-0.1.0.vsix</code>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          className="text-zinc-400 hover:text-white hover:bg-zinc-800"
+                          onClick={() => copyToClipboard("code --install-extension ~/Downloads/taskos-0.1.0.vsix", "vscode")}
+                        >
+                          {copied === "vscode" ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-3">For Cursor:</p>
+                      <div className="flex items-center gap-2 bg-zinc-900 text-zinc-100 rounded-lg p-3 font-mono text-sm">
+                        <Terminal className="h-4 w-4 text-zinc-400" />
+                        <code className="flex-1">cursor --install-extension ~/Downloads/taskos-0.1.0.vsix</code>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          className="text-zinc-400 hover:text-white hover:bg-zinc-800"
+                          onClick={() => copyToClipboard("cursor --install-extension ~/Downloads/taskos-0.1.0.vsix", "cursor")}
+                        >
+                          {copied === "cursor" ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
+            </div>
 
-              {/* Step 3 */}
-              <div className="border rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">
-                    3
-                  </div>
-                  <h4 className="font-semibold">Get Your API Key</h4>
-                </div>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Go to Account Settings → Security → API Keys and create a new API key.
+            {/* Step 3: API Key */}
+            <div className="relative pl-10 pb-8 border-l-2 border-indigo-200 dark:border-indigo-800 ml-4">
+              <div className="absolute -left-5 top-0 w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-lg">
+                3
+              </div>
+              <div className="bg-muted/50 rounded-xl p-5">
+                <h4 className="font-semibold text-lg mb-2 flex items-center gap-2">
+                  <Key className="h-5 w-5 text-indigo-600" />
+                  Create an API Key
+                </h4>
+                <p className="text-muted-foreground mb-4">
+                  You need an API key to connect the extension to your TaskOS account:
                 </p>
+                <ol className="space-y-2 text-sm mb-4">
+                  <li className="flex items-start gap-2">
+                    <span className="text-indigo-600 font-bold">1.</span>
+                    <span>Go to <strong>Account Settings</strong> → <strong>Security</strong> → <strong>API Keys</strong></span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-indigo-600 font-bold">2.</span>
+                    <span>Click <strong>&quot;Create Key&quot;</strong> and give it a name (e.g., &quot;VS Code&quot;)</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-indigo-600 font-bold">3.</span>
+                    <span>Copy the API key — <strong>you won&apos;t see it again!</strong></span>
+                  </li>
+                </ol>
                 <Button variant="outline" asChild className="gap-2">
-                  <a href="/en/app/account">
-                    <Settings className="h-4 w-4" />
+                  <a href={`/${locale}/app/account`}>
+                    <Key className="h-4 w-4" />
                     Go to Account Settings
+                    <ArrowRight className="h-4 w-4" />
                   </a>
                 </Button>
               </div>
+            </div>
 
-              {/* Step 4 */}
-              <div className="border rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">
-                    4
-                  </div>
-                  <h4 className="font-semibold">Configure the Extension</h4>
-                </div>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Open VS Code Settings (<kbd className="px-2 py-0.5 bg-muted rounded border text-xs">Ctrl+,</kbd>) and search for &quot;TaskOS&quot;:
+            {/* Step 4: Configure */}
+            <div className="relative pl-10 pb-8 border-l-2 border-indigo-200 dark:border-indigo-800 ml-4">
+              <div className="absolute -left-5 top-0 w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-lg">
+                4
+              </div>
+              <div className="bg-muted/50 rounded-xl p-5">
+                <h4 className="font-semibold text-lg mb-2 flex items-center gap-2">
+                  <Settings className="h-5 w-5 text-indigo-600" />
+                  Configure the Extension
+                </h4>
+                <p className="text-muted-foreground mb-4">
+                  Open VS Code/Cursor Settings (<kbd className="px-2 py-0.5 bg-background rounded border text-xs">Ctrl+,</kbd>) and search for <strong>&quot;TaskOS&quot;</strong>:
                 </p>
-                <div className="space-y-3 bg-muted rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">taskos.apiKey</span>
-                    <span className="text-xs text-muted-foreground">Your API key from Step 3</span>
+                
+                <div className="space-y-3">
+                  {/* API Key */}
+                  <div className="bg-background rounded-lg p-4 border">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-mono text-sm font-medium">taskos.apiKey</span>
+                      <Badge variant="secondary">Required</Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">Paste the API key you created in Step 3</p>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">taskos.apiUrl</span>
-                    <div className="flex items-center gap-2">
-                      <code className="text-xs bg-background px-2 py-1 rounded">https://www.task-os.app/api/v1</code>
+
+                  {/* API URL */}
+                  <div className="bg-background rounded-lg p-4 border">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-mono text-sm font-medium">taskos.apiUrl</span>
+                      <Badge variant="secondary">Required</Badge>
+                    </div>
+                    <div className="flex items-center gap-2 mt-2">
+                      <code className="flex-1 text-sm bg-zinc-900 text-green-400 px-3 py-2 rounded font-mono">https://www.task-os.app/api/v1</code>
                       <Button 
-                        variant="ghost" 
+                        variant="outline" 
                         size="sm"
                         onClick={() => copyToClipboard("https://www.task-os.app/api/v1", "apiUrl")}
                       >
@@ -228,26 +312,79 @@ export default function ExtensionsPage() {
                       </Button>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">taskos.defaultWorkspaceId</span>
-                    <span className="text-xs text-muted-foreground">Your workspace ID from the URL</span>
-                  </div>
-                </div>
-              </div>
 
-              {/* Step 5 */}
-              <div className="border rounded-lg p-4 bg-green-500/5 border-green-500/20">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center">
-                    <CheckCircle2 className="h-5 w-5" />
+                  {/* Workspace ID */}
+                  <div className="bg-background rounded-lg p-4 border">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-mono text-sm font-medium">taskos.defaultWorkspaceId</span>
+                      <Badge variant="secondary">Required</Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Your workspace ID from the URL. For example:
+                    </p>
+                    <div className="bg-muted rounded p-2 text-xs font-mono">
+                      https://www.task-os.app/en/app/<span className="text-indigo-600 font-bold">2839eba0-e2c7-42b1-aa4c-009d146be5ff</span>/dashboard
+                    </div>
                   </div>
-                  <h4 className="font-semibold text-green-700 dark:text-green-400">You&apos;re All Set!</h4>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  Click the TaskOS icon in the Activity Bar (left sidebar) to view your tasks.
-                  Press <kbd className="px-2 py-0.5 bg-background rounded border text-xs">Ctrl+Shift+P</kbd> and type &quot;TaskOS&quot; to see all available commands.
-                </p>
               </div>
+            </div>
+
+            {/* Step 5: Done */}
+            <div className="relative pl-10 ml-4">
+              <div className="absolute -left-5 top-0 w-10 h-10 rounded-full bg-green-500 text-white flex items-center justify-center">
+                <CheckCircle2 className="h-6 w-6" />
+              </div>
+              <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-xl p-5">
+                <h4 className="font-semibold text-lg mb-2 text-green-700 dark:text-green-400 flex items-center gap-2">
+                  <Sparkles className="h-5 w-5" />
+                  You&apos;re All Set! 🎉
+                </h4>
+                <p className="text-muted-foreground mb-4">
+                  Look for the <strong>TaskOS icon</strong> in your Activity Bar (left sidebar). Click it to see your tasks!
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="outline" className="gap-1">
+                    <Eye className="h-3 w-3" /> View tasks in sidebar
+                  </Badge>
+                  <Badge variant="outline" className="gap-1">
+                    <RefreshCw className="h-3 w-3" /> Auto-syncs every 15s
+                  </Badge>
+                  <Badge variant="outline" className="gap-1">
+                    <Zap className="h-3 w-3" /> Ctrl+Shift+P → &quot;TaskOS&quot;
+                  </Badge>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Troubleshooting */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <HelpCircle className="h-5 w-5" />
+              Troubleshooting
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="border rounded-lg p-4">
+              <h4 className="font-medium mb-2">Extension not showing in sidebar?</h4>
+              <p className="text-sm text-muted-foreground">
+                Press <kbd className="px-2 py-0.5 bg-muted rounded border text-xs">Ctrl+Shift+P</kbd> → type <code className="px-1 bg-muted rounded text-xs">Developer: Reload Window</code> → press Enter.
+              </p>
+            </div>
+            <div className="border rounded-lg p-4">
+              <h4 className="font-medium mb-2">&quot;Invalid API key&quot; error?</h4>
+              <p className="text-sm text-muted-foreground">
+                Make sure you copied the full API key without any spaces. API keys start with <code className="px-1 bg-muted rounded text-xs">tko_</code>.
+              </p>
+            </div>
+            <div className="border rounded-lg p-4">
+              <h4 className="font-medium mb-2">No tasks showing?</h4>
+              <p className="text-sm text-muted-foreground">
+                Check that your <code className="px-1 bg-muted rounded text-xs">defaultWorkspaceId</code> is set correctly. It should be the UUID from your workspace URL.
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -258,13 +395,11 @@ export default function ExtensionsPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-muted">
-                  <svg viewBox="0 0 24 24" className="h-6 w-6" fill="currentColor">
-                    <path d="M13.144 8.171c-.035-.066.342-.102.409-.102.074.009-.196.452-.409.102zm-2.152-3.072l.108-.031c.064.055-.072.095-.051.136.086.155.021.248.008.332-.014.085-.104.048-.149.093-.053.066.258.075.262.085.011.033-.375.089-.304.171.096.136.824-.195.708-.176.225-.113.029-.125-.097-.19-.043-.215-.079-.547-.213-.68l.088-.102c-.206-.299-.36.098-.381-.025-.009-.135-.277-.105-.406-.127-.226-.076-.235.131-.258.085-.029-.063.017-.21.017-.21l.108.031c.047-.084-.267-.145-.267-.145s-.012.086-.025.122c-.056.153-.12.318-.208.485-.257-.12-.516-.245-.774-.374a1.293 1.293 0 0 0-.263-.041.549.549 0 0 0-.106.013 1.066 1.066 0 0 0-.167.053c-.145.061-.28.16-.364.275-.052.076-.075.12-.062.196.017.149.017.342.034.472.037.267.138.587.262.763.088.125.186.184.3.217.254.073.556.036.764-.144.203-.174.321-.427.321-.427l.028-.105c.028-.005.048-.012.073-.015l.121.033c.106-.02.175-.119.242-.154-.175-.134-.238-.309-.355-.448-.059-.067-.074-.145-.057-.221.011-.052.027-.106.059-.157.046-.072.107-.138.174-.18.089-.055.167-.076.262-.076.1 0 .2.025.298.072-.014-.022-.037-.064-.073-.113-.039-.052-.067-.088-.024-.122.072-.056.198-.122.346-.163.155-.035.293-.024.393.02a.467.467 0 0 1 .168.129c.071-.036.107-.104.189-.125.044-.011.164-.066.193-.02.026.047.072.135.11.213-.013-.009-.039-.027-.06-.034l-.071-.042c-.019-.014-.077-.016-.077-.016l.042.055c.052.045.042.095.045.138a.417.417 0 0 1-.018.107c-.02.059-.069.108-.11.16l.075-.003c.033-.004.046.005.063.012.088.035.157.119.213.197.062-.074.121-.15.168-.233.12-.217.134-.378.102-.517-.054-.214-.248-.316-.409-.316-.124 0-.207.025-.293.091-.053.043-.12.115-.168.206l.055-.031c-.011.037-.076.1-.057.139.019.038.077.045.1.096.027.06.003.127-.017.181-.019.048-.071.089-.091.126-.039.072.005.117.035.166.062.093.066.132.032.236l-.058-.014-.051.044.039.031.044.015.052-.037.025-.031c.009-.01.02-.017.026-.035-.011-.009-.015-.019-.022-.027l.016-.037c.017-.011.028-.011.038-.024.025-.035.046-.077.047-.12.001-.043-.013-.088-.027-.127-.012-.031-.032-.053-.053-.078-.019-.023-.04-.047-.072-.057l.027-.019c.024-.01.037-.014.059-.027.026-.016.061-.029.086-.056.071-.077.043-.14.038-.202a.256.256 0 0 0-.049-.136c-.027-.04-.062-.076-.101-.109a.475.475 0 0 0-.075-.053l.024-.014c.015-.016.013-.046 0-.057-.015-.011-.052-.023-.052-.023l.037-.037c.025-.021.055-.039.094-.043.058-.007.092.041.125.07.034.028.062.063.083.1.029.05.039.108.039.168 0 .056-.011.11-.036.164-.025.053-.062.1-.108.142-.051.046-.107.079-.176.094.013-.051.025-.092.047-.131.019-.035.043-.066.073-.091a.318.318 0 0 1 .107-.063c.039-.01.082-.011.118-.001a.286.286 0 0 1 .108.053c.031.027.054.059.069.096.016.037.022.078.018.118a.265.265 0 0 1-.041.117c-.024.037-.057.068-.096.093-.039.024-.084.04-.133.046-.051.006-.103 0-.154-.014a.43.43 0 0 1-.142-.068l.031-.023c.048-.04.096-.082.142-.127a.83.83 0 0 0 .11-.135.386.386 0 0 0 .055-.137.239.239 0 0 0-.015-.134.221.221 0 0 0-.078-.094.247.247 0 0 0-.112-.044.315.315 0 0 0-.126.012c-.044.015-.084.039-.119.07-.034.031-.063.069-.085.111a.34.34 0 0 0-.047.14c-.004.051.003.103.021.152.018.049.046.095.083.134.037.039.082.071.133.095l-.023.026a.515.515 0 0 1-.134-.077.423.423 0 0 1-.099-.117.343.343 0 0 1-.051-.146.296.296 0 0 1 .016-.152c.018-.049.046-.094.083-.132a.406.406 0 0 1 .133-.093.476.476 0 0 1 .163-.039c.058-.002.116.009.169.033a.384.384 0 0 1 .134.101c.036.044.063.095.079.15a.36.36 0 0 1 .011.165.417.417 0 0 1-.059.153.525.525 0 0 1-.114.131c-.047.04-.1.076-.158.106l.042.032c.029.019.055.045.078.073.022.029.041.061.054.096.013.035.02.073.019.111a.291.291 0 0 1-.035.123.345.345 0 0 1-.083.101.44.44 0 0 1-.121.069.54.54 0 0 1-.145.029.613.613 0 0 1-.156-.015.648.648 0 0 1-.151-.058l.023-.015z"/>
-                  </svg>
+                  <Code2 className="h-6 w-6" />
                 </div>
                 <div>
                   <CardTitle className="text-lg">JetBrains IDEs</CardTitle>
-                  <CardDescription>IntelliJ, WebStorm, PyCharm, etc.</CardDescription>
+                  <CardDescription>IntelliJ, WebStorm, PyCharm, and more</CardDescription>
                 </div>
               </div>
               <Badge variant="secondary">Coming Soon</Badge>
