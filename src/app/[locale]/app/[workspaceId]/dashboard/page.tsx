@@ -326,8 +326,7 @@ const DashboardPage = () => {
         open={repositoriesOpen}
         onOpenChange={setRepositoriesOpen}
         workspaceId={workspaceId}
-        onLinkSuccess={() => setGithubRefreshKey(k => k + 1)}
-        onUnlinkSuccess={() => setGithubRefreshKey(k => k + 1)}
+        onRepositoryChange={() => setGithubRefreshKey(k => k + 1)}
       />
       <JiraOnboardingDialog
         open={jiraOnboardingOpen}

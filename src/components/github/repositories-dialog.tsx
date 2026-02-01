@@ -43,8 +43,6 @@ interface RepositoriesDialogProps {
   onOpenChange: (open: boolean) => void;
   workspaceId: string;
   onRepositoryChange?: () => void;
-  onLinkSuccess?: () => void;
-  onUnlinkSuccess?: () => void;
 }
 
 export function RepositoriesDialog({
@@ -52,8 +50,6 @@ export function RepositoriesDialog({
   onOpenChange,
   workspaceId,
   onRepositoryChange,
-  onLinkSuccess,
-  onUnlinkSuccess,
 }: RepositoriesDialogProps) {
   const [loading, setLoading] = useState(true);
   const [repositories, setRepositories] = useState<GitHubRepo[]>([]);
@@ -112,7 +108,6 @@ export function RepositoriesDialog({
         setLinkedRepoIds(prev => new Set([...prev, repo.id.toString()]));
         toast.success(`${repo.name} linked successfully`);
         onRepositoryChange?.();
-        onLinkSuccess?.();
       } else {
         toast.error(result.error || "Failed to link repository");
       }
@@ -148,7 +143,6 @@ export function RepositoriesDialog({
         });
         toast.success("Repository unlinked");
         onRepositoryChange?.();
-        onUnlinkSuccess?.();
       } else {
         toast.error(result.error || "Failed to unlink repository");
       }
@@ -176,24 +170,24 @@ export function RepositoriesDialog({
   return (
     <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
       <ResponsiveDialogContent className="sm:max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
-        <ResponsiveDialogHeader>
-          <ResponsiveDialogTitle className="flex items-center gap-2">
-            <Github className="w-5 h-5" />
+        <ResponsiveDialogHeader className="px-4 sm:px-6">
+          <ResponsiveDialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <Github className="w-4 h-4 sm:w-5 sm:h-5" />
             GitHub Repositories
           </ResponsiveDialogTitle>
-          <ResponsiveDialogDescription>
-            Link repositories to sync issues and track commits
+          <ResponsiveDialogDescription className="text-xs sm:text-sm">
+            Link repos to sync issues
           </ResponsiveDialogDescription>
         </ResponsiveDialogHeader>
 
         {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <div className="relative px-4 sm:px-6">
+          <Search className="absolute left-7 sm:left-9 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Search repositories..."
+            placeholder="Search..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
+            className="pl-9 h-9 sm:h-10 text-sm"
           />
         </div>
 
@@ -212,27 +206,27 @@ export function RepositoriesDialog({
             </Button>
           </div>
         ) : (
-          <Tabs defaultValue="available" className="flex-1 overflow-hidden flex flex-col">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="available">
+          <Tabs defaultValue="available" className="flex-1 overflow-hidden flex flex-col px-4 sm:px-6">
+            <TabsList className="grid w-full grid-cols-2 h-9 sm:h-10">
+              <TabsTrigger value="available" className="text-xs sm:text-sm">
                 Available
-                <Badge variant="secondary" className="ml-2">
+                <Badge variant="secondary" className="ml-1.5 sm:ml-2 text-[10px] sm:text-xs px-1.5 sm:px-2">
                   {availableRepos.length}
                 </Badge>
               </TabsTrigger>
-              <TabsTrigger value="linked">
+              <TabsTrigger value="linked" className="text-xs sm:text-sm">
                 Linked
-                <Badge variant="secondary" className="ml-2">
+                <Badge variant="secondary" className="ml-1.5 sm:ml-2 text-[10px] sm:text-xs px-1.5 sm:px-2">
                   {linkedRepos.length}
                 </Badge>
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="available" className="flex-1 overflow-hidden mt-4">
-              <ScrollArea className="h-[400px] pr-4">
+            <TabsContent value="available" className="flex-1 overflow-hidden mt-3 sm:mt-4">
+              <ScrollArea className="h-[300px] sm:h-[400px] -mx-1 px-1">
                 {availableRepos.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    {search ? "No repositories match your search" : "All repositories are linked"}
+                  <div className="text-center py-6 sm:py-8 text-muted-foreground text-sm">
+                    {search ? "No repos match your search" : "All repos are linked"}
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -250,11 +244,11 @@ export function RepositoriesDialog({
               </ScrollArea>
             </TabsContent>
 
-            <TabsContent value="linked" className="flex-1 overflow-hidden mt-4">
-              <ScrollArea className="h-[400px] pr-4">
+            <TabsContent value="linked" className="flex-1 overflow-hidden mt-3 sm:mt-4">
+              <ScrollArea className="h-[300px] sm:h-[400px] -mx-1 px-1">
                 {linkedRepos.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    No repositories linked yet
+                  <div className="text-center py-6 sm:py-8 text-muted-foreground text-sm">
+                    No repos linked yet
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -306,90 +300,82 @@ function RepoCard({ repo, isLinked, isLoading, onLink, onUnlink }: RepoCardProps
 
   return (
     <div className={cn(
-      "p-4 rounded-lg border transition-all",
+      "p-3 sm:p-4 rounded-lg border transition-all",
       isLinked ? "border-primary/50 bg-primary/5" : "hover:border-primary/30"
     )}>
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <a
-              href={repo.html_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-medium hover:text-primary hover:underline truncate"
-            >
-              {repo.full_name}
-            </a>
+      <div className="flex items-start gap-2 sm:gap-4">
+        {/* Repo info */}
+        <div className="flex-1 min-w-0 overflow-hidden">
+          <div className="flex items-center gap-1.5 sm:gap-2 mb-1">
+            <span className="font-medium text-sm sm:text-base truncate">
+              {repo.name}
+            </span>
             {repo.private ? (
-              <Lock className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+              <Lock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-muted-foreground shrink-0" />
             ) : (
-              <Globe className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+              <Globe className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-muted-foreground shrink-0" />
             )}
           </div>
           
           {repo.description && (
-            <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+            <p className="text-xs sm:text-sm text-muted-foreground line-clamp-1 sm:line-clamp-2 mb-1.5 sm:mb-2">
               {repo.description}
             </p>
           )}
 
-          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2 sm:gap-4 text-[10px] sm:text-xs text-muted-foreground flex-wrap">
             {repo.language && (
               <span className="flex items-center gap-1">
                 <span className={cn(
-                  "w-2.5 h-2.5 rounded-full",
+                  "w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full",
                   languageColors[repo.language] || "bg-gray-400"
                 )} />
                 {repo.language}
               </span>
             )}
-            <span className="flex items-center gap-1">
-              <Star className="w-3.5 h-3.5" />
+            <span className="flex items-center gap-0.5 sm:gap-1">
+              <Star className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
               {repo.stargazers_count}
             </span>
-            <span className="flex items-center gap-1">
-              <GitFork className="w-3.5 h-3.5" />
+            <span className="flex items-center gap-0.5 sm:gap-1">
+              <GitFork className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
               {repo.forks_count}
             </span>
-            {repo.open_issues_count > 0 && (
-              <span className="flex items-center gap-1">
-                <AlertCircle className="w-3.5 h-3.5" />
-                {repo.open_issues_count} issues
-              </span>
-            )}
           </div>
         </div>
 
-        <div className="flex-shrink-0">
+        {/* Action button */}
+        <div className="shrink-0">
           {isLinked ? (
             <Button
               variant="outline"
-              size="sm"
+              size="icon"
               onClick={onUnlink}
               disabled={isLoading}
-              className="text-destructive hover:text-destructive"
+              className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3 text-destructive hover:text-destructive"
             >
               {isLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <>
-                  <Unlink className="w-4 h-4 mr-1" />
-                  Unlink
+                  <Unlink className="w-4 h-4 sm:mr-1.5" />
+                  <span className="hidden sm:inline">Unlink</span>
                 </>
               )}
             </Button>
           ) : (
             <Button
-              size="sm"
+              size="icon"
               onClick={onLink}
               disabled={isLoading}
+              className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3"
             >
               {isLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <>
-                  <Link2 className="w-4 h-4 mr-1" />
-                  Link
+                  <Link2 className="w-4 h-4 sm:mr-1.5" />
+                  <span className="hidden sm:inline">Link</span>
                 </>
               )}
             </Button>
