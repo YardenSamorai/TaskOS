@@ -41,7 +41,7 @@ export default function ExtensionsPage() {
   };
 
   return (
-    <AppShell>
+    <AppShell locale={locale}>
       <div className="container max-w-4xl py-8">
         {/* Hero Section */}
         <div className="relative mb-10 p-8 rounded-2xl bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 text-white overflow-hidden">
