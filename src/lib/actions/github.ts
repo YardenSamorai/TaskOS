@@ -15,14 +15,18 @@ import { getCurrentUser } from "@/lib/auth/permissions";
 import {
   getGitHubToken,
   getUserRepositories,
+  getRepository,
   getRepositoryIssues,
   getRepositoryCommits,
+  getCommitDetails,
   getRepositoryPullRequests,
+  getPullRequest,
   createIssue,
   updateIssue,
   GitHubRepo,
   GitHubIssue,
   GitHubCommit,
+  GitHubCommitDetail,
   GitHubPullRequest,
 } from "@/lib/github";
 
@@ -493,6 +497,162 @@ export async function fetchPullRequestsForTask(taskId: string) {
     return { success: true, pullRequests: relevantPRs };
   } catch (error) {
     console.error("Error fetching pull requests:", error);
+    return { success: false, error: "Failed to fetch pull requests", pullRequests: [] };
+  }
+}
+
+export async function fetchCommitDetails(data: {
+  owner: string;
+  repo: string;
+  sha: string;
+}) {
+  try {
+    const user = await getCurrentUser();
+    const token = await getGitHubToken(user.id);
+
+    if (!token) {
+      return { success: false, error: "GitHub not connected", commit: null };
+    }
+
+    const commit = await getCommitDetails(token, data.owner, data.repo, data.sha);
+    const repoInfo = await getRepository(token, data.owner, data.repo);
+
+    return { success: true, commit, repository: repoInfo };
+  } catch (error) {
+    console.error("Error fetching commit details:", error);
+    return { success: false, error: "Failed to fetch commit details", commit: null };
+  }
+}
+
+export async function fetchPullRequestDetails(data: {
+  owner: string;
+  repo: string;
+  number: number;
+}) {
+  try {
+    const user = await getCurrentUser();
+    const token = await getGitHubToken(user.id);
+
+    if (!token) {
+      return { success: false, error: "GitHub not connected", pullRequest: null };
+    }
+
+    const pr = await getPullRequest(token, data.owner, data.repo, data.number);
+    const repoInfo = await getRepository(token, data.owner, data.repo);
+
+    return { success: true, pullRequest: pr, repository: repoInfo };
+  } catch (error) {
+    console.error("Error fetching pull request details:", error);
+    return { success: false, error: "Failed to fetch pull request details", pullRequest: null };
+  }
+}
+
+export async function fetchAllIssuesForWorkspace(workspaceId: string, state: "open" | "closed" | "all" = "all") {
+  try {
+    const user = await getCurrentUser();
+    const token = await getGitHubToken(user.id);
+
+    if (!token) {
+      return { success: false, error: "GitHub not connected", issues: [] };
+    }
+
+    const repos = await db.query.linkedRepositories.findMany({
+      where: eq(linkedRepositories.workspaceId, workspaceId),
+    });
+
+    if (repos.length === 0) {
+      return { success: true, issues: [] };
+    }
+
+    const allIssues: Array<{
+      repo: string;
+      repoId: string;
+      issue: GitHubIssue;
+    }> = [];
+
+    for (const repo of repos) {
+      if (!repo.fullName) continue;
+      const [owner, repoName] = repo.fullName.split("/");
+      
+      try {
+        const issues = await getRepositoryIssues(token, owner, repoName, state);
+        // Filter out PRs (GitHub returns them as issues)
+        const actualIssues = issues.filter(issue => !("pull_request" in issue));
+        
+        actualIssues.forEach(issue => {
+          allIssues.push({
+            repo: repo.fullName!,
+            repoId: repo.id,
+            issue,
+          });
+        });
+      } catch (error) {
+        console.error(`Error fetching issues for ${repo.fullName}:`, error);
+      }
+    }
+
+    // Sort by updated_at
+    allIssues.sort((a, b) => 
+      new Date(b.issue.updated_at).getTime() - new Date(a.issue.updated_at).getTime()
+    );
+
+    return { success: true, issues: allIssues };
+  } catch (error) {
+    console.error("Error fetching all issues:", error);
+    return { success: false, error: "Failed to fetch issues", issues: [] };
+  }
+}
+
+export async function fetchAllPullRequestsForWorkspace(workspaceId: string, state: "open" | "closed" | "all" = "all") {
+  try {
+    const user = await getCurrentUser();
+    const token = await getGitHubToken(user.id);
+
+    if (!token) {
+      return { success: false, error: "GitHub not connected", pullRequests: [] };
+    }
+
+    const repos = await db.query.linkedRepositories.findMany({
+      where: eq(linkedRepositories.workspaceId, workspaceId),
+    });
+
+    if (repos.length === 0) {
+      return { success: true, pullRequests: [] };
+    }
+
+    const allPRs: Array<{
+      repo: string;
+      repoId: string;
+      pr: GitHubPullRequest;
+    }> = [];
+
+    for (const repo of repos) {
+      if (!repo.fullName) continue;
+      const [owner, repoName] = repo.fullName.split("/");
+      
+      try {
+        const prs = await getRepositoryPullRequests(token, owner, repoName, state);
+        
+        prs.forEach(pr => {
+          allPRs.push({
+            repo: repo.fullName!,
+            repoId: repo.id,
+            pr,
+          });
+        });
+      } catch (error) {
+        console.error(`Error fetching PRs for ${repo.fullName}:`, error);
+      }
+    }
+
+    // Sort by updated_at
+    allPRs.sort((a, b) => 
+      new Date(b.pr.updated_at).getTime() - new Date(a.pr.updated_at).getTime()
+    );
+
+    return { success: true, pullRequests: allPRs };
+  } catch (error) {
+    console.error("Error fetching all pull requests:", error);
     return { success: false, error: "Failed to fetch pull requests", pullRequests: [] };
   }
 }

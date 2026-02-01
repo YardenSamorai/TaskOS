@@ -22,6 +22,7 @@ import {
   Users,
   ChevronRight,
   Home,
+  Github,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -54,6 +55,7 @@ const workspaceNavItems: NavItem[] = [
   { icon: Kanban, labelKey: "board", href: "/board", requiresWorkspace: true },
   { icon: ListTodo, labelKey: "tasks", href: "/tasks", requiresWorkspace: true },
   { icon: Calendar, labelKey: "calendar", href: "/calendar", requiresWorkspace: true },
+  { icon: Github, labelKey: "github", href: "/github", requiresWorkspace: true },
   { icon: Target, labelKey: "focus", href: "/focus-mode", requiresWorkspace: true },
   { icon: Users, labelKey: "members", href: "/members", requiresWorkspace: true },
   { icon: Settings, labelKey: "settings", href: "/settings", requiresWorkspace: true },
@@ -63,7 +65,7 @@ const mobileNavItems = [
   { icon: LayoutDashboard, labelKey: "dashboard", href: "/dashboard" },
   { icon: Kanban, labelKey: "board", href: "/board" },
   { icon: ListTodo, labelKey: "tasks", href: "/tasks" },
-  { icon: Calendar, labelKey: "calendar", href: "/calendar" },
+  { icon: Github, labelKey: "github", href: "/github" },
   { icon: Target, labelKey: "focus", href: "/focus-mode" },
 ];
 
@@ -191,6 +193,7 @@ export const AppShell = ({ children, locale }: AppShellProps) => {
     board: t("board.title"),
     tasks: t("tasks.title"),
     calendar: t("calendar.title"),
+    github: "GitHub",
     focus: t("focus.title"),
     templates: t("templates.title"),
     settings: t("settings.title"),
@@ -232,6 +235,7 @@ export const AppShell = ({ children, locale }: AppShellProps) => {
         board: { label: navLabels.board, icon: Kanban },
         tasks: { label: navLabels.tasks, icon: ListTodo },
         calendar: { label: navLabels.calendar, icon: Calendar },
+        github: { label: navLabels.github, icon: Github },
         focus: { label: navLabels.focus, icon: Target },
         members: { label: navLabels.members, icon: Users },
         settings: { label: navLabels.settings, icon: Settings },

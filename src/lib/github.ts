@@ -228,6 +228,65 @@ export async function updateIssue(
 
 // ============== COMMITS ==============
 
+export interface GitHubCommitDetail {
+  sha: string;
+  commit: {
+    message: string;
+    author: {
+      name: string;
+      email: string;
+      date: string;
+    };
+    committer: {
+      name: string;
+      email: string;
+      date: string;
+    };
+    tree: {
+      sha: string;
+      url: string;
+    };
+    verification?: {
+      verified: boolean;
+      reason: string;
+    };
+  };
+  html_url: string;
+  author: {
+    login: string;
+    avatar_url: string;
+    html_url: string;
+  } | null;
+  committer: {
+    login: string;
+    avatar_url: string;
+    html_url: string;
+  } | null;
+  parents: Array<{
+    sha: string;
+    url: string;
+    html_url: string;
+  }>;
+  stats: {
+    additions: number;
+    deletions: number;
+    total: number;
+  };
+  files: Array<{
+    sha: string;
+    filename: string;
+    status: "added" | "removed" | "modified" | "renamed" | "copied" | "changed" | "unchanged";
+    additions: number;
+    deletions: number;
+    changes: number;
+    blob_url: string;
+    raw_url: string;
+    contents_url: string;
+    patch?: string;
+    previous_filename?: string;
+  }>;
+}
+
 export async function getRepositoryCommits(
   token: string,
   owner: string,
@@ -249,6 +308,18 @@ export async function getRepositoryCommits(
 
   return githubRequest<GitHubCommit[]>(
     `/repos/${owner}/${repo}/commits?${params.toString()}`,
+    token
+  );
+}
+
+export async function getCommitDetails(
+  token: string,
+  owner: string,
+  repo: string,
+  sha: string
+): Promise<GitHubCommitDetail> {
+  return githubRequest<GitHubCommitDetail>(
+    `/repos/${owner}/${repo}/commits/${sha}`,
     token
   );
 }

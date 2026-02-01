@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter, useParams } from "next/navigation";
 import {
   Github,
   GitCommit,
@@ -15,6 +16,7 @@ import {
   FolderGit2,
   X,
   Clock,
+  ArrowRight,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -50,12 +52,30 @@ export function GitHubActivityCard({
   onOpenIntegrations,
   refreshKey = 0,
 }: GitHubActivityCardProps) {
+  const router = useRouter();
+  const params = useParams();
+  const locale = params.locale as string;
+  
   const [loading, setLoading] = useState(true);
   const [connected, setConnected] = useState(false);
   const [linkedReposCount, setLinkedReposCount] = useState(0);
   const [activity, setActivity] = useState<ActivityItem[]>([]);
   const [reposDialogOpen, setReposDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+
+  const navigateToCommit = (commit: GitHubCommit, repoFullName: string) => {
+    const [owner, repo] = repoFullName.split("/");
+    router.push(`/${locale}/app/${workspaceId}/github/commits/${owner}/${repo}/${commit.sha}`);
+  };
+
+  const navigateToPR = (pr: GitHubPullRequest, repoFullName: string) => {
+    const [owner, repo] = repoFullName.split("/");
+    router.push(`/${locale}/app/${workspaceId}/github/prs/${owner}/${repo}/${pr.number}`);
+  };
+
+  const navigateToGitHub = () => {
+    router.push(`/${locale}/app/${workspaceId}/github`);
+  };
 
   useEffect(() => {
     checkConnectionAndFetch();
@@ -238,13 +258,28 @@ export function GitHubActivityCard({
             <p>No recent activity</p>
           </div>
         ) : (
-          <div className="h-[240px] sm:h-[300px] overflow-y-auto overflow-x-hidden">
-            <div className="space-y-1 sm:space-y-2">
-              {activity.slice(0, 10).map((item, index) => (
-                <ActivityItemCard key={`${item.type}-${index}`} item={item} />
-              ))}
+          <>
+            <div className="h-[200px] sm:h-[260px] overflow-y-auto overflow-x-hidden">
+              <div className="space-y-1 sm:space-y-2">
+                {activity.slice(0, 8).map((item, index) => (
+                  <ActivityItemCard 
+                    key={`${item.type}-${index}`} 
+                    item={item}
+                    onCommitClick={navigateToCommit}
+                    onPRClick={navigateToPR}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
+            <Button
+              variant="ghost"
+              className="w-full mt-2 text-xs gap-1.5"
+              onClick={navigateToGitHub}
+            >
+              View all activity
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Button>
+          </>
         )}
       </CardContent>
 
@@ -264,7 +299,15 @@ export function GitHubActivityCard({
   );
 }
 
-function ActivityItemCard({ item }: { item: ActivityItem }) {
+function ActivityItemCard({ 
+  item,
+  onCommitClick,
+  onPRClick,
+}: { 
+  item: ActivityItem;
+  onCommitClick?: (commit: GitHubCommit, repo: string) => void;
+  onPRClick?: (pr: GitHubPullRequest, repo: string) => void;
+}) {
   const formatTime = (timestamp: string) => {
     const distance = formatDistanceToNow(new Date(timestamp), { addSuffix: true });
     return distance
@@ -289,13 +332,11 @@ function ActivityItemCard({ item }: { item: ActivityItem }) {
     const message = commit.commit.message.split("\n")[0];
 
     return (
-      <div className="p-1.5 sm:p-2 rounded-lg hover:bg-muted/50 transition-colors group">
-        <a
-          href={commit.html_url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-start gap-2"
-        >
+      <div 
+        className="p-1.5 sm:p-2 rounded-lg hover:bg-muted/50 transition-colors group cursor-pointer"
+        onClick={() => onCommitClick?.(commit, item.repo)}
+      >
+        <div className="flex items-start gap-2">
           <GitCommit className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
           <div>
             <p className="text-xs sm:text-sm text-foreground group-hover:text-primary transition-colors break-words">
@@ -305,7 +346,7 @@ function ActivityItemCard({ item }: { item: ActivityItem }) {
               {formatTime(item.timestamp)}
             </p>
           </div>
-        </a>
+        </div>
       </div>
     );
   }
@@ -320,13 +361,11 @@ function ActivityItemCard({ item }: { item: ActivityItem }) {
     };
 
     return (
-      <div className="p-1.5 sm:p-2 rounded-lg hover:bg-muted/50 transition-colors group">
-        <a
-          href={pr.html_url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-start gap-2"
-        >
+      <div 
+        className="p-1.5 sm:p-2 rounded-lg hover:bg-muted/50 transition-colors group cursor-pointer"
+        onClick={() => onPRClick?.(pr, item.repo)}
+      >
+        <div className="flex items-start gap-2">
           <div className="shrink-0 mt-0.5">{getIcon()}</div>
           <div>
             <p className="text-xs sm:text-sm text-foreground group-hover:text-primary transition-colors break-words">
@@ -336,7 +375,7 @@ function ActivityItemCard({ item }: { item: ActivityItem }) {
               #{pr.number} • {formatTime(item.timestamp)}
             </p>
           </div>
-        </a>
+        </div>
       </div>
     );
   }
