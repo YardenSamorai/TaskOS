@@ -238,8 +238,8 @@ export function GitHubActivityCard({
             <p>No recent activity</p>
           </div>
         ) : (
-          <div className="h-[240px] sm:h-[300px] overflow-y-auto overflow-x-hidden">
-            <div className="space-y-2 sm:space-y-3 pr-1">
+          <div className="h-[240px] sm:h-[300px] overflow-y-auto overflow-x-hidden -mx-1">
+            <div className="space-y-1 sm:space-y-2 px-1">
               {activity.slice(0, 10).map((item, index) => (
                 <ActivityItemCard key={`${item.type}-${index}`} item={item} />
               ))}
@@ -265,6 +265,20 @@ export function GitHubActivityCard({
 }
 
 function ActivityItemCard({ item }: { item: ActivityItem }) {
+  const formatTime = (timestamp: string) => {
+    const distance = formatDistanceToNow(new Date(timestamp), { addSuffix: true });
+    // Shorten for mobile: "2 hours ago" -> "2h"
+    return distance
+      .replace(' minutes ago', 'm')
+      .replace(' minute ago', 'm')
+      .replace(' hours ago', 'h')
+      .replace(' hour ago', 'h')
+      .replace(' days ago', 'd')
+      .replace(' day ago', 'd')
+      .replace('about ', '')
+      .replace('less than a minute ago', 'now');
+  };
+
   if (item.type === "commit") {
     const commit = item.data as GitHubCommit;
     const message = commit.commit.message.split("\n")[0];
@@ -276,20 +290,18 @@ function ActivityItemCard({ item }: { item: ActivityItem }) {
         rel="noopener noreferrer"
         className="block w-full p-1.5 sm:p-2 rounded-lg hover:bg-muted/50 transition-colors group"
       >
-        <div className="flex items-start gap-2 sm:gap-3 w-full">
+        <div className="flex items-start gap-2 sm:gap-3 w-full min-w-0">
           <GitCommit className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground shrink-0 mt-0.5" />
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 overflow-hidden">
             <p className="text-xs sm:text-sm truncate group-hover:text-primary transition-colors">
               {message}
             </p>
             <div className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-muted-foreground mt-0.5">
-              <code className="bg-muted px-1 rounded font-mono text-[9px] sm:text-[10px] shrink-0">
+              <code className="hidden xs:inline bg-muted px-1 rounded font-mono text-[9px] sm:text-[10px]">
                 {commit.sha.slice(0, 7)}
               </code>
-              <span className="shrink-0">•</span>
-              <span className="shrink-0">
-                {formatDistanceToNow(new Date(item.timestamp), { addSuffix: true }).replace(' ago', '')}
-              </span>
+              <span className="hidden xs:inline">•</span>
+              <span>{formatTime(item.timestamp)}</span>
             </div>
           </div>
         </div>
@@ -313,18 +325,16 @@ function ActivityItemCard({ item }: { item: ActivityItem }) {
         rel="noopener noreferrer"
         className="block w-full p-1.5 sm:p-2 rounded-lg hover:bg-muted/50 transition-colors group"
       >
-        <div className="flex items-start gap-2 sm:gap-3 w-full">
+        <div className="flex items-start gap-2 sm:gap-3 w-full min-w-0">
           <div className="shrink-0 mt-0.5">{getIcon()}</div>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 overflow-hidden">
             <p className="text-xs sm:text-sm truncate group-hover:text-primary transition-colors">
               {pr.title}
             </p>
             <div className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-muted-foreground mt-0.5">
-              <span className="shrink-0">#{pr.number}</span>
-              <span className="shrink-0">•</span>
-              <span className="shrink-0">
-                {formatDistanceToNow(new Date(item.timestamp), { addSuffix: true }).replace(' ago', '')}
-              </span>
+              <span>#{pr.number}</span>
+              <span>•</span>
+              <span>{formatTime(item.timestamp)}</span>
             </div>
           </div>
         </div>
