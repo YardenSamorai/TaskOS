@@ -10,6 +10,7 @@ export interface PlanLimits {
   features: {
     processMode: boolean;
     aiTaskEnhancement: boolean;
+    aiCodeGeneration: boolean;
     advancedFilters: boolean;
     customTags: boolean;
     prioritySupport: boolean;
@@ -27,6 +28,7 @@ export const PLAN_LIMITS: Record<UserPlan, PlanLimits> = {
     features: {
       processMode: false,
       aiTaskEnhancement: false,
+      aiCodeGeneration: false,
       advancedFilters: false,
       customTags: false,
       prioritySupport: false,
@@ -42,6 +44,7 @@ export const PLAN_LIMITS: Record<UserPlan, PlanLimits> = {
     features: {
       processMode: true,
       aiTaskEnhancement: true,
+      aiCodeGeneration: true,
       advancedFilters: true,
       customTags: true,
       prioritySupport: true,
@@ -57,6 +60,7 @@ export const PLAN_LIMITS: Record<UserPlan, PlanLimits> = {
     features: {
       processMode: true,
       aiTaskEnhancement: true,
+      aiCodeGeneration: true,
       advancedFilters: true,
       customTags: true,
       prioritySupport: true,

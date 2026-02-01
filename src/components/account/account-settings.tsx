@@ -49,6 +49,7 @@ import {
   Unlink,
   Eye,
   EyeOff,
+  Key,
   Save,
   RefreshCw,
   CheckCircle2,
@@ -83,7 +84,8 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { PLAN_INFO, PLAN_LIMITS } from "@/lib/plans";
+import { PLAN_INFO, PLAN_LIMITS, hasFeature } from "@/lib/plans";
+import { ApiKeysSection } from "./api-keys-section";
 import { setPassword, changePassword, checkHasPassword } from "@/lib/actions/auth";
 import { 
   getNotificationPreferences, 
@@ -525,6 +527,7 @@ export const AccountSettings = ({ user, usageStats }: AccountSettingsProps) => {
             setShowPassword={setShowPassword}
             isChangingPassword={isChangingPassword}
             onPasswordChange={handlePasswordChange}
+            plan={plan}
           />
         )}
 
@@ -1447,6 +1450,7 @@ interface SecurityTabProps {
   setShowPassword: React.Dispatch<React.SetStateAction<boolean>>;
   isChangingPassword: boolean;
   onPasswordChange: () => void;
+  plan: UserPlan;
 }
 
 const SecurityTab = ({ 
@@ -1459,7 +1463,8 @@ const SecurityTab = ({
   showPassword, 
   setShowPassword, 
   isChangingPassword, 
-  onPasswordChange 
+  onPasswordChange,
+  plan
 }: SecurityTabProps) => {
   const passwordRequirements = [
     { label: "8+ characters", met: passwordData.new.length >= 8 },
@@ -1628,6 +1633,31 @@ const SecurityTab = ({
           </div>
         </CardHeader>
       </Card>
+
+      {/* API Keys */}
+      {hasFeature(plan, "apiAccess") ? (
+        <ApiKeysSection />
+      ) : (
+        <Card className="border-dashed border-2 opacity-75">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500/20 to-violet-500/20">
+                <Key className="w-6 h-6 text-blue-500" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold">API Keys</h3>
+                  <Badge className="bg-gradient-to-r from-blue-500 to-violet-600 text-white border-0">Enterprise</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Create API keys for IDE extensions and integrations
+                </p>
+              </div>
+              <Button variant="outline" size="sm">Upgrade</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Sessions */}
       <Card>

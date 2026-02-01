@@ -856,9 +856,39 @@ export const linkedRepositoriesRelations = relations(linkedRepositories, ({ one 
   }),
 }));
 
+// ============== API KEYS ==============
+export const apiKeys = pgTable("api_keys", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  keyHash: varchar("key_hash", { length: 255 }).notNull().unique(), // Hashed API key
+  name: varchar("name", { length: 255 }).notNull(), // e.g., "VS Code Extension"
+  lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+  expiresAt: timestamp("expires_at", { withTimezone: true }), // null = never expires
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (table) => ({
+  userIdIdx: index("api_keys_user_id_idx").on(table.userId),
+  keyHashIdx: index("api_keys_key_hash_idx").on(table.keyHash),
+}));
+
+export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
+  user: one(users, {
+    fields: [apiKeys.userId],
+    references: [users.id],
+  }),
+}));
+
 // Type exports
 export type Todo = typeof todos.$inferSelect;
 export type NewTodo = typeof todos.$inferInsert;
+export type ApiKey = typeof apiKeys.$inferSelect;
+export type NewApiKey = typeof apiKeys.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Account = typeof accounts.$inferSelect;
