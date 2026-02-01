@@ -267,7 +267,6 @@ export function GitHubActivityCard({
 function ActivityItemCard({ item }: { item: ActivityItem }) {
   const formatTime = (timestamp: string) => {
     const distance = formatDistanceToNow(new Date(timestamp), { addSuffix: true });
-    // Shorten for mobile: "2 hours ago" -> "2h"
     return distance
       .replace(' minutes ago', 'm')
       .replace(' minute ago', 'm')
@@ -279,33 +278,35 @@ function ActivityItemCard({ item }: { item: ActivityItem }) {
       .replace('less than a minute ago', 'now');
   };
 
+  // Truncate text to max characters
+  const truncateText = (text: string, maxLength: number = 40) => {
+    if (text.length <= maxLength) return text;
+    return text.slice(0, maxLength).trim() + '...';
+  };
+
   if (item.type === "commit") {
     const commit = item.data as GitHubCommit;
     const message = commit.commit.message.split("\n")[0];
 
     return (
-      <a
-        href={commit.html_url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="block p-1.5 sm:p-2 rounded-lg hover:bg-muted/50 transition-colors group overflow-hidden"
-      >
-        <div className="flex items-start gap-2 sm:gap-3">
-          <GitCommit className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground shrink-0 mt-0.5" />
-          <div className="min-w-0 flex-1">
-            <p className="text-xs sm:text-sm text-foreground group-hover:text-primary transition-colors truncate">
-              {message}
+      <div className="p-1.5 sm:p-2 rounded-lg hover:bg-muted/50 transition-colors group">
+        <a
+          href={commit.html_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-start gap-2"
+        >
+          <GitCommit className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
+          <div>
+            <p className="text-xs sm:text-sm text-foreground group-hover:text-primary transition-colors break-words">
+              {truncateText(message, 45)}
             </p>
-            <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
-              <code className="hidden xs:inline bg-muted px-1 rounded font-mono text-[9px] sm:text-[10px] mr-1">
-                {commit.sha.slice(0, 7)}
-              </code>
-              <span className="hidden xs:inline mr-1">•</span>
-              <span>{formatTime(item.timestamp)}</span>
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              {formatTime(item.timestamp)}
             </p>
           </div>
-        </div>
-      </a>
+        </a>
+      </div>
     );
   }
 
@@ -313,30 +314,30 @@ function ActivityItemCard({ item }: { item: ActivityItem }) {
     const pr = item.data as GitHubPullRequest;
 
     const getIcon = () => {
-      if (pr.merged_at) return <GitMerge className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-500" />;
-      if (pr.state === "closed") return <X className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-500" />;
-      return <GitPullRequest className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-500" />;
+      if (pr.merged_at) return <GitMerge className="w-3.5 h-3.5 text-purple-500" />;
+      if (pr.state === "closed") return <X className="w-3.5 h-3.5 text-red-500" />;
+      return <GitPullRequest className="w-3.5 h-3.5 text-green-500" />;
     };
 
     return (
-      <a
-        href={pr.html_url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="block p-1.5 sm:p-2 rounded-lg hover:bg-muted/50 transition-colors group overflow-hidden"
-      >
-        <div className="flex items-start gap-2 sm:gap-3">
+      <div className="p-1.5 sm:p-2 rounded-lg hover:bg-muted/50 transition-colors group">
+        <a
+          href={pr.html_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-start gap-2"
+        >
           <div className="shrink-0 mt-0.5">{getIcon()}</div>
-          <div className="min-w-0 flex-1">
-            <p className="text-xs sm:text-sm text-foreground group-hover:text-primary transition-colors truncate">
-              {pr.title}
+          <div>
+            <p className="text-xs sm:text-sm text-foreground group-hover:text-primary transition-colors break-words">
+              {truncateText(pr.title, 45)}
             </p>
-            <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
+            <p className="text-[10px] text-muted-foreground mt-0.5">
               #{pr.number} • {formatTime(item.timestamp)}
             </p>
           </div>
-        </div>
-      </a>
+        </a>
+      </div>
     );
   }
 
