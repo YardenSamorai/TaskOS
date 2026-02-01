@@ -9,6 +9,7 @@ import type { UserPlan } from "@/lib/db/schema";
 export interface AuthenticatedRequest extends NextRequest {
   userId: string;
   apiKeyId: string;
+  userPlan: "pro" | "enterprise";
 }
 
 /**
@@ -80,10 +81,14 @@ export async function authenticateApiRequest(
       };
     }
 
+    // Ensure plan is pro or enterprise for rate limiting
+    const planForRateLimit = userPlan === "enterprise" ? "enterprise" : "pro";
+
     // Add user info to request
     const authenticatedRequest = request as AuthenticatedRequest;
     authenticatedRequest.userId = verification.userId;
     authenticatedRequest.apiKeyId = verification.apiKeyId!;
+    authenticatedRequest.userPlan = planForRateLimit;
 
     return {
       authenticated: true,

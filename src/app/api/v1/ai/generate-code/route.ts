@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateApiRequest } from "@/lib/middleware/api-auth";
+import { rateLimitApiRequest } from "@/lib/middleware/rate-limit";
 import Groq from "groq-sdk";
 import { db } from "@/lib/db";
 import { users, tasks } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { hasFeature } from "@/lib/plans";
 import type { UserPlan } from "@/lib/db/schema";
+
+// Maximum request body size (1MB)
+const MAX_BODY_SIZE = 1024 * 1024;
 
 // Initialize Groq
 const groq = new Groq({
@@ -48,6 +52,15 @@ Respond ONLY with valid JSON, no markdown or explanation outside JSON.`;
 
 export async function POST(request: NextRequest) {
   try {
+    // Check request body size
+    const contentLength = request.headers.get("content-length");
+    if (contentLength && parseInt(contentLength) > MAX_BODY_SIZE) {
+      return NextResponse.json(
+        { error: "Request body too large. Maximum size is 1MB." },
+        { status: 413 }
+      );
+    }
+
     // Authenticate request
     const auth = await authenticateApiRequest(request);
     if (!auth.authenticated || !auth.request) {
@@ -57,16 +70,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { userId } = auth.request;
+    const { userId, apiKeyId, userPlan } = auth.request;
 
-    // Get user's plan and check feature access
-    const user = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-    });
+    // Check rate limit
+    const rateLimit = await rateLimitApiRequest(apiKeyId, userPlan);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: rateLimit.error },
+        {
+          status: rateLimit.status || 429,
+          headers: rateLimit.headers,
+        }
+      );
+    }
 
-    const userPlan = (user?.plan as UserPlan) || "free";
+    const responseHeaders = rateLimit.headers || {};
 
     // Check if user has access to AI code generation feature
+    // userPlan is already available from auth.request
     if (!hasFeature(userPlan, "aiCodeGeneration")) {
       return NextResponse.json(
         {
@@ -169,18 +190,21 @@ export async function POST(request: NextRequest) {
       result = JSON.parse(cleanedText);
     } catch (parseError) {
       // If JSON parsing fails, return as plain code
-      return NextResponse.json({
-        success: true,
-        code: text,
-        language: language || "unknown",
-        explanation: "Generated code",
-        files: [
-          {
-            path: "generated.ts",
-            content: text,
-          },
-        ],
-      });
+      return NextResponse.json(
+        {
+          success: true,
+          code: text,
+          language: language || "unknown",
+          explanation: "Generated code",
+          files: [
+            {
+              path: "generated.ts",
+              content: text,
+            },
+          ],
+        },
+        { headers: responseHeaders }
+      );
     }
 
     // Validate result structure
@@ -201,14 +225,17 @@ export async function POST(request: NextRequest) {
       ];
     }
 
-    return NextResponse.json({
-      success: true,
-      code: result.code || result.files[0]?.content || "",
-      language: result.language || language || "typescript",
-      explanation: result.explanation || "Generated code based on task description",
-      dependencies: result.dependencies || [],
-      files: result.files || [],
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        code: result.code || result.files[0]?.content || "",
+        language: result.language || language || "typescript",
+        explanation: result.explanation || "Generated code based on task description",
+        dependencies: result.dependencies || [],
+        files: result.files || [],
+      },
+      { headers: responseHeaders }
+    );
   } catch (error) {
     console.error("Error generating code:", error);
     return NextResponse.json(

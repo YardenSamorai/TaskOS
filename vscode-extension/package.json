@@ -1,0 +1,126 @@
+{
+  "name": "taskos",
+  "displayName": "TaskOS",
+  "description": "Task management and AI code generation directly from VS Code",
+  "version": "0.1.0",
+  "publisher": "taskos",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other",
+    "Snippets"
+  ],
+  "activationEvents": [
+    "onStartupFinished",
+    "onCommand:taskos.openPanel",
+    "onCommand:taskos.createTask",
+    "onCommand:taskos.generateCode",
+    "onCommand:taskos.configure",
+    "onView:taskosTasks"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "taskos.openPanel",
+        "title": "TaskOS: Open Task Panel"
+      },
+      {
+        "command": "taskos.createTask",
+        "title": "TaskOS: Create Task from Selection"
+      },
+      {
+        "command": "taskos.generateCode",
+        "title": "TaskOS: Generate Code with AI"
+      },
+      {
+        "command": "taskos.configure",
+        "title": "TaskOS: Configure API Key"
+      }
+    ],
+    "views": {
+      "taskos": [
+        {
+          "id": "taskosTasks",
+          "name": "Tasks"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "taskos",
+          "title": "TaskOS",
+          "icon": "resources/icon.svg"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "TaskOS",
+      "properties": {
+        "taskos.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Your TaskOS API key (get it from Account Settings → Security → API Keys)",
+          "markdownDescription": "Your TaskOS API key. Get it from [Account Settings → Security → API Keys](https://taskos.com/app/account)"
+        },
+        "taskos.apiUrl": {
+          "type": "string",
+          "default": "https://taskos.com/api/v1",
+          "description": "TaskOS API base URL"
+        },
+        "taskos.defaultWorkspaceId": {
+          "type": "string",
+          "default": "",
+          "description": "Default workspace ID for creating tasks"
+        },
+        "taskos.autoRefresh": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically refresh tasks in the background"
+        },
+        "taskos.autoRefreshInterval": {
+          "type": "number",
+          "default": 15,
+          "minimum": 5,
+          "maximum": 300,
+          "description": "Auto-refresh interval in seconds (5-300)"
+        }
+      }
+    },
+    "menus": {
+      "editor/context": [
+        {
+          "command": "taskos.createTask",
+          "when": "editorHasSelection",
+          "group": "taskos"
+        },
+        {
+          "command": "taskos.generateCode",
+          "when": "editorHasSelection",
+          "group": "taskos"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "taskos.openPanel",
+          "when": "view == taskosTasks",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.80.0",
+    "typescript": "^5.0.0",
+    "@vscode/vsce": "^2.22.0"
+  }
+}

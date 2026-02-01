@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateApiRequest } from "@/lib/middleware/api-auth";
+import { rateLimitApiRequest } from "@/lib/middleware/rate-limit";
 import { db } from "@/lib/db";
-import { tasks, taskAssignees, taskTags, taskComments } from "@/lib/db/schema";
+import { tasks, taskAssignees, taskTags, taskComments, taskSteps } from "@/lib/db/schema";
 import { eq, and, desc, asc, or } from "drizzle-orm";
 import { z } from "zod";
+
+// Maximum request body size (1MB)
+const MAX_BODY_SIZE = 1024 * 1024;
 
 // GET /api/v1/tasks - List tasks
 export async function GET(request: NextRequest) {
@@ -17,7 +21,21 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { userId } = auth.request;
+    const { userId, apiKeyId, userPlan } = auth.request;
+
+    // Check rate limit
+    const rateLimit = await rateLimitApiRequest(apiKeyId, userPlan);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: rateLimit.error },
+        {
+          status: rateLimit.status || 429,
+          headers: rateLimit.headers,
+        }
+      );
+    }
+
+    const responseHeaders = rateLimit.headers || {};
     const { searchParams } = new URL(request.url);
 
     // Get query parameters
@@ -80,6 +98,9 @@ export async function GET(request: NextRequest) {
             image: true,
           },
         },
+        steps: {
+          orderBy: (steps, { asc }) => [asc(steps.orderIndex)],
+        },
       },
       orderBy: [desc(tasks.createdAt)],
       limit,
@@ -118,6 +139,13 @@ export async function GET(request: NextRequest) {
         name: tt.tag.name,
         color: tt.tag.color,
       })),
+      steps: task.steps.map((step) => ({
+        id: step.id,
+        content: step.content,
+        completed: step.completed,
+        orderIndex: step.orderIndex,
+        completedAt: step.completedAt,
+      })),
       createdBy: {
         id: task.creator?.id,
         name: task.creator?.name,
@@ -126,13 +154,16 @@ export async function GET(request: NextRequest) {
       },
     }));
 
-    return NextResponse.json({
-      success: true,
-      tasks: formattedTasks,
-      total: formattedTasks.length,
-      limit,
-      offset,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        tasks: formattedTasks,
+        total: formattedTasks.length,
+        limit,
+        offset,
+      },
+      { headers: responseHeaders }
+    );
   } catch (error) {
     console.error("Error fetching tasks:", error);
     return NextResponse.json(
@@ -145,6 +176,15 @@ export async function GET(request: NextRequest) {
 // POST /api/v1/tasks - Create task
 export async function POST(request: NextRequest) {
   try {
+    // Check request body size
+    const contentLength = request.headers.get("content-length");
+    if (contentLength && parseInt(contentLength) > MAX_BODY_SIZE) {
+      return NextResponse.json(
+        { error: "Request body too large. Maximum size is 1MB." },
+        { status: 413 }
+      );
+    }
+
     // Authenticate request
     const auth = await authenticateApiRequest(request);
     if (!auth.authenticated || !auth.request) {
@@ -154,7 +194,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { userId } = auth.request;
+    const { userId, apiKeyId, userPlan } = auth.request;
+
+    // Check rate limit
+    const rateLimit = await rateLimitApiRequest(apiKeyId, userPlan);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: rateLimit.error },
+        {
+          status: rateLimit.status || 429,
+          headers: rateLimit.headers,
+        }
+      );
+    }
+
+    const responseHeaders = rateLimit.headers || {};
     const body = await request.json();
 
     // Validate input
@@ -275,7 +329,7 @@ export async function POST(request: NextRequest) {
           },
         },
       },
-      { status: 201 }
+      { status: 201, headers: responseHeaders }
     );
   } catch (error) {
     if (error instanceof z.ZodError) {

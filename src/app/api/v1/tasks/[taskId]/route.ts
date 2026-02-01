@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateApiRequest } from "@/lib/middleware/api-auth";
+import { rateLimitApiRequest } from "@/lib/middleware/rate-limit";
 import { db } from "@/lib/db";
-import { tasks, taskAssignees, taskTags } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { tasks, taskAssignees, taskTags, taskSteps } from "@/lib/db/schema";
+import { eq, and, asc } from "drizzle-orm";
 import { z } from "zod";
+
+// Maximum request body size (1MB)
+const MAX_BODY_SIZE = 1024 * 1024;
 
 // GET /api/v1/tasks/:id - Get task details
 export async function GET(
@@ -20,6 +24,21 @@ export async function GET(
       );
     }
 
+    const { apiKeyId, userPlan } = auth.request;
+
+    // Check rate limit
+    const rateLimit = await rateLimitApiRequest(apiKeyId, userPlan);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: rateLimit.error },
+        {
+          status: rateLimit.status || 429,
+          headers: rateLimit.headers,
+        }
+      );
+    }
+
+    const responseHeaders = rateLimit.headers || {};
     const { taskId } = await params;
 
     const task = await db.query.tasks.findFirst({
@@ -63,6 +82,9 @@ export async function GET(
           },
           orderBy: (comments, { asc }) => [asc(comments.createdAt)],
         },
+        steps: {
+          orderBy: (steps, { asc }) => [asc(steps.orderIndex)],
+        },
       },
     });
 
@@ -70,50 +92,60 @@ export async function GET(
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 
-    return NextResponse.json({
-      success: true,
-      task: {
-        id: task.id,
-        title: task.title,
-        description: task.description,
-        status: task.status,
-        priority: task.priority,
-        dueDate: task.dueDate,
-        startDate: task.startDate,
-        workspaceId: task.workspaceId,
-        projectId: task.projectId,
-        createdAt: task.createdAt,
-        updatedAt: task.updatedAt,
-        assignees: task.assignees.map((a) => ({
-          id: a.user.id,
-          name: a.user.name,
-          email: a.user.email,
-          image: a.user.image,
-        })),
-        tags: task.tags.map((tt) => ({
-          id: tt.tag.id,
-          name: tt.tag.name,
-          color: tt.tag.color,
-        })),
-        createdBy: {
-          id: task.creator?.id,
-          name: task.creator?.name,
-          email: task.creator?.email,
-          image: task.creator?.image,
-        },
-        comments: task.comments.map((c) => ({
-          id: c.id,
-          content: c.content,
-          createdAt: c.createdAt,
-          user: {
-            id: c.user.id,
-            name: c.user.name,
-            email: c.user.email,
-            image: c.user.image,
+    return NextResponse.json(
+      {
+        success: true,
+        task: {
+          id: task.id,
+          title: task.title,
+          description: task.description,
+          status: task.status,
+          priority: task.priority,
+          dueDate: task.dueDate,
+          startDate: task.startDate,
+          workspaceId: task.workspaceId,
+          projectId: task.projectId,
+          createdAt: task.createdAt,
+          updatedAt: task.updatedAt,
+          assignees: task.assignees.map((a) => ({
+            id: a.user.id,
+            name: a.user.name,
+            email: a.user.email,
+            image: a.user.image,
+          })),
+          tags: task.tags.map((tt) => ({
+            id: tt.tag.id,
+            name: tt.tag.name,
+            color: tt.tag.color,
+          })),
+          createdBy: {
+            id: task.creator?.id,
+            name: task.creator?.name,
+            email: task.creator?.email,
+            image: task.creator?.image,
           },
-        })),
+          comments: task.comments.map((c) => ({
+            id: c.id,
+            content: c.content,
+            createdAt: c.createdAt,
+            user: {
+              id: c.user.id,
+              name: c.user.name,
+              email: c.user.email,
+              image: c.user.image,
+            },
+          })),
+          steps: task.steps.map((step) => ({
+            id: step.id,
+            content: step.content,
+            completed: step.completed,
+            orderIndex: step.orderIndex,
+            completedAt: step.completedAt,
+          })),
+        },
       },
-    });
+      { headers: responseHeaders }
+    );
   } catch (error) {
     console.error("Error fetching task:", error);
     return NextResponse.json(
@@ -129,6 +161,15 @@ export async function PUT(
   { params }: { params: Promise<{ taskId: string }> }
 ) {
   try {
+    // Check request body size
+    const contentLength = request.headers.get("content-length");
+    if (contentLength && parseInt(contentLength) > MAX_BODY_SIZE) {
+      return NextResponse.json(
+        { error: "Request body too large. Maximum size is 1MB." },
+        { status: 413 }
+      );
+    }
+
     // Authenticate request
     const auth = await authenticateApiRequest(request);
     if (!auth.authenticated || !auth.request) {
@@ -138,6 +179,21 @@ export async function PUT(
       );
     }
 
+    const { apiKeyId, userPlan } = auth.request;
+
+    // Check rate limit
+    const rateLimit = await rateLimitApiRequest(apiKeyId, userPlan);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: rateLimit.error },
+        {
+          status: rateLimit.status || 429,
+          headers: rateLimit.headers,
+        }
+      );
+    }
+
+    const responseHeaders = rateLimit.headers || {};
     const { taskId } = await params;
     const body = await request.json();
 
@@ -239,42 +295,55 @@ export async function PUT(
             image: true,
           },
         },
-      },
-    });
-
-    return NextResponse.json({
-      success: true,
-      task: {
-        id: updatedTask!.id,
-        title: updatedTask!.title,
-        description: updatedTask!.description,
-        status: updatedTask!.status,
-        priority: updatedTask!.priority,
-        dueDate: updatedTask!.dueDate,
-        startDate: updatedTask!.startDate,
-        workspaceId: updatedTask!.workspaceId,
-        projectId: updatedTask!.projectId,
-        createdAt: updatedTask!.createdAt,
-        updatedAt: updatedTask!.updatedAt,
-        assignees: updatedTask!.assignees.map((a) => ({
-          id: a.user.id,
-          name: a.user.name,
-          email: a.user.email,
-          image: a.user.image,
-        })),
-        tags: updatedTask!.tags.map((tt) => ({
-          id: tt.tag.id,
-          name: tt.tag.name,
-          color: tt.tag.color,
-        })),
-        createdBy: {
-          id: updatedTask!.creator?.id,
-          name: updatedTask!.creator?.name,
-          email: updatedTask!.creator?.email,
-          image: updatedTask!.creator?.image,
+        steps: {
+          orderBy: (steps, { asc }) => [asc(steps.orderIndex)],
         },
       },
     });
+
+    return NextResponse.json(
+      {
+        success: true,
+        task: {
+          id: updatedTask!.id,
+          title: updatedTask!.title,
+          description: updatedTask!.description,
+          status: updatedTask!.status,
+          priority: updatedTask!.priority,
+          dueDate: updatedTask!.dueDate,
+          startDate: updatedTask!.startDate,
+          workspaceId: updatedTask!.workspaceId,
+          projectId: updatedTask!.projectId,
+          createdAt: updatedTask!.createdAt,
+          updatedAt: updatedTask!.updatedAt,
+          assignees: updatedTask!.assignees.map((a) => ({
+            id: a.user.id,
+            name: a.user.name,
+            email: a.user.email,
+            image: a.user.image,
+          })),
+          tags: updatedTask!.tags.map((tt) => ({
+            id: tt.tag.id,
+            name: tt.tag.name,
+            color: tt.tag.color,
+          })),
+          steps: updatedTask!.steps.map((step) => ({
+            id: step.id,
+            content: step.content,
+            completed: step.completed,
+            orderIndex: step.orderIndex,
+            completedAt: step.completedAt,
+          })),
+          createdBy: {
+            id: updatedTask!.creator?.id,
+            name: updatedTask!.creator?.name,
+            email: updatedTask!.creator?.email,
+            image: updatedTask!.creator?.image,
+          },
+        },
+      },
+      { headers: responseHeaders }
+    );
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -305,6 +374,21 @@ export async function DELETE(
       );
     }
 
+    const { apiKeyId, userPlan } = auth.request;
+
+    // Check rate limit
+    const rateLimit = await rateLimitApiRequest(apiKeyId, userPlan);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: rateLimit.error },
+        {
+          status: rateLimit.status || 429,
+          headers: rateLimit.headers,
+        }
+      );
+    }
+
+    const responseHeaders = rateLimit.headers || {};
     const { taskId } = await params;
 
     // Check if task exists
@@ -319,10 +403,13 @@ export async function DELETE(
     // Delete task (cascade will handle related records)
     await db.delete(tasks).where(eq(tasks.id, taskId));
 
-    return NextResponse.json({
-      success: true,
-      message: "Task deleted successfully",
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        message: "Task deleted successfully",
+      },
+      { headers: responseHeaders }
+    );
   } catch (error) {
     console.error("Error deleting task:", error);
     return NextResponse.json(
