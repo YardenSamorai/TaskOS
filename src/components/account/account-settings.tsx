@@ -1647,7 +1647,7 @@ const SecurityTab = ({
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <h3 className="font-semibold">API Keys</h3>
-                  <Badge className="bg-gradient-to-r from-blue-500 to-violet-600 text-white border-0">Enterprise</Badge>
+                  <Badge className="bg-gradient-to-r from-blue-500 to-violet-600 text-white border-0">Pro</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">
                   Create API keys for IDE extensions and integrations

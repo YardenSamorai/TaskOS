@@ -7,6 +7,8 @@ import { eq, and, desc } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { createHash } from "crypto";
 import { revalidatePath } from "next/cache";
+import { hasFeature } from "@/lib/plans";
+import type { UserPlan } from "@/lib/db/schema";
 
 // Generate a secure API key
 function generateApiKey(): string {
@@ -71,6 +73,15 @@ export async function createApiKey(data: {
 }) {
   try {
     const user = await getCurrentUser();
+
+    // Check if user has API access feature (Pro and above)
+    const userPlan = (user.plan as UserPlan) || "free";
+    if (!hasFeature(userPlan, "apiAccess")) {
+      return {
+        success: false,
+        error: "API Access is a Pro feature. Please upgrade to Pro plan or higher.",
+      };
+    }
 
     const key = generateApiKey();
     const keyHash = hashApiKey(key);

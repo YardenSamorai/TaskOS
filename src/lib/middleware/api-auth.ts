@@ -1,5 +1,10 @@
 import { NextRequest } from "next/server";
 import { verifyApiKey } from "@/lib/actions/api-keys";
+import { db } from "@/lib/db";
+import { users } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
+import { hasFeature } from "@/lib/plans";
+import type { UserPlan } from "@/lib/db/schema";
 
 export interface AuthenticatedRequest extends NextRequest {
   userId: string;
@@ -50,6 +55,28 @@ export async function authenticateApiRequest(
         authenticated: false,
         error: "Invalid or expired API key",
         status: 401,
+      };
+    }
+
+    // Check if user has API access feature (Pro and above)
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, verification.userId),
+    });
+
+    if (!user) {
+      return {
+        authenticated: false,
+        error: "User not found",
+        status: 401,
+      };
+    }
+
+    const userPlan = (user.plan as UserPlan) || "free";
+    if (!hasFeature(userPlan, "apiAccess")) {
+      return {
+        authenticated: false,
+        error: "API Access is a Pro feature. Please upgrade to Pro plan or higher.",
+        status: 403,
       };
     }
 

@@ -48,7 +48,7 @@ export const PLAN_LIMITS: Record<UserPlan, PlanLimits> = {
       advancedFilters: true,
       customTags: true,
       prioritySupport: true,
-      apiAccess: false,
+      apiAccess: true,
     },
   },
   enterprise: {
