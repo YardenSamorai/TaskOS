@@ -17,6 +17,8 @@
     "onCommand:taskos.createTask",
     "onCommand:taskos.generateCode",
     "onCommand:taskos.configure",
+    "onCommand:taskos.sendToAgent",
+    "onCommand:taskos.createPR",
     "onView:taskosTasks"
   ],
   "main": "./out/extension.js",
@@ -37,6 +39,14 @@
       {
         "command": "taskos.configure",
         "title": "TaskOS: Configure API Key"
+      },
+      {
+        "command": "taskos.sendToAgent",
+        "title": "TaskOS: Send Task to AI Agent"
+      },
+      {
+        "command": "taskos.createPR",
+        "title": "TaskOS: Create Pull Request"
       }
     ],
     "views": {

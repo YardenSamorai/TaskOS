@@ -3,9 +3,11 @@ import { TaskOSApiClient, Task, CreateTaskRequest } from './api/client';
 import { TaskProvider } from './providers/taskProvider';
 import { TaskPanel } from './panels/taskPanel';
 import { ApiKeyPanel } from './panels/apiKeyPanel';
+import { AgentService } from './services/agentService';
 
 let apiClient: TaskOSApiClient | null = null;
 let taskProvider: TaskProvider | null = null;
+const agentService = new AgentService();
 
 export function activate(context: vscode.ExtensionContext) {
   console.log('TaskOS extension is now active!');
@@ -314,6 +316,207 @@ export function activate(context: vscode.ExtensionContext) {
     }
   });
   context.subscriptions.push(generateCodeCommand);
+
+  // Register send to agent command
+  const sendToAgentCommand = vscode.commands.registerCommand('taskos.sendToAgent', async (taskId?: string) => {
+    if (!apiClient) {
+      vscode.window.showErrorMessage('TaskOS: API key not configured.');
+      ApiKeyPanel.createOrShow(context.extensionUri);
+      return;
+    }
+
+    // If no taskId provided, ask user to pick a task
+    if (!taskId) {
+      const config = vscode.workspace.getConfiguration('taskos');
+      const workspaceId = config.get<string>('defaultWorkspaceId', '');
+      if (!workspaceId) {
+        vscode.window.showErrorMessage('TaskOS: Workspace ID not configured.');
+        return;
+      }
+
+      try {
+        const { tasks } = await apiClient.listTasks(workspaceId, { limit: 20 });
+        const selected = await vscode.window.showQuickPick(
+          tasks.map(t => ({
+            label: `${t.priority === 'urgent' ? '🔴' : t.priority === 'high' ? '🟠' : t.priority === 'medium' ? '🟡' : '🟢'} ${t.title}`,
+            description: t.status.replace('_', ' '),
+            taskId: t.id,
+          })),
+          { placeHolder: 'Select a task to send to AI Agent' }
+        );
+        if (!selected) { return; }
+        taskId = (selected as any).taskId;
+      } catch (error) {
+        vscode.window.showErrorMessage(`TaskOS: Failed to load tasks. ${error}`);
+        return;
+      }
+    }
+
+    try {
+      const task = await apiClient.getTask(taskId!);
+      
+      await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: '🤖 Preparing task for AI Agent...',
+          cancellable: false,
+        },
+        async (progress) => {
+          progress.report({ message: 'Creating branch...' });
+          
+          const result = await agentService.sendToAgent(task);
+          
+          if (!result.success) {
+            return;
+          }
+
+          progress.report({ message: 'Opening AI Agent...' });
+
+          // Update task status to in_progress
+          try {
+            await apiClient!.updateTask(task.id, { status: 'in_progress' });
+          } catch {
+            // Non-fatal
+          }
+
+          // Show success with instructions
+          const branchMsg = result.branchName ? `\n🌿 Branch: ${result.branchName}` : '';
+          
+          if (result.method === 'clipboard') {
+            const action = await vscode.window.showInformationMessage(
+              `🤖 Task prompt copied to clipboard!${branchMsg}\n\nOpen Cursor Composer (Ctrl+I) and paste to start.`,
+              'Open Composer (Ctrl+I)',
+              'View Prompt'
+            );
+            
+            if (action === 'Open Composer (Ctrl+I)') {
+              // Try to open composer
+              try {
+                await vscode.commands.executeCommand('workbench.action.chat.open');
+              } catch {
+                try {
+                  await vscode.commands.executeCommand('editor.action.inlineSuggest.trigger');
+                } catch {
+                  // Just notify
+                }
+              }
+            } else if (action === 'View Prompt') {
+              const doc = await vscode.workspace.openTextDocument({
+                content: agentService.generatePrompt(task),
+                language: 'markdown',
+              });
+              await vscode.window.showTextDocument(doc);
+            }
+          } else {
+            vscode.window.showInformationMessage(
+              `🤖 Task sent to AI Agent!${branchMsg}\n\nThe prompt has been loaded into the chat.`
+            );
+          }
+        }
+      );
+    } catch (error) {
+      vscode.window.showErrorMessage(`TaskOS: Failed to send task to agent. ${error}`);
+    }
+  });
+  context.subscriptions.push(sendToAgentCommand);
+
+  // Register create PR command
+  const createPRCommand = vscode.commands.registerCommand('taskos.createPR', async (taskId?: string, taskTitle?: string) => {
+    const gitService = agentService.getGitService();
+    
+    try {
+      const isGit = await gitService.isGitRepo();
+      if (!isGit) {
+        vscode.window.showErrorMessage('TaskOS: Not a git repository.');
+        return;
+      }
+
+      const currentBranch = await gitService.getCurrentBranch();
+      const defaultBranch = await gitService.getDefaultBranch();
+      
+      if (currentBranch === defaultBranch) {
+        vscode.window.showWarningMessage(`TaskOS: You're on the ${defaultBranch} branch. Please create a task branch first by using "Send to Agent".`);
+        return;
+      }
+
+      await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: '🚀 Creating Pull Request...',
+          cancellable: false,
+        },
+        async (progress) => {
+          // Check for uncommitted changes
+          const hasChanges = await gitService.hasUncommittedChanges();
+          
+          if (hasChanges) {
+            progress.report({ message: 'Committing changes...' });
+            
+            const title = taskTitle || currentBranch.replace('taskos/', '').replace(/-[a-f0-9]+$/, '').replace(/-/g, ' ');
+            const id = taskId || currentBranch.match(/-([a-f0-9]+)$/)?.[1] || '';
+            
+            await gitService.commitAndPush(id, title);
+          } else {
+            // Just push
+            progress.report({ message: 'Pushing to remote...' });
+            try {
+              const { exec } = require('child_process');
+              const { promisify } = require('util');
+              const execAsync = promisify(exec);
+              const folders = vscode.workspace.workspaceFolders;
+              await execAsync(`git push -u origin ${currentBranch}`, { 
+                cwd: folders?.[0]?.uri.fsPath, 
+                timeout: 30000 
+              });
+            } catch {
+              // May already be pushed
+            }
+          }
+
+          progress.report({ message: 'Opening PR...' });
+
+          // Try to create PR
+          const title = taskTitle || currentBranch.replace('taskos/', '').replace(/-[a-f0-9]+$/, '').replace(/-/g, ' ');
+          const id = taskId || '';
+          const description = 'Implemented via TaskOS AI Agent integration.';
+          
+          try {
+            const prUrl = await gitService.createPullRequest(id, title, description);
+            
+            const action = await vscode.window.showInformationMessage(
+              `✅ Pull Request ready!`,
+              'Open in Browser'
+            );
+            
+            if (action === 'Open in Browser') {
+              vscode.env.openExternal(vscode.Uri.parse(prUrl));
+            }
+          } catch (error) {
+            // Fallback: open GitHub compare page
+            const githubRepo = await gitService.getGitHubRepo();
+            if (githubRepo) {
+              const url = `https://github.com/${githubRepo.owner}/${githubRepo.repo}/compare/${defaultBranch}...${currentBranch}?expand=1`;
+              vscode.env.openExternal(vscode.Uri.parse(url));
+            } else {
+              vscode.window.showErrorMessage(`TaskOS: Could not create PR. ${error}`);
+            }
+          }
+
+          // Update task status to review
+          if (apiClient && taskId) {
+            try {
+              await apiClient.updateTask(taskId, { status: 'review' });
+            } catch {
+              // Non-fatal
+            }
+          }
+        }
+      );
+    } catch (error) {
+      vscode.window.showErrorMessage(`TaskOS: Failed to create PR. ${error}`);
+    }
+  });
+  context.subscriptions.push(createPRCommand);
 
   // Listen for configuration changes
   context.subscriptions.push(

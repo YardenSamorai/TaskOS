@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { TaskOSApiClient, Task, TaskStep } from '../api/client';
+import { AgentService } from '../services/agentService';
 
 export class TaskPanel {
   public static currentPanel: TaskPanel | undefined;
@@ -84,6 +85,15 @@ export class TaskPanel {
             const apiUrl = config.get<string>('apiUrl', '');
             const baseUrl = apiUrl.replace('/api/v1', '');
             vscode.env.openExternal(vscode.Uri.parse(`${baseUrl}/en/app/${this._workspaceId}/tasks/${message.taskId}`));
+            break;
+          case 'sendToAgent':
+            await vscode.commands.executeCommand('taskos.sendToAgent', message.taskId);
+            break;
+          case 'createPR':
+            await vscode.commands.executeCommand('taskos.createPR', message.taskId, message.taskTitle);
+            break;
+          case 'viewPrompt':
+            await this._viewPrompt(message.taskId);
             break;
         }
       },
@@ -176,6 +186,21 @@ export class TaskPanel {
       await this._showTaskDetail(taskId);
     } catch (error) {
       vscode.window.showErrorMessage('Failed to delete step');
+    }
+  }
+
+  private async _viewPrompt(taskId: string) {
+    try {
+      const task = await this._apiClient.getTask(taskId);
+      const agentService = new AgentService();
+      const prompt = agentService.generatePrompt(task);
+      const doc = await vscode.workspace.openTextDocument({
+        content: prompt,
+        language: 'markdown',
+      });
+      await vscode.window.showTextDocument(doc, vscode.ViewColumn.Beside);
+    } catch (error) {
+      vscode.window.showErrorMessage('Failed to generate prompt');
     }
   }
 
@@ -620,6 +645,36 @@ export class TaskPanel {
           margin-bottom: 12px;
         }
 
+        /* AI Agent Button */
+        .btn-agent {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+          padding: 12px 24px;
+          font-size: 15px;
+          font-weight: 700;
+          letter-spacing: 0.3px;
+        }
+
+        .btn-agent:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 30px rgba(102, 126, 234, 0.6);
+        }
+
+        .btn-pr {
+          background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+          color: white;
+          box-shadow: 0 4px 20px rgba(16, 185, 129, 0.3);
+          padding: 12px 24px;
+          font-size: 15px;
+          font-weight: 700;
+        }
+
+        .btn-pr:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 30px rgba(16, 185, 129, 0.5);
+        }
+
         /* Actions */
         .action-buttons {
           display: flex;
@@ -658,7 +713,28 @@ export class TaskPanel {
               <span class="badge priority-${task.priority}">${this._getPriorityIcon(task.priority)} ${task.priority}</span>
             </div>
           </div>
-          <button class="btn btn-secondary" onclick="openInBrowser()">🌐 Open in Browser</button>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn btn-secondary" onclick="openInBrowser()" title="Open in Browser">🌐</button>
+          </div>
+        </div>
+
+        <!-- 🤖 AI Agent Section -->
+        <div class="section" style="border-color: rgba(102, 126, 234, 0.3); background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);">
+          <div class="section-title" style="color: #a78bfa;">🤖 AI Agent</div>
+          <p style="color: rgba(255,255,255,0.6); margin-bottom: 16px; font-size: 14px; line-height: 1.6;">
+            Send this task to Cursor's AI Agent. It will create a branch, generate a detailed prompt from the task details, and open the AI Composer to start working.
+          </p>
+          <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+            <button class="btn btn-agent" onclick="sendToAgent()">
+              🤖 Send to AI Agent
+            </button>
+            <button class="btn btn-secondary" onclick="viewPrompt()">
+              📋 View Prompt
+            </button>
+            <button class="btn btn-pr" onclick="createPR()">
+              🚀 Create PR
+            </button>
+          </div>
         </div>
 
         <!-- Edit Title & Description -->
@@ -795,6 +871,19 @@ export class TaskPanel {
 
         function toggleStep(stepId, completed) {
           vscode.postMessage({ command: 'toggleStep', taskId, stepId, completed });
+        }
+
+        function sendToAgent() {
+          vscode.postMessage({ command: 'sendToAgent', taskId });
+        }
+
+        function viewPrompt() {
+          vscode.postMessage({ command: 'viewPrompt', taskId });
+        }
+
+        function createPR() {
+          const title = document.getElementById('editTitle')?.value || '';
+          vscode.postMessage({ command: 'createPR', taskId, taskTitle: title });
         }
 
         function confirmDelete() {
@@ -1140,6 +1229,30 @@ export class TaskPanel {
           box-shadow: 0 10px 40px rgba(0,0,0,0.3);
         }
 
+        .task-card:hover .agent-quick-btn {
+          opacity: 1;
+          transform: scale(1);
+        }
+
+        .agent-quick-btn {
+          opacity: 0;
+          transform: scale(0.8);
+          transition: all 0.2s ease;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          border: none;
+          border-radius: 10px;
+          padding: 8px 12px;
+          cursor: pointer;
+          font-size: 16px;
+          box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+          flex-shrink: 0;
+        }
+
+        .agent-quick-btn:hover {
+          transform: scale(1.1) !important;
+          box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
         .task-header {
           display: flex;
           align-items: flex-start;
@@ -1387,6 +1500,10 @@ export class TaskPanel {
           vscode.postMessage({ command: 'openTask', taskId });
         }
 
+        function quickSendToAgent(taskId) {
+          vscode.postMessage({ command: 'sendToAgent', taskId });
+        }
+
         function showCreateModal() {
           document.getElementById('createModal').classList.add('active');
         }
@@ -1445,10 +1562,13 @@ export class TaskPanel {
     return `
       <div class="task-card priority-${task.priority}" onclick="openTask('${task.id}')">
         <div class="task-header">
-          <div>
+          <div style="flex: 1;">
             <div class="task-title">${this._escapeHtml(task.title)}</div>
             ${task.description ? `<div class="task-description">${this._escapeHtml(task.description)}</div>` : ''}
           </div>
+          <button class="agent-quick-btn" onclick="event.stopPropagation(); quickSendToAgent('${task.id}')" title="Send to AI Agent">
+            🤖
+          </button>
         </div>
         <div class="task-meta">
           <span class="badge status-${task.status}">${this._getStatusIcon(task.status)} ${this._getStatusLabel(task.status)}</span>
