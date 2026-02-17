@@ -32,6 +32,8 @@ import { GitHubOnboardingDialog } from "@/components/github/github-onboarding-di
 import { RepositoriesDialog } from "@/components/github/repositories-dialog";
 import { JiraOnboardingDialog } from "@/components/jira/jira-onboarding-dialog";
 import { JiraProjectsDialog } from "@/components/jira/jira-projects-dialog";
+import { AzureDevOpsOnboardingDialog } from "@/components/azure-devops/azure-devops-onboarding-dialog";
+import { AzureDevOpsProjectsDialog } from "@/components/azure-devops/azure-devops-projects-dialog";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
@@ -50,8 +52,10 @@ const DashboardPage = () => {
   const [integrationsOpen, setIntegrationsOpen] = useState(false);
   const [githubOnboardingOpen, setGithubOnboardingOpen] = useState(false);
   const [jiraOnboardingOpen, setJiraOnboardingOpen] = useState(false);
+  const [azureDevOpsOnboardingOpen, setAzureDevOpsOnboardingOpen] = useState(false);
   const [repositoriesOpen, setRepositoriesOpen] = useState(false);
   const [jiraProjectsOpen, setJiraProjectsOpen] = useState(false);
+  const [azureDevOpsProjectsOpen, setAzureDevOpsProjectsOpen] = useState(false);
   const [jiraRefreshKey, setJiraRefreshKey] = useState(0);
   const [mounted, setMounted] = useState(false);
   const [greeting, setGreeting] = useState("Hello");
@@ -110,6 +114,12 @@ const DashboardPage = () => {
           setJiraOnboardingOpen(true);
         } else {
           toast.success("Jira reconnected successfully!");
+        }
+      } else if (integration === "azure_devops") {
+        if (isNew === "true") {
+          setAzureDevOpsOnboardingOpen(true);
+        } else {
+          toast.success("Azure DevOps reconnected successfully!");
         }
       }
       
@@ -343,6 +353,16 @@ const DashboardPage = () => {
           setJiraProjectsOpen(false);
           setJiraRefreshKey(k => k + 1);
         }}
+      />
+      <AzureDevOpsOnboardingDialog
+        open={azureDevOpsOnboardingOpen}
+        onOpenChange={setAzureDevOpsOnboardingOpen}
+        onLinkProject={() => setAzureDevOpsProjectsOpen(true)}
+      />
+      <AzureDevOpsProjectsDialog
+        open={azureDevOpsProjectsOpen}
+        onOpenChange={setAzureDevOpsProjectsOpen}
+        workspaceId={workspaceId}
       />
     </div>
   );

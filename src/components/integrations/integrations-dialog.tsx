@@ -95,12 +95,11 @@ const providers: IntegrationProvider[] = [
   {
     id: "azure_devops",
     name: "Azure DevOps",
-    description: "Link Azure DevOps repositories, pipelines, and work items",
+    description: "Import and sync Azure DevOps work items, boards, and pipelines",
     icon: <Cloud className="w-6 h-6" />,
     color: "text-[#0078D4]",
     bgColor: "bg-[#0078D4]/10",
     available: true,
-    comingSoon: true,
   },
   {
     id: "gitlab",
@@ -193,6 +192,16 @@ export const IntegrationsDialog = ({
     // For Jira, redirect to our API route which handles the OAuth flow
     if (provider.id === "jira") {
       const apiUrl = new URL("/api/integrations/jira", window.location.origin);
+      if (workspaceId) {
+        apiUrl.searchParams.set("workspaceId", workspaceId);
+      }
+      window.location.href = apiUrl.toString();
+      return;
+    }
+
+    // For Azure DevOps, redirect to our API route which handles the OAuth flow
+    if (provider.id === "azure_devops") {
+      const apiUrl = new URL("/api/integrations/azure-devops", window.location.origin);
       if (workspaceId) {
         apiUrl.searchParams.set("workspaceId", workspaceId);
       }
