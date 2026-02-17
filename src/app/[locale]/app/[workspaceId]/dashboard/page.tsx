@@ -10,7 +10,8 @@ import {
   ArrowRight,
   Zap,
   Users,
-  ListTodo
+  ListTodo,
+  Puzzle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -150,10 +151,11 @@ const DashboardPage = () => {
           <Button 
             className="gap-2 flex-1 sm:flex-none"
             size="sm"
+            onClick={() => router.push(`/${locale}/app/extensions`)}
           >
-            <Sparkles className="w-4 h-4" />
-            <span className="hidden xs:inline">Ask AI</span>
-            <span className="xs:hidden">AI</span>
+            <Puzzle className="w-4 h-4" />
+            <span className="hidden xs:inline">IDE Extension</span>
+            <span className="xs:hidden">IDE</span>
           </Button>
           <Button 
             variant="outline" 
