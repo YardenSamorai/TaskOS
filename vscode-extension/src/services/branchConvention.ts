@@ -160,7 +160,7 @@ export class BranchConventionManager {
       );
 
       if (response.ok) {
-        const data = await response.json();
+        const data: any = await response.json();
         const config = data.config as BranchConventionConfig;
         this.cache.set(workspaceId, { config, fetchedAt: Date.now() });
         return config;

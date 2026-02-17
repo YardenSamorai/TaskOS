@@ -270,10 +270,14 @@ export class AgentService {
       console.log('TaskOS: Git branch creation failed (non-fatal):', error);
     }
 
-    // Step 2: Try to send to Cursor's Composer/Agent
+    // Step 2: Send prompt to Cursor's Composer/Agent
+    const autoSend = vscode.workspace.getConfiguration('taskos').get<boolean>('autoSendPrompt', true);
     let method = 'clipboard';
 
-    // Try Cursor Composer (Agent mode) - most common command names
+    // Copy prompt to clipboard first
+    await vscode.env.clipboard.writeText(prompt);
+
+    // Try to open Cursor Composer and paste
     const composerCommands = [
       'composerMode.agent',
       'cursor.newComposer',
@@ -284,32 +288,38 @@ export class AgentService {
 
     for (const cmd of composerCommands) {
       try {
-        // First, copy prompt to clipboard
-        await vscode.env.clipboard.writeText(prompt);
-        
-        // Try to execute the command
         await vscode.commands.executeCommand(cmd);
         method = cmd;
-        
-        // Small delay then paste
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Try to paste and send
+
+        // Wait for composer to open
+        await new Promise(resolve => setTimeout(resolve, 600));
+
+        // Paste the prompt
         try {
           await vscode.commands.executeCommand('editor.action.clipboardPasteAction');
         } catch {
-          // Paste might not work in chat, that's ok
+          // Paste might not work in some chat UIs
         }
-        
-        break; // If command executed without error, stop trying
-      } catch {
-        continue; // Try next command
-      }
-    }
 
-    // If none of the commands worked, fallback to clipboard
-    if (method === 'clipboard') {
-      await vscode.env.clipboard.writeText(prompt);
+        // Auto-send: simulate Enter to submit the prompt
+        if (autoSend) {
+          await new Promise(resolve => setTimeout(resolve, 300));
+          try {
+            await vscode.commands.executeCommand('workbench.action.chat.submit');
+          } catch {
+            // Fallback: try to simulate Enter key
+            try {
+              await vscode.commands.executeCommand('default:type', { text: '\n' });
+            } catch {
+              // User will need to press Enter manually
+            }
+          }
+        }
+
+        break;
+      } catch {
+        continue;
+      }
     }
 
     return { success: true, method, branchName };

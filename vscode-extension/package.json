@@ -121,6 +121,11 @@
           "default": "",
           "description": "Default workspace ID for creating tasks"
         },
+        "taskos.autoSendPrompt": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically send the prompt to the AI Agent (if false, the prompt is pasted and you press Enter manually)"
+        },
         "taskos.autoRefresh": {
           "type": "boolean",
           "default": true,

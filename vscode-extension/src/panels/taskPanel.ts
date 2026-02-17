@@ -16,7 +16,7 @@ export class TaskPanel {
   private _disposables: vscode.Disposable[] = [];
   private _apiClient: TaskOSApiClient;
   private _workspaceId: string;
-  private _currentView: 'list' | 'detail' = 'list';
+  private _currentView: 'list' | 'detail' | 'settings' = 'list';
   private _selectedTaskId: string | null = null;
   private _autoRefreshInterval: NodeJS.Timeout | null = null;
   private _lastTasksHash: string = '';
@@ -99,6 +99,13 @@ export class TaskPanel {
             break;
           case 'sendToAgent':
             await vscode.commands.executeCommand('taskos.sendToAgent', message.taskId);
+            break;
+          case 'openSettings':
+            this._currentView = 'settings';
+            this._panel.webview.html = this._getSettingsContent();
+            break;
+          case 'saveSetting':
+            await this._saveSetting(message.key, message.value);
             break;
           case 'createPR':
             await this._showPRConfigModal(message.taskId, message.taskTitle, 'pr');
@@ -346,22 +353,26 @@ export class TaskPanel {
   }
 
   private async _update(statusFilter?: string, priorityFilter?: string, searchQuery?: string) {
+    if (this._currentView === 'settings') {
+      this._panel.webview.html = this._getSettingsContent();
+      return;
+    }
     try {
       const filters: any = {};
       if (statusFilter && statusFilter !== 'all') filters.status = statusFilter;
       if (priorityFilter && priorityFilter !== 'all') filters.priority = priorityFilter;
-      
+
       const { tasks } = await this._apiClient.listTasks(this._workspaceId, { ...filters, limit: 50 });
-      
+
       let filteredTasks = tasks;
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
-        filteredTasks = tasks.filter(t => 
-          t.title.toLowerCase().includes(query) || 
+        filteredTasks = tasks.filter(t =>
+          t.title.toLowerCase().includes(query) ||
           (t.description && t.description.toLowerCase().includes(query))
         );
       }
-      
+
       this._panel.webview.html = this._getListContent(filteredTasks);
     } catch (error) {
       this._panel.webview.html = this._getErrorContent(error);
@@ -719,8 +730,11 @@ export class TaskPanel {
           </div>
           <div class="topbar-actions">
             <span class="live-dot">Live</span>
-            <button class="btn btn-ghost btn-sm" onclick="refresh()">
+            <button class="btn btn-ghost btn-sm" onclick="refresh()" title="Refresh">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+            </button>
+            <button class="btn btn-ghost btn-sm" onclick="openSettings()" title="Settings">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
             </button>
             <button class="btn btn-primary btn-sm" onclick="showCreateModal()">+ New Task</button>
           </div>
@@ -797,6 +811,7 @@ export class TaskPanel {
         const vscode = acquireVsCodeApi();
         let searchTimeout;
         function refresh() { vscode.postMessage({ command: 'refresh' }); }
+        function openSettings() { vscode.postMessage({ command: 'openSettings' }); }
         function handleSearch() { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => applyFilters(), 250); }
         function applyFilters() {
           vscode.postMessage({ command: 'filter', status: document.getElementById('statusFilter').value, priority: document.getElementById('priorityFilter').value, search: document.getElementById('searchInput').value });
@@ -1288,6 +1303,185 @@ export class TaskPanel {
         document.getElementById('prConfigModal').addEventListener('click', e => {
           if (e.target.id === 'prConfigModal') hidePRModal();
         });
+      </script>
+    </body></html>`;
+  }
+
+  // ===================== SETTINGS VIEW =====================
+
+  private async _saveSetting(key: string, value: any) {
+    const config = vscode.workspace.getConfiguration('taskos');
+    await config.update(key, value, vscode.ConfigurationTarget.Global);
+    // Re-render settings to reflect changes
+    this._panel.webview.html = this._getSettingsContent();
+  }
+
+  private _getSettingsContent(): string {
+    const config = vscode.workspace.getConfiguration('taskos');
+    const apiKey = config.get<string>('apiKey', '');
+    const apiUrl = config.get<string>('apiUrl', 'https://www.task-os.app/api/v1');
+    const workspaceId = config.get<string>('defaultWorkspaceId', '');
+    const autoRefresh = config.get<boolean>('autoRefresh', true);
+    const autoRefreshInterval = config.get<number>('autoRefreshInterval', 15);
+    const autoSendPrompt = config.get<boolean>('autoSendPrompt', true);
+
+    return `<!DOCTYPE html>
+    <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+      ${this._getBaseStyles()}
+
+      .settings { max-width: 600px; margin: 0 auto; padding: 24px; }
+
+      .settings-topbar {
+        display: flex; align-items: center; gap: 12px; margin-bottom: 28px;
+        padding-bottom: 20px; border-bottom: 1px solid var(--border-subtle);
+      }
+      .back-btn {
+        background: transparent; border: 1px solid var(--border-default);
+        border-radius: var(--radius-sm); padding: 8px 10px;
+        color: var(--text-secondary); cursor: pointer;
+        transition: all var(--transition-base); display: flex;
+      }
+      .back-btn:hover { background: rgba(255,255,255,0.04); color: var(--text-primary); }
+
+      .section {
+        margin-bottom: 16px; border-radius: var(--radius-lg);
+        border: 1px solid var(--border-subtle); overflow: hidden;
+        animation: fadeIn var(--transition-slow) ease both;
+      }
+      .section-head {
+        display: flex; align-items: center; gap: 8px; padding: 14px 18px;
+        background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border-subtle);
+      }
+      .section-icon { font-size: 14px; }
+      .section-title {
+        font-size: 13px; font-weight: 600; color: var(--text-secondary);
+        text-transform: uppercase; letter-spacing: 0.5px;
+      }
+      .section-body { padding: 18px; }
+
+      .setting-row {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 12px 0; border-bottom: 1px solid var(--border-subtle);
+      }
+      .setting-row:last-child { border-bottom: none; }
+      .setting-info { flex: 1; min-width: 0; }
+      .setting-name { font-size: 14px; font-weight: 500; color: var(--text-primary); }
+      .setting-desc { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
+
+      .toggle {
+        position: relative; width: 44px; height: 24px; flex-shrink: 0; margin-left: 16px;
+        background: rgba(255,255,255,0.1); border-radius: 12px; cursor: pointer;
+        transition: background var(--transition-base); border: none;
+      }
+      .toggle.on { background: var(--accent-primary); }
+      .toggle::after {
+        content: ''; position: absolute; top: 3px; left: 3px;
+        width: 18px; height: 18px; border-radius: 50%; background: #fff;
+        transition: transform var(--transition-base);
+      }
+      .toggle.on::after { transform: translateX(20px); }
+
+      .setting-input {
+        width: 100%; padding: 9px 12px; margin-top: 8px;
+        background: var(--bg-input); border: 1px solid var(--border-default);
+        border-radius: var(--radius-md); color: var(--text-primary);
+        font-size: 13px; font-family: var(--font-mono);
+        transition: all var(--transition-base);
+      }
+      .setting-input:focus {
+        outline: none; border-color: var(--border-focus);
+        box-shadow: 0 0 0 3px rgba(124,58,237,0.15);
+      }
+      .setting-input-sm { max-width: 100px; }
+
+      .masked { -webkit-text-security: disc; }
+    </style>
+    </head>
+    <body>
+      <div class="settings">
+        <div class="settings-topbar">
+          <button class="back-btn" onclick="backToList()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+          </button>
+          <div>
+            <div style="font-size:20px;font-weight:700;">Settings</div>
+            <div style="font-size:12px;color:var(--text-tertiary);">Configure TaskOS extension</div>
+          </div>
+        </div>
+
+        <!-- Connection -->
+        <div class="section">
+          <div class="section-head">
+            <span class="section-icon">🔗</span>
+            <span class="section-title">Connection</span>
+          </div>
+          <div class="section-body">
+            <div>
+              <div class="setting-name">API Key</div>
+              <div class="setting-desc">Your TaskOS API key from Account Settings</div>
+              <input class="setting-input masked" id="apiKey" value="${this._escapeHtml(apiKey)}" placeholder="taskos_..." onchange="saveSetting('apiKey', this.value)">
+            </div>
+            <div style="margin-top:14px;">
+              <div class="setting-name">API URL</div>
+              <div class="setting-desc">TaskOS server URL</div>
+              <input class="setting-input" id="apiUrl" value="${this._escapeHtml(apiUrl)}" placeholder="https://www.task-os.app/api/v1" onchange="saveSetting('apiUrl', this.value)">
+            </div>
+            <div style="margin-top:14px;">
+              <div class="setting-name">Workspace ID</div>
+              <div class="setting-desc">Your default workspace</div>
+              <input class="setting-input" id="workspaceId" value="${this._escapeHtml(workspaceId)}" placeholder="workspace-uuid" onchange="saveSetting('defaultWorkspaceId', this.value)">
+            </div>
+          </div>
+        </div>
+
+        <!-- AI Agent -->
+        <div class="section">
+          <div class="section-head">
+            <span class="section-icon">🤖</span>
+            <span class="section-title">AI Agent</span>
+          </div>
+          <div class="section-body">
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-name">Auto Send Prompt</div>
+                <div class="setting-desc">Send prompt to AI automatically without pressing Enter</div>
+              </div>
+              <button class="toggle ${autoSendPrompt ? 'on' : ''}" onclick="toggleSetting('autoSendPrompt', ${!autoSendPrompt})"></button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Refresh -->
+        <div class="section">
+          <div class="section-head">
+            <span class="section-icon">🔄</span>
+            <span class="section-title">Refresh</span>
+          </div>
+          <div class="section-body">
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-name">Auto Refresh</div>
+                <div class="setting-desc">Automatically refresh tasks in the background</div>
+              </div>
+              <button class="toggle ${autoRefresh ? 'on' : ''}" onclick="toggleSetting('autoRefresh', ${!autoRefresh})"></button>
+            </div>
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-name">Refresh Interval</div>
+                <div class="setting-desc">Seconds between auto-refreshes (5-300)</div>
+              </div>
+              <input class="setting-input setting-input-sm" type="number" min="5" max="300" value="${autoRefreshInterval}" onchange="saveSetting('autoRefreshInterval', parseInt(this.value))" style="margin-top:0;text-align:center;">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <script>
+        const vscode = acquireVsCodeApi();
+        function backToList() { vscode.postMessage({ command: 'backToList' }); }
+        function saveSetting(key, value) { vscode.postMessage({ command: 'saveSetting', key, value }); }
+        function toggleSetting(key, value) { vscode.postMessage({ command: 'saveSetting', key, value }); }
       </script>
     </body></html>`;
   }
