@@ -35,7 +35,7 @@ import {
 import { toast } from "sonner";
 
 const MARKETPLACE_URL = "https://marketplace.visualstudio.com/items?itemName=YardenSamorai.taskos";
-const VSIX_DOWNLOAD_URL = "/downloads/taskos-0.2.0.vsix";
+const VSIX_DOWNLOAD_URL = "/downloads/taskos-0.1.1.vsix";
 
 export default function ExtensionsPage() {
   const [copied, setCopied] = useState<string | null>(null);
@@ -58,7 +58,7 @@ export default function ExtensionsPage() {
           <div className="relative">
             <div className="flex flex-wrap items-center gap-2 mb-3 sm:mb-4">
               <Badge className="bg-white/20 text-white border-0 text-xs">Pro Feature</Badge>
-              <Badge className="bg-green-500/80 text-white border-0 text-xs">v0.2.0</Badge>
+              <Badge className="bg-green-500/80 text-white border-0 text-xs">v0.1.1</Badge>
               <Badge className="bg-blue-500/80 text-white border-0 text-xs">Available on Marketplace</Badge>
             </div>
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 sm:mb-3">
@@ -299,7 +299,7 @@ export default function ExtensionsPage() {
                         <Button asChild className="gap-2 w-full sm:w-auto">
                           <a href={VSIX_DOWNLOAD_URL}>
                             <Download className="h-4 w-4" />
-                            <span className="truncate">Download taskos-0.2.0.vsix</span>
+                            <span className="truncate">Download taskos-0.1.1.vsix</span>
                           </a>
                         </Button>
                         <Button variant="outline" asChild className="gap-2 w-full sm:w-auto">
@@ -337,12 +337,12 @@ export default function ExtensionsPage() {
                           <div className="space-y-2 ml-7">
                             <div className="flex items-center gap-2 bg-zinc-900 text-zinc-100 rounded-lg p-2 sm:p-3 font-mono text-xs sm:text-sm overflow-hidden">
                               <Terminal className="h-3 w-3 sm:h-4 sm:w-4 text-zinc-400 shrink-0" />
-                              <code className="flex-1 overflow-x-auto whitespace-nowrap">code --install-extension taskos-0.2.0.vsix</code>
+                              <code className="flex-1 overflow-x-auto whitespace-nowrap">code --install-extension taskos-0.1.1.vsix</code>
                               <Button 
                                 variant="ghost" 
                                 size="sm"
                                 className="text-zinc-400 hover:text-white hover:bg-zinc-800 shrink-0 h-7 w-7 p-0"
-                                onClick={() => copyToClipboard("code --install-extension taskos-0.2.0.vsix", "vscode")}
+                                onClick={() => copyToClipboard("code --install-extension taskos-0.1.1.vsix", "vscode")}
                               >
                                 {copied === "vscode" ? <CheckCircle2 className="h-3 w-3 sm:h-4 sm:w-4 text-green-500" /> : <Copy className="h-3 w-3 sm:h-4 sm:w-4" />}
                               </Button>

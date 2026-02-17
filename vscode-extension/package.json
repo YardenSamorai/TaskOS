@@ -2,7 +2,7 @@
   "name": "taskos",
   "displayName": "TaskOS",
   "description": "AI-powered task management — implements code, runs tests, reviews PRs, and enforces your team's standards",
-  "version": "0.2.0",
+  "version": "0.1.1",
   "publisher": "YardenSamorai",
   "license": "MIT",
   "icon": "resources/icon.png",

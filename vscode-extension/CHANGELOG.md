@@ -2,7 +2,7 @@
 
 All notable changes to the TaskOS extension will be documented in this file.
 
-## [0.2.0] - 2026-02-17
+## [0.1.1] - 2026-02-17
 
 ### Added
 
