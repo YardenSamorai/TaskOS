@@ -3,6 +3,7 @@ import { TaskOSApiClient, Task, CreateTaskRequest } from './api/client';
 import { TaskProvider } from './providers/taskProvider';
 import { TaskPanel } from './panels/taskPanel';
 import { ApiKeyPanel } from './panels/apiKeyPanel';
+import { OnboardingPanel } from './panels/onboardingPanel';
 import { AgentService } from './services/agentService';
 import { PipelineService } from './services/pipelineService';
 import { ProfileManager } from './profiles/profileManager';
@@ -40,6 +41,12 @@ export function activate(context: vscode.ExtensionContext) {
   });
   context.subscriptions.push(configureCommand);
 
+  // Register onboarding command
+  const onboardingCommand = vscode.commands.registerCommand('taskos.onboarding', () => {
+    OnboardingPanel.createOrShow(context.extensionUri);
+  });
+  context.subscriptions.push(onboardingCommand);
+
   // Register open panel command
   const openPanelCommand = vscode.commands.registerCommand('taskos.openPanel', () => {
     console.log('TaskOS: Open panel command called');
@@ -48,14 +55,12 @@ export function activate(context: vscode.ExtensionContext) {
     const workspaceId = config.get<string>('defaultWorkspaceId', '');
     
     if (!apiClient) {
-      vscode.window.showWarningMessage('TaskOS: API key not configured. Opening configuration...');
-      ApiKeyPanel.createOrShow(context.extensionUri);
+      OnboardingPanel.createOrShow(context.extensionUri);
       return;
     }
     
     if (!workspaceId) {
-      vscode.window.showWarningMessage('TaskOS: Workspace ID not configured. Opening configuration...');
-      ApiKeyPanel.createOrShow(context.extensionUri);
+      OnboardingPanel.createOrShow(context.extensionUri);
       return;
     }
     
@@ -97,11 +102,37 @@ export function activate(context: vscode.ExtensionContext) {
     }
   });
 
+  // Set callback for onboarding panel
+  OnboardingPanel.setOnComplete((newApiKey, newApiUrl, newWorkspaceId) => {
+    console.log('TaskOS: Onboarding completed');
+    context.globalState.update('taskos.onboardingCompleted', true);
+
+    if (apiClient) {
+      apiClient.updateApiKey(newApiKey);
+      apiClient.updateApiUrl(newApiUrl);
+    } else {
+      apiClient = new TaskOSApiClient(newApiKey, newApiUrl);
+    }
+
+    if (!profileManager) {
+      profileManager = new ProfileManager(apiClient, newWorkspaceId);
+    } else {
+      profileManager.updateClient(apiClient, newWorkspaceId);
+    }
+
+    if (!pipelineService) {
+      pipelineService = new PipelineService(apiClient, profileManager);
+    }
+
+    if (taskProvider) {
+      taskProvider.updateClient(apiClient, newWorkspaceId);
+    }
+  });
+
   // Register create task command
   const createTaskCommand = vscode.commands.registerCommand('taskos.createTask', async () => {
     if (!apiClient) {
-      vscode.window.showErrorMessage('TaskOS: API key not configured. Please set it in settings.');
-      ApiKeyPanel.createOrShow(context.extensionUri);
+      OnboardingPanel.createOrShow(context.extensionUri);
       return;
     }
 
@@ -213,8 +244,7 @@ export function activate(context: vscode.ExtensionContext) {
   // Register generate code command
   const generateCodeCommand = vscode.commands.registerCommand('taskos.generateCode', async () => {
     if (!apiClient) {
-      vscode.window.showErrorMessage('TaskOS: API key not configured. Please set it in settings.');
-      ApiKeyPanel.createOrShow(context.extensionUri);
+      OnboardingPanel.createOrShow(context.extensionUri);
       return;
     }
 
@@ -326,8 +356,7 @@ export function activate(context: vscode.ExtensionContext) {
   // Register send to agent command
   const sendToAgentCommand = vscode.commands.registerCommand('taskos.sendToAgent', async (taskId?: string) => {
     if (!apiClient) {
-      vscode.window.showErrorMessage('TaskOS: API key not configured.');
-      ApiKeyPanel.createOrShow(context.extensionUri);
+      OnboardingPanel.createOrShow(context.extensionUri);
       return;
     }
 
@@ -336,7 +365,7 @@ export function activate(context: vscode.ExtensionContext) {
       const config = vscode.workspace.getConfiguration('taskos');
       const workspaceId = config.get<string>('defaultWorkspaceId', '');
       if (!workspaceId) {
-        vscode.window.showErrorMessage('TaskOS: Workspace ID not configured.');
+        OnboardingPanel.createOrShow(context.extensionUri);
         return;
       }
 
@@ -527,8 +556,7 @@ export function activate(context: vscode.ExtensionContext) {
   // Register run pipeline command
   const runPipelineCommand = vscode.commands.registerCommand('taskos.runPipeline', async (taskId?: string) => {
     if (!apiClient) {
-      vscode.window.showErrorMessage('TaskOS: API key not configured.');
-      ApiKeyPanel.createOrShow(context.extensionUri);
+      OnboardingPanel.createOrShow(context.extensionUri);
       return;
     }
 
@@ -605,15 +633,14 @@ export function activate(context: vscode.ExtensionContext) {
   // Register configure profiles command
   const configureProfilesCommand = vscode.commands.registerCommand('taskos.configureProfiles', async () => {
     if (!apiClient) {
-      vscode.window.showErrorMessage('TaskOS: API key not configured.');
-      ApiKeyPanel.createOrShow(context.extensionUri);
+      OnboardingPanel.createOrShow(context.extensionUri);
       return;
     }
 
     const config = vscode.workspace.getConfiguration('taskos');
     const workspaceId = config.get<string>('defaultWorkspaceId', '');
     if (!workspaceId) {
-      vscode.window.showErrorMessage('TaskOS: Workspace ID not configured.');
+      OnboardingPanel.createOrShow(context.extensionUri);
       return;
     }
 
@@ -656,7 +683,15 @@ export function activate(context: vscode.ExtensionContext) {
   );
   
   console.log('TaskOS: All commands registered successfully');
-  vscode.window.showInformationMessage('✅ TaskOS extension loaded!');
+
+  // Show onboarding for first-time users (no API key configured)
+  const hasCompletedOnboarding = context.globalState.get<boolean>('taskos.onboardingCompleted', false);
+  if (!apiKey && !hasCompletedOnboarding) {
+    OnboardingPanel.createOrShow(context.extensionUri);
+  } else if (apiKey) {
+    // Mark onboarding as done if they already have a key
+    context.globalState.update('taskos.onboardingCompleted', true);
+  }
 }
 
 export function deactivate() {

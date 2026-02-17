@@ -42,6 +42,7 @@
     "onCommand:taskos.createPR",
     "onCommand:taskos.runPipeline",
     "onCommand:taskos.configureProfiles",
+    "onCommand:taskos.onboarding",
     "onView:taskosTasks"
   ],
   "main": "./out/extension.js",
@@ -78,6 +79,10 @@
       {
         "command": "taskos.configureProfiles",
         "title": "TaskOS: Configure Agent Profiles"
+      },
+      {
+        "command": "taskos.onboarding",
+        "title": "TaskOS: Setup Wizard"
       }
     ],
     "views": {
