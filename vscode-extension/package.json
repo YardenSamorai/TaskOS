@@ -3,7 +3,28 @@
   "displayName": "TaskOS",
   "description": "Task management and AI code generation directly from VS Code",
   "version": "0.1.0",
-  "publisher": "taskos",
+  "publisher": "YardenSamorai",
+  "license": "MIT",
+  "icon": "resources/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/YardenSamorai/TaskOS"
+  },
+  "homepage": "https://www.task-os.app",
+  "bugs": {
+    "url": "https://github.com/YardenSamorai/TaskOS/issues"
+  },
+  "galleryBanner": {
+    "color": "#4F46E5",
+    "theme": "dark"
+  },
+  "keywords": [
+    "task management",
+    "productivity",
+    "AI",
+    "code generation",
+    "project management"
+  ],
   "engines": {
     "vscode": "^1.80.0"
   },
