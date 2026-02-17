@@ -371,20 +371,28 @@ export class OnboardingPanel {
 
     <!-- Step 2: Workspace -->
     <div class="step" id="step-2">
-      <div class="step-title">Choose your Workspace</div>
-      <div class="step-desc">Your workspace ID tells TaskOS where to find your tasks and projects.</div>
+      <div class="step-title">Connect your Workspace</div>
+      <div class="step-desc">TaskOS needs your workspace ID to load your tasks and projects. Without it, the extension can't work.</div>
 
       <div class="info-box">
-        Find it in your browser URL when you're inside a workspace:<br><br>
-        <code style="background:rgba(255,255,255,0.06);padding:6px 10px;border-radius:6px;font-family:var(--mono);font-size:12px;display:block;">
-          task-os.app/en/app/<strong style="color:#7C3AED;">your-workspace-id</strong>/dashboard
+        <strong>How to find your Workspace ID:</strong><br><br>
+        <span class="step-num">1</span> Open <a onclick="openLink('https://www.task-os.app')">task-os.app</a> and sign in<br>
+        <span class="step-num">2</span> Enter any workspace<br>
+        <span class="step-num">3</span> Copy the ID from the URL:<br><br>
+        <code style="background:rgba(255,255,255,0.06);padding:8px 12px;border-radius:6px;font-family:var(--mono);font-size:12px;display:block;line-height:1.6;">
+          task-os.app/en/app/<strong style="color:#7C3AED;text-decoration:underline;text-underline-offset:3px;">this-part-is-your-id</strong>/dashboard
         </code>
       </div>
 
       <div class="form-group">
-        <label class="form-label">Workspace ID</label>
+        <label class="form-label">Workspace ID <span style="color:#EF4444;font-weight:700;">*</span></label>
         <input class="form-input mono" type="text" id="workspaceId" placeholder="e.g. c8f52856-6ee7-4dad-a4e1-12e4f9243c6f" />
-        <div class="form-hint">UUID format — copy it from your browser address bar</div>
+        <div class="form-hint">Required — paste the UUID from your browser address bar</div>
+      </div>
+
+      <div id="wsError" style="display:none; font-size:12px; color:var(--danger); margin-top:-8px; margin-bottom:12px; display:flex; align-items:center; gap:6px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        <span>Workspace ID is required</span>
       </div>
 
       <div class="actions">
@@ -392,7 +400,7 @@ export class OnboardingPanel {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg>
           Back
         </button>
-        <button class="btn btn-primary" onclick="finishSetup()">
+        <button class="btn btn-primary" id="finishBtn" onclick="finishSetup()" disabled>
           Finish Setup
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>
         </button>
@@ -505,10 +513,29 @@ export class OnboardingPanel {
     vscode.postMessage({ command: 'validate', apiKey, apiUrl });
   }
 
+  // Workspace ID input validation
+  const wsInput = document.getElementById('workspaceId');
+  const wsError = document.getElementById('wsError');
+  const finishBtn = document.getElementById('finishBtn');
+
+  wsInput.addEventListener('input', () => {
+    const val = wsInput.value.trim();
+    finishBtn.disabled = val.length < 5;
+    wsError.style.display = 'none';
+    wsInput.classList.remove('error');
+  });
+
   function finishSetup() {
     const apiKey = apiKeyInput.value.trim();
     const apiUrl = document.getElementById('apiUrl').value.trim();
-    const workspaceId = document.getElementById('workspaceId').value.trim();
+    const workspaceId = wsInput.value.trim();
+
+    if (!workspaceId || workspaceId.length < 5) {
+      wsError.style.display = 'flex';
+      wsInput.classList.add('error');
+      wsInput.focus();
+      return;
+    }
 
     vscode.postMessage({ command: 'complete', apiKey, apiUrl, workspaceId });
     goToStep(3);

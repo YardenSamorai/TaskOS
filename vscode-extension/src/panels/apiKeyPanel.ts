@@ -316,9 +316,9 @@ export class ApiKeyPanel {
           </div>
 
           <div class="form-group">
-            <label class="form-label" for="workspaceId">Workspace ID <span style="font-weight:400;text-transform:none;">(optional)</span></label>
+            <label class="form-label" for="workspaceId">Workspace ID <span style="color:#EF4444;font-weight:700;">*</span></label>
             <input class="form-input" type="text" id="workspaceId" value="${data.workspaceId}" placeholder="Your workspace UUID" />
-            <div class="form-hint">Found in workspace settings</div>
+            <div class="form-hint">Required — find it in your workspace URL: task-os.app/en/app/<strong>your-id</strong>/dashboard</div>
           </div>
 
           <div class="actions">
