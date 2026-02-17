@@ -2,12 +2,22 @@ import * as vscode from 'vscode';
 import { Task } from '../api/client';
 import { GitService } from './gitService';
 import { CodeStyleProfile, CodeReviewProfile } from '../profiles/types';
+import {
+  BranchConventionManager,
+  renderConvention,
+  DEFAULT_BRANCH_CONVENTION,
+} from './branchConvention';
 
 export class AgentService {
   private gitService: GitService;
+  private conventionManager: BranchConventionManager;
 
   constructor() {
     this.gitService = new GitService();
+    this.conventionManager = new BranchConventionManager(
+      () => vscode.workspace.getConfiguration('taskos').get<string>('apiKey') || '',
+      () => vscode.workspace.getConfiguration('taskos').get<string>('apiUrl') || '',
+    );
   }
 
   /**
@@ -188,6 +198,40 @@ export class AgentService {
     try {
       const isGit = await this.gitService.isGitRepo();
       if (isGit) {
+        // Generate suggested branch name from convention
+        const config = vscode.workspace.getConfiguration('taskos');
+        const workspaceId = config.get<string>('defaultWorkspaceId', '');
+        let suggestedBranch = `taskos/${task.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').substring(0, 50)}-${task.id.substring(0, 8)}`;
+
+        try {
+          const convConfig = await this.conventionManager.getConfig(workspaceId);
+          let username = 'user';
+          try { username = await this._runGitCommand('config user.name'); } catch {}
+          const rendered = renderConvention(convConfig, {
+            taskTitle: task.title,
+            taskId: task.id,
+            taskType: convConfig.defaultTaskType,
+            username,
+          });
+          suggestedBranch = rendered.branchName;
+        } catch { /* use fallback */ }
+
+        // Let user edit the branch name
+        const userBranch = await vscode.window.showInputBox({
+          prompt: 'Branch name for this task',
+          value: suggestedBranch,
+          placeHolder: suggestedBranch,
+          validateInput: (value) => {
+            if (!value || !value.trim()) return 'Branch name is required';
+            if (/\s/.test(value)) return 'Branch name cannot contain spaces';
+            return null;
+          },
+        });
+
+        if (!userBranch) {
+          return { success: false, method: 'cancelled' };
+        }
+
         const hasChanges = await this.gitService.hasUncommittedChanges();
         if (hasChanges) {
           const choice = await vscode.window.showWarningMessage(
@@ -198,20 +242,32 @@ export class AgentService {
           if (choice !== 'Yes, stash & continue') {
             return { success: false, method: 'cancelled' };
           }
-          // Stash current changes
           try {
-            const gitService = this.gitService;
             await this._runGitCommand('stash push -m "TaskOS: auto-stash before task branch"');
           } catch {
             // Continue anyway
           }
         }
-        branchName = await this.gitService.createTaskBranch(task.id, task.title);
-        vscode.window.showInformationMessage(`🌿 Created branch: ${branchName}`);
+
+        // Create branch with user's chosen name
+        try {
+          await this._runGitCommand(`checkout -b ${userBranch}`);
+          branchName = userBranch;
+        } catch {
+          // Branch might already exist — try switching to it
+          try {
+            await this._runGitCommand(`checkout ${userBranch}`);
+            branchName = userBranch;
+          } catch {
+            // Fall back to auto-generated
+            branchName = await this.gitService.createTaskBranch(task.id, task.title);
+          }
+        }
+
+        vscode.window.showInformationMessage(`Created branch: ${branchName}`);
       }
     } catch (error) {
       console.log('TaskOS: Git branch creation failed (non-fatal):', error);
-      // Continue without branch - not fatal
     }
 
     // Step 2: Try to send to Cursor's Composer/Agent

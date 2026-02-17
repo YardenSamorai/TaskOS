@@ -69,17 +69,31 @@ export class PipelineService {
 
           if (token.isCancellationRequested) { return result; }
 
-          // Stage 1: Get Diff
+          // Stage 1: Get Diff (committed + uncommitted)
           progress.report({ message: 'Getting changes...', increment: 10 });
-          const diff = await this.gitService.getFullDiff();
-          const changedFiles = await this.gitService.getChangedFiles();
+          let diff = await this.gitService.getFullDiff();
+          let changedFiles = await this.gitService.getChangedFiles();
 
-          if (!diff && changedFiles.length === 0) {
-            vscode.window.showWarningMessage('No changes detected. Make sure you have committed your changes.');
+          // Also check for uncommitted changes (staged + unstaged)
+          const hasUncommitted = await this.gitService.hasUncommittedChanges();
+          if (hasUncommitted) {
+            try {
+              const uncommittedDiff = await this.gitService.runGitPublic('diff HEAD');
+              const untrackedFiles = (await this.gitService.runGitPublic('ls-files --others --exclude-standard')).split('\n').filter(Boolean);
+              if (!diff) { diff = uncommittedDiff; }
+              else { diff = diff + '\n' + uncommittedDiff; }
+              changedFiles = [...new Set([...changedFiles, ...untrackedFiles])];
+            } catch {
+              // fall through
+            }
+          }
+
+          if (!diff && changedFiles.length === 0 && !hasUncommitted) {
+            vscode.window.showWarningMessage('No changes detected. Make sure you have made changes to your code.');
             return result;
           }
 
-          result.diff_summary = await this.gitService.getDiffSummary();
+          result.diff_summary = diff ? await this.gitService.getDiffSummary() : `${changedFiles.length} file(s) changed`;
           result.stages_completed.push('get_diff');
 
           if (token.isCancellationRequested) { return result; }
