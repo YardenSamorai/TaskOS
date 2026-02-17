@@ -43,7 +43,7 @@ const columns: { id: TaskStatus; title: string; color: string }[] = [
   { id: "backlog", title: "Backlog", color: "bg-slate-500" },
   { id: "todo", title: "To Do", color: "bg-blue-500" },
   { id: "in_progress", title: "In Progress", color: "bg-orange-500" },
-  { id: "review", title: "Review", color: "bg-purple-500" },
+  { id: "review", title: "Waiting for Review", color: "bg-purple-500" },
   { id: "done", title: "Done", color: "bg-emerald-500" },
 ];
 

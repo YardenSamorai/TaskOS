@@ -250,7 +250,7 @@ export const CreateTemplateDialog = ({
                       <SelectItem value="backlog">Backlog</SelectItem>
                       <SelectItem value="todo">To Do</SelectItem>
                       <SelectItem value="in_progress">In Progress</SelectItem>
-                      <SelectItem value="review">Review</SelectItem>
+                      <SelectItem value="review">Waiting for Review</SelectItem>
                       <SelectItem value="done">Done</SelectItem>
                     </SelectContent>
                   </Select>

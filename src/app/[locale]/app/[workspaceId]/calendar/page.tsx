@@ -54,7 +54,7 @@ const statusConfig: Record<string, { color: string; bg: string; label: string }>
   backlog: { color: "bg-slate-500", bg: "bg-slate-500/10", label: "Backlog" },
   todo: { color: "bg-blue-500", bg: "bg-blue-500/10", label: "To Do" },
   in_progress: { color: "bg-orange-500", bg: "bg-orange-500/10", label: "In Progress" },
-  review: { color: "bg-purple-500", bg: "bg-purple-500/10", label: "Review" },
+  review: { color: "bg-purple-500", bg: "bg-purple-500/10", label: "Waiting for Review" },
   done: { color: "bg-emerald-500", bg: "bg-emerald-500/10", label: "Done" },
 };
 

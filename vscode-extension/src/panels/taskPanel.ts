@@ -637,7 +637,7 @@ export class TaskPanel {
             <option value="backlog">Backlog</option>
             <option value="todo">To Do</option>
             <option value="in_progress">In Progress</option>
-            <option value="review">Review</option>
+            <option value="review">Waiting for Review</option>
             <option value="done">Done</option>
           </select>
           <select class="filter-sel" id="priorityFilter" onchange="applyFilters()">
@@ -916,7 +916,7 @@ export class TaskPanel {
                     <option value="backlog" ${task.status === 'backlog' ? 'selected' : ''}>Backlog</option>
                     <option value="todo" ${task.status === 'todo' ? 'selected' : ''}>To Do</option>
                     <option value="in_progress" ${task.status === 'in_progress' ? 'selected' : ''}>In Progress</option>
-                    <option value="review" ${task.status === 'review' ? 'selected' : ''}>Review</option>
+                    <option value="review" ${task.status === 'review' ? 'selected' : ''}>Waiting for Review</option>
                     <option value="done" ${task.status === 'done' ? 'selected' : ''}>Done</option>
                   </select>
                 </div>
@@ -1030,7 +1030,7 @@ export class TaskPanel {
   // ===================== HELPERS =====================
 
   private _getStatusLabel(status: string): string {
-    const labels: Record<string, string> = { backlog: 'Backlog', todo: 'To Do', in_progress: 'In Progress', review: 'Review', done: 'Done' };
+    const labels: Record<string, string> = { backlog: 'Backlog', todo: 'To Do', in_progress: 'In Progress', review: 'Waiting for Review', done: 'Done' };
     return labels[status] || status;
   }
 

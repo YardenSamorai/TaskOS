@@ -412,7 +412,7 @@ const LandingPage = () => {
                         { name: "Backlog", color: "slate", count: 4 },
                         { name: "To Do", color: "blue", count: 3 },
                         { name: "In Progress", color: "orange", count: 2 },
-                        { name: "Review", color: "purple", count: 2 },
+                        { name: "Waiting for Review", color: "purple", count: 2 },
                         { name: "Done", color: "emerald", count: 5 },
                       ].map((col, i) => (
                         <div key={col.name} className="rounded-xl bg-white/[0.03] p-3 border border-white/5">

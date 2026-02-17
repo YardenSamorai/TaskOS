@@ -407,9 +407,9 @@ export function activate(context: vscode.ExtensionContext) {
 
           progress.report({ message: 'Opening AI Agent...' });
 
-          // Update task status to in_progress
+          // Update task status to review (waiting for review)
           try {
-            await apiClient!.updateTask(task.id, { status: 'in_progress' });
+            await apiClient!.updateTask(task.id, { status: 'review' });
           } catch {
             // Non-fatal
           }

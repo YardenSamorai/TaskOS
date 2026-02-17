@@ -136,7 +136,7 @@ export class TaskProvider implements vscode.TreeDataProvider<TaskItem> {
       const sections = [
         { key: 'in_progress', label: '🔄 In Progress', icon: 'sync' },
         { key: 'todo', label: '📝 To Do', icon: 'checklist' },
-        { key: 'review', label: '👁️ Review', icon: 'eye' },
+        { key: 'review', label: '👁️ Waiting for Review', icon: 'eye' },
         { key: 'backlog', label: '📋 Backlog', icon: 'inbox' },
         { key: 'done', label: '✅ Done', icon: 'pass' }
       ];
