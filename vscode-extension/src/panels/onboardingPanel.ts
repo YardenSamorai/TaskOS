@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import { TaskOSApiClient } from '../api/client';
 
 export class OnboardingPanel {
   public static currentPanel: OnboardingPanel | undefined;
@@ -57,19 +56,25 @@ export class OnboardingPanel {
 
   private async _validateConnection(apiKey: string, apiUrl: string) {
     try {
-      const client = new TaskOSApiClient(apiKey, apiUrl);
-      const result = await client.listTasks('test', { limit: 1 });
-      this._panel.webview.postMessage({ command: 'validationResult', success: true });
-    } catch (error: any) {
-      const msg = error?.message || '';
-      if (msg.includes('401')) {
-        this._panel.webview.postMessage({ command: 'validationResult', success: false, error: 'Invalid API key' });
-      } else if (msg.includes('fetch') || msg.includes('network')) {
-        this._panel.webview.postMessage({ command: 'validationResult', success: false, error: 'Cannot reach server. Check API URL.' });
+      // Simple fetch to tasks endpoint — any HTTP response means server is reachable
+      const url = `${apiUrl}/tasks?workspaceId=_validate&limit=1`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.status === 401) {
+        this._panel.webview.postMessage({ command: 'validationResult', success: false, error: 'Invalid API key. Please check and try again.' });
       } else {
-        // A non-401 error with a reachable server means the key is valid but workspace is wrong — that's fine
+        // Any other response (200, 400, 403, 500) means server is reachable and key is accepted
         this._panel.webview.postMessage({ command: 'validationResult', success: true });
       }
+    } catch {
+      // fetch itself threw — network error, DNS failure, etc.
+      this._panel.webview.postMessage({ command: 'validationResult', success: false, error: 'Cannot reach server. Check your internet connection.' });
     }
   }
 

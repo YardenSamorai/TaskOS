@@ -684,13 +684,9 @@ export function activate(context: vscode.ExtensionContext) {
   
   console.log('TaskOS: All commands registered successfully');
 
-  // Show onboarding for first-time users (no API key configured)
-  const hasCompletedOnboarding = context.globalState.get<boolean>('taskos.onboardingCompleted', false);
-  if (!apiKey && !hasCompletedOnboarding) {
+  // Show onboarding if not fully configured (no API key or no workspace ID)
+  if (!apiKey || !workspaceId) {
     OnboardingPanel.createOrShow(context.extensionUri);
-  } else if (apiKey) {
-    // Mark onboarding as done if they already have a key
-    context.globalState.update('taskos.onboardingCompleted', true);
   }
 }
 
