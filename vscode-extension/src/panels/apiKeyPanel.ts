@@ -77,7 +77,7 @@ export class ApiKeyPanel {
     // Get current config
     const config = vscode.workspace.getConfiguration('taskos');
     const currentApiKey = config.get<string>('apiKey', '');
-    const currentApiUrl = config.get<string>('apiUrl', 'https://taskos.com/api/v1');
+    const currentApiUrl = config.get<string>('apiUrl', 'https://www.task-os.app/api/v1');
     const currentWorkspaceId = config.get<string>('defaultWorkspaceId', '');
 
     this._panel.webview.html = this._getHtmlForWebview(webview, {
@@ -108,7 +108,7 @@ export class ApiKeyPanel {
     try {
       const config = vscode.workspace.getConfiguration('taskos');
       await config.update('apiKey', apiKey.trim(), vscode.ConfigurationTarget.Global);
-      await config.update('apiUrl', apiUrl.trim() || 'https://taskos.com/api/v1', vscode.ConfigurationTarget.Global);
+      await config.update('apiUrl', apiUrl.trim() || 'https://www.task-os.app/api/v1', vscode.ConfigurationTarget.Global);
 
       this._panel.webview.postMessage({
         command: 'success',
@@ -119,7 +119,7 @@ export class ApiKeyPanel {
       
       // Notify extension to update API client
       if (ApiKeyPanel.onApiKeySaved) {
-        ApiKeyPanel.onApiKeySaved(apiKey.trim(), apiUrl.trim() || 'https://taskos.com/api/v1');
+        ApiKeyPanel.onApiKeySaved(apiKey.trim(), apiUrl.trim() || 'https://www.task-os.app/api/v1');
       }
       
       // Close panel after a short delay

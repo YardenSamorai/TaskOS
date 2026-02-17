@@ -232,7 +232,7 @@ export class GitService {
     }
     
     const prTitle = `feat: ${taskTitle}`;
-    const prBody = customBody || `## TaskOS Task\n\n**Task:** ${taskTitle}\n**Task ID:** ${taskId}\n\n---\n\n${description}\n\n---\n*Created via [TaskOS](https://taskos.vercel.app) VS Code Extension* 🤖`;
+    const prBody = customBody || `## TaskOS Task\n\n**Task:** ${taskTitle}\n**Task ID:** ${taskId}\n\n---\n\n${description}\n\n---\n*Created via [TaskOS](https://www.task-os.app) VS Code Extension* 🤖`;
     
     // Try gh CLI first
     try {

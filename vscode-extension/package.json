@@ -1,8 +1,8 @@
 {
   "name": "taskos",
   "displayName": "TaskOS",
-  "description": "Task management and AI code generation directly from VS Code",
-  "version": "0.1.0",
+  "description": "AI-powered task management — implements code, runs tests, reviews PRs, and enforces your team's standards",
+  "version": "0.2.0",
   "publisher": "YardenSamorai",
   "license": "MIT",
   "icon": "resources/icon.png",
@@ -104,11 +104,11 @@
           "type": "string",
           "default": "",
           "description": "Your TaskOS API key (get it from Account Settings → Security → API Keys)",
-          "markdownDescription": "Your TaskOS API key. Get it from [Account Settings → Security → API Keys](https://taskos.com/app/account)"
+          "markdownDescription": "Your TaskOS API key. Get it from [Account Settings → Security → API Keys](https://www.task-os.app/en/app/account)"
         },
         "taskos.apiUrl": {
           "type": "string",
-          "default": "https://taskos.com/api/v1",
+          "default": "https://www.task-os.app/api/v1",
           "description": "TaskOS API base URL"
         },
         "taskos.defaultWorkspaceId": {

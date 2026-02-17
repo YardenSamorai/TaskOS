@@ -19,7 +19,7 @@ export function activate(context: vscode.ExtensionContext) {
   // Get configuration
   const config = vscode.workspace.getConfiguration('taskos');
   const apiKey = config.get<string>('apiKey', '');
-  const apiUrl = config.get<string>('apiUrl', 'https://taskos.vercel.app/api/v1');
+  const apiUrl = config.get<string>('apiUrl', 'https://www.task-os.app/api/v1');
   const workspaceId = config.get<string>('defaultWorkspaceId', '');
 
   // Initialize API client if we have an API key
@@ -629,7 +629,7 @@ export function activate(context: vscode.ExtensionContext) {
       if (e.affectsConfiguration('taskos')) {
         const config = vscode.workspace.getConfiguration('taskos');
         const apiKey = config.get<string>('apiKey', '');
-        const apiUrl = config.get<string>('apiUrl', 'https://taskos.vercel.app/api/v1');
+        const apiUrl = config.get<string>('apiUrl', 'https://www.task-os.app/api/v1');
         const workspaceId = config.get<string>('defaultWorkspaceId', '');
         
         if (apiKey) {

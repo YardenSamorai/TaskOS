@@ -21,7 +21,7 @@ Task management and AI code generation directly from VS Code.
 
 ## Configuration
 
-1. Get your API key from [TaskOS Account Settings](https://taskos.com/app/account) → Security → API Keys
+1. Get your API key from [TaskOS Account Settings](https://www.task-os.app/en/app/account) → Security → API Keys
 2. Open VS Code Settings (Ctrl+,)
 3. Search for "TaskOS"
 4. Enter your API key in `TaskOS: Api Key`

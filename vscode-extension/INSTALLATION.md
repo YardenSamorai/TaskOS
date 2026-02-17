@@ -88,7 +88,7 @@ This creates a `.vsix` file that can be installed manually or published to the m
 
 - Verify your API key is valid and not expired
 - Check that you have a Pro or Enterprise plan
-- Ensure your API URL is correct (default: `https://taskos.com/api/v1`)
+- Ensure your API URL is correct (default: `https://www.task-os.app/api/v1`)
 
 ### Tasks Not Loading
 
