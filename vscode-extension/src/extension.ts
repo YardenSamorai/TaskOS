@@ -4,9 +4,13 @@ import { TaskProvider } from './providers/taskProvider';
 import { TaskPanel } from './panels/taskPanel';
 import { ApiKeyPanel } from './panels/apiKeyPanel';
 import { AgentService } from './services/agentService';
+import { PipelineService } from './services/pipelineService';
+import { ProfileManager } from './profiles/profileManager';
 
 let apiClient: TaskOSApiClient | null = null;
 let taskProvider: TaskProvider | null = null;
+let profileManager: ProfileManager | null = null;
+let pipelineService: PipelineService | null = null;
 const agentService = new AgentService();
 
 export function activate(context: vscode.ExtensionContext) {
@@ -21,6 +25,8 @@ export function activate(context: vscode.ExtensionContext) {
   // Initialize API client if we have an API key
   if (apiKey) {
     apiClient = new TaskOSApiClient(apiKey, apiUrl);
+    profileManager = new ProfileManager(apiClient, workspaceId);
+    pipelineService = new PipelineService(apiClient, profileManager);
   }
 
   // Initialize task provider
@@ -518,6 +524,105 @@ export function activate(context: vscode.ExtensionContext) {
   });
   context.subscriptions.push(createPRCommand);
 
+  // Register run pipeline command
+  const runPipelineCommand = vscode.commands.registerCommand('taskos.runPipeline', async (taskId?: string) => {
+    if (!apiClient) {
+      vscode.window.showErrorMessage('TaskOS: API key not configured.');
+      ApiKeyPanel.createOrShow(context.extensionUri);
+      return;
+    }
+
+    if (!pipelineService) {
+      const config = vscode.workspace.getConfiguration('taskos');
+      const workspaceId = config.get<string>('defaultWorkspaceId', '');
+      profileManager = new ProfileManager(apiClient, workspaceId);
+      pipelineService = new PipelineService(apiClient, profileManager);
+    }
+
+    // If no taskId, ask user to pick a task
+    if (!taskId) {
+      const config = vscode.workspace.getConfiguration('taskos');
+      const workspaceId = config.get<string>('defaultWorkspaceId', '');
+      if (!workspaceId) {
+        vscode.window.showErrorMessage('TaskOS: Workspace ID not configured.');
+        return;
+      }
+
+      try {
+        const { tasks } = await apiClient.listTasks(workspaceId, { limit: 20, status: 'in_progress' });
+        if (tasks.length === 0) {
+          vscode.window.showWarningMessage('TaskOS: No in-progress tasks found. Send a task to the agent first.');
+          return;
+        }
+
+        const selected = await vscode.window.showQuickPick(
+          tasks.map(t => ({
+            label: `${t.priority === 'urgent' ? '🔴' : t.priority === 'high' ? '🟠' : t.priority === 'medium' ? '🟡' : '🟢'} ${t.title}`,
+            description: t.status.replace('_', ' '),
+            taskId: t.id,
+          })),
+          { placeHolder: 'Select a task to run pipeline for' }
+        );
+        if (!selected) { return; }
+        taskId = (selected as any).taskId;
+      } catch (error) {
+        vscode.window.showErrorMessage(`TaskOS: Failed to load tasks. ${error}`);
+        return;
+      }
+    }
+
+    try {
+      const task = await apiClient.getTask(taskId!);
+      const result = await pipelineService!.runPipeline(task);
+
+      if (result.success) {
+        const action = await vscode.window.showInformationMessage(
+          `Pipeline completed! ${result.blockers.length > 0 ? `(${result.blockers.length} blockers)` : 'All clear!'}`,
+          result.pr_url ? 'Open PR' : 'Done'
+        );
+        if (action === 'Open PR' && result.pr_url) {
+          vscode.env.openExternal(vscode.Uri.parse(result.pr_url));
+        }
+
+        // Update task status to review
+        try {
+          await apiClient!.updateTask(task.id, { status: 'review' });
+        } catch {
+          // Non-fatal
+        }
+      } else {
+        const completedStages = result.stages_completed.join(' -> ');
+        vscode.window.showWarningMessage(
+          `Pipeline stopped. Completed: ${completedStages}. ${result.blockers.length} blocker(s) found.`
+        );
+      }
+    } catch (error) {
+      vscode.window.showErrorMessage(`TaskOS: Pipeline failed. ${error}`);
+    }
+  });
+  context.subscriptions.push(runPipelineCommand);
+
+  // Register configure profiles command
+  const configureProfilesCommand = vscode.commands.registerCommand('taskos.configureProfiles', async () => {
+    if (!apiClient) {
+      vscode.window.showErrorMessage('TaskOS: API key not configured.');
+      ApiKeyPanel.createOrShow(context.extensionUri);
+      return;
+    }
+
+    const config = vscode.workspace.getConfiguration('taskos');
+    const workspaceId = config.get<string>('defaultWorkspaceId', '');
+    if (!workspaceId) {
+      vscode.window.showErrorMessage('TaskOS: Workspace ID not configured.');
+      return;
+    }
+
+    // Import ProfilePanel lazily to avoid circular deps
+    const { ProfilePanel } = await import('./panels/profilePanel');
+    ProfilePanel.render(context.extensionUri, apiClient, workspaceId);
+  });
+  context.subscriptions.push(configureProfilesCommand);
+
   // Listen for configuration changes
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((e) => {
@@ -536,9 +641,15 @@ export function activate(context: vscode.ExtensionContext) {
           }
         }
         
-        // Update task provider
+        // Update task provider and profile manager
         if (taskProvider && apiClient) {
           taskProvider.updateClient(apiClient, workspaceId);
+        }
+        if (apiClient && profileManager) {
+          profileManager.updateClient(apiClient, workspaceId);
+        }
+        if (apiClient && profileManager && !pipelineService) {
+          pipelineService = new PipelineService(apiClient, profileManager);
         }
       }
     })

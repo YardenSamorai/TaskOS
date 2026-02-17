@@ -532,6 +532,7 @@ export const workspacesRelations = relations(workspaces, ({ one, many }) => ({
   tags: many(tags),
   templates: many(templates),
   activityLogs: many(activityLogs),
+  agentProfiles: many(agentProfiles),
 }));
 
 export const workspaceMembersRelations = relations(
@@ -856,6 +857,52 @@ export const linkedRepositoriesRelations = relations(linkedRepositories, ({ one 
   }),
 }));
 
+// ============== AGENT PROFILES ==============
+export const agentProfileTypeEnum = pgEnum("agent_profile_type", [
+  "code_review",
+  "code_style",
+]);
+
+export const agentProfiles = pgTable(
+  "agent_profiles",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    type: agentProfileTypeEnum("type").notNull(),
+    name: varchar("name", { length: 255 }).notNull(),
+    config: text("config").notNull(), // JSON string
+    isDefault: boolean("is_default").notNull().default(false),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => ({
+    workspaceTypeIdx: index("agent_profile_workspace_type_idx").on(
+      table.workspaceId,
+      table.type
+    ),
+  })
+);
+
+export const agentProfilesRelations = relations(agentProfiles, ({ one }) => ({
+  workspace: one(workspaces, {
+    fields: [agentProfiles.workspaceId],
+    references: [workspaces.id],
+  }),
+  creator: one(users, {
+    fields: [agentProfiles.createdBy],
+    references: [users.id],
+  }),
+}));
+
 // ============== API KEYS ==============
 export const apiKeys = pgTable("api_keys", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -925,3 +972,6 @@ export type TaskStatus = "backlog" | "todo" | "in_progress" | "review" | "done";
 export type TaskPriority = "low" | "medium" | "high" | "urgent";
 export type UserPlan = "free" | "pro" | "enterprise";
 export type InvitationStatus = "pending" | "accepted" | "expired" | "cancelled";
+export type AgentProfile = typeof agentProfiles.$inferSelect;
+export type NewAgentProfile = typeof agentProfiles.$inferInsert;
+export type AgentProfileType = "code_review" | "code_style";

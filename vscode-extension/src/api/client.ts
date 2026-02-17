@@ -198,6 +198,61 @@ export class TaskOSApiClient {
     return await this.request<GenerateCodeResponse>('POST', '/ai/generate-code', request);
   }
 
+  // ============== PROFILES ==============
+
+  async listProfiles(workspaceId: string, type?: string): Promise<any[]> {
+    const params = type ? `?type=${type}` : '';
+    const data = await this.request<{ profiles: any[] }>(
+      'GET',
+      `/workspaces/${workspaceId}/profiles${params}`
+    );
+    return data.profiles || [];
+  }
+
+  async createProfile(
+    workspaceId: string,
+    profile: { type: string; name: string; config: any; isDefault?: boolean }
+  ): Promise<any> {
+    const data = await this.request<{ profile: any }>(
+      'POST',
+      `/workspaces/${workspaceId}/profiles`,
+      profile
+    );
+    return data.profile;
+  }
+
+  async updateProfile(
+    workspaceId: string,
+    profileId: string,
+    updates: { name?: string; config?: any; isDefault?: boolean }
+  ): Promise<any> {
+    const data = await this.request<{ profile: any }>(
+      'PUT',
+      `/workspaces/${workspaceId}/profiles/${profileId}`,
+      updates
+    );
+    return data.profile;
+  }
+
+  async deleteProfile(workspaceId: string, profileId: string): Promise<void> {
+    await this.request<any>(
+      'DELETE',
+      `/workspaces/${workspaceId}/profiles/${profileId}`
+    );
+  }
+
+  // ============== CODE REVIEW ==============
+
+  async reviewCode(payload: {
+    diff: string;
+    changedFiles: string[];
+    projectContext?: string;
+    reviewProfile: any;
+    testResults?: any;
+  }): Promise<any> {
+    return await this.request<any>('POST', '/ai/code-review', payload);
+  }
+
   updateApiKey(apiKey: string) {
     this.apiKey = apiKey;
   }

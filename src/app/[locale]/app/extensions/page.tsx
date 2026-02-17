@@ -23,12 +23,19 @@ import {
   Github,
   Search,
   ExternalLink,
-  Store
+  Store,
+  GitPullRequest,
+  ShieldCheck,
+  TestTube,
+  Workflow,
+  FileCode,
+  ArrowRight,
+  Layers
 } from "lucide-react";
 import { toast } from "sonner";
 
 const MARKETPLACE_URL = "https://marketplace.visualstudio.com/items?itemName=YardenSamorai.taskos";
-const VSIX_DOWNLOAD_URL = "https://github.com/YardenSamorai/TaskOS/releases/latest/download/taskos-0.1.0.vsix";
+const VSIX_DOWNLOAD_URL = "/downloads/taskos-0.1.0.vsix";
 
 export default function ExtensionsPage() {
   const [copied, setCopied] = useState<string | null>(null);
@@ -58,7 +65,7 @@ export default function ExtensionsPage() {
               TaskOS for VS Code & Cursor
             </h1>
             <p className="text-base sm:text-lg md:text-xl text-white/90 mb-5 sm:mb-6 max-w-2xl">
-              Manage your tasks, view progress, and stay productive — all without leaving your code editor.
+              Your AI-powered coding companion — implements tasks, runs tests, reviews code, and opens PRs. All from your editor.
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
               <Button 
@@ -97,13 +104,31 @@ export default function ExtensionsPage() {
 
         {/* Features Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8 sm:mb-10">
+          <Card className="border-0 shadow-md bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20">
+            <CardContent className="p-3 sm:p-4 text-center">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 sm:mb-3 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                <Sparkles className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600 dark:text-purple-400" />
+              </div>
+              <h3 className="font-semibold text-sm sm:text-base mb-1">AI Pipeline</h3>
+              <p className="text-xs text-muted-foreground hidden sm:block">Test, review & ship with one click</p>
+            </CardContent>
+          </Card>
+          <Card className="border-0 shadow-md bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20">
+            <CardContent className="p-3 sm:p-4 text-center">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 sm:mb-3 rounded-xl bg-blue-500/20 flex items-center justify-center">
+                <Eye className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 dark:text-blue-400" />
+              </div>
+              <h3 className="font-semibold text-sm sm:text-base mb-1">Self Code Review</h3>
+              <p className="text-xs text-muted-foreground hidden sm:block">AI reviews every PR automatically</p>
+            </CardContent>
+          </Card>
           <Card className="border-0 shadow-md bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-950/20 dark:to-orange-950/20">
             <CardContent className="p-3 sm:p-4 text-center">
               <div className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 sm:mb-3 rounded-xl bg-yellow-500/20 flex items-center justify-center">
-                <Eye className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-600 dark:text-yellow-400" />
+                <Settings className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-600 dark:text-yellow-400" />
               </div>
-              <h3 className="font-semibold text-sm sm:text-base mb-1">View Tasks</h3>
-              <p className="text-xs text-muted-foreground hidden sm:block">See all your tasks in the sidebar</p>
+              <h3 className="font-semibold text-sm sm:text-base mb-1">Custom Profiles</h3>
+              <p className="text-xs text-muted-foreground hidden sm:block">Define your code style & review rules</p>
             </CardContent>
           </Card>
           <Card className="border-0 shadow-md bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20">
@@ -111,26 +136,8 @@ export default function ExtensionsPage() {
               <div className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 sm:mb-3 rounded-xl bg-green-500/20 flex items-center justify-center">
                 <RefreshCw className="h-5 w-5 sm:h-6 sm:w-6 text-green-600 dark:text-green-400" />
               </div>
-              <h3 className="font-semibold text-sm sm:text-base mb-1">Live Sync</h3>
-              <p className="text-xs text-muted-foreground hidden sm:block">Auto-updates every 15 seconds</p>
-            </CardContent>
-          </Card>
-          <Card className="border-0 shadow-md bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20">
-            <CardContent className="p-3 sm:p-4 text-center">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 sm:mb-3 rounded-xl bg-blue-500/20 flex items-center justify-center">
-                <ListTodo className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 dark:text-blue-400" />
-              </div>
-              <h3 className="font-semibold text-sm sm:text-base mb-1">Manage Tasks</h3>
-              <p className="text-xs text-muted-foreground hidden sm:block">Create, edit, update status</p>
-            </CardContent>
-          </Card>
-          <Card className="border-0 shadow-md bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20">
-            <CardContent className="p-3 sm:p-4 text-center">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 sm:mb-3 rounded-xl bg-purple-500/20 flex items-center justify-center">
-                <Sparkles className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600 dark:text-purple-400" />
-              </div>
-              <h3 className="font-semibold text-sm sm:text-base mb-1">AI Powered</h3>
-              <p className="text-xs text-muted-foreground hidden sm:block">Generate code from tasks</p>
+              <h3 className="font-semibold text-sm sm:text-base mb-1">Auto Testing</h3>
+              <p className="text-xs text-muted-foreground hidden sm:block">Runs & verifies tests before shipping</p>
             </CardContent>
           </Card>
         </div>
@@ -462,18 +469,196 @@ export default function ExtensionsPage() {
                 </p>
                 <div className="flex flex-wrap gap-1.5 sm:gap-2">
                   <Badge variant="outline" className="gap-1 text-xs">
-                    <Eye className="h-3 w-3" /> View tasks
+                    <Eye className="h-3 w-3" /> View & manage tasks
                   </Badge>
                   <Badge variant="outline" className="gap-1 text-xs">
-                    <RefreshCw className="h-3 w-3" /> Auto-sync
+                    <Sparkles className="h-3 w-3" /> Run AI Pipeline
                   </Badge>
                   <Badge variant="outline" className="gap-1 text-xs">
-                    <Sparkles className="h-3 w-3" /> AI code generation
+                    <Settings className="h-3 w-3" /> Configure profiles
                   </Badge>
                   <Badge variant="outline" className="gap-1 text-xs">
                     <Zap className="h-3 w-3" /> Ctrl+Shift+P for commands
                   </Badge>
                 </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* AI Pipeline - What It Does */}
+        <Card className="mb-6 sm:mb-8 border-indigo-200 dark:border-indigo-800">
+          <CardHeader className="px-4 sm:px-6">
+            <CardTitle className="flex items-center gap-2 text-xl sm:text-2xl">
+              <Workflow className="h-5 w-5 sm:h-6 sm:w-6 text-indigo-600" />
+              AI Agent Pipeline
+            </CardTitle>
+            <CardDescription className="text-sm">
+              One click from task to production-ready PR — with tests, code review, and autofix built in
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="px-4 sm:px-6">
+            {/* Pipeline Steps Visual */}
+            <div className="flex flex-col gap-3 mb-6">
+              {[
+                { icon: <FileCode className="h-4 w-4" />, step: "Plan", desc: "AI analyzes the task and plans the implementation", color: "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300" },
+                { icon: <Code2 className="h-4 w-4" />, step: "Implement", desc: "Generates code following your Code Style Profile", color: "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300" },
+                { icon: <TestTube className="h-4 w-4" />, step: "Test", desc: "Automatically runs tests and validates results", color: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300" },
+                { icon: <ShieldCheck className="h-4 w-4" />, step: "Review", desc: "Self code review based on your Review Profile", color: "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300" },
+                { icon: <Zap className="h-4 w-4" />, step: "Autofix", desc: "Automatically fixes blockers found in review", color: "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300" },
+                { icon: <GitPullRequest className="h-4 w-4" />, step: "Open PR", desc: "Creates a detailed PR with review & test results", color: "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300" },
+              ].map((item, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <div className={`shrink-0 w-8 h-8 rounded-lg ${item.color} flex items-center justify-center`}>
+                    {item.icon}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-sm">{item.step}</span>
+                      {i < 5 && <ArrowRight className="h-3 w-3 text-muted-foreground hidden sm:block" />}
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate">{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Key Features */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="bg-muted/50 rounded-lg p-3 sm:p-4 border">
+                <h4 className="font-semibold text-sm flex items-center gap-2 mb-2">
+                  <Layers className="h-4 w-4 text-indigo-600" />
+                  Custom Profiles
+                </h4>
+                <p className="text-xs text-muted-foreground">
+                  Define <strong>Code Style</strong> and <strong>Code Review</strong> profiles to enforce your team&apos;s standards. Set naming conventions, design patterns, testing policies, and review severity levels.
+                </p>
+              </div>
+              <div className="bg-muted/50 rounded-lg p-3 sm:p-4 border">
+                <h4 className="font-semibold text-sm flex items-center gap-2 mb-2">
+                  <TestTube className="h-4 w-4 text-yellow-600" />
+                  Automatic Testing
+                </h4>
+                <p className="text-xs text-muted-foreground">
+                  Tests run automatically when required by your profile. Missing or failing tests trigger autofix attempts, and results are included in the PR description.
+                </p>
+              </div>
+              <div className="bg-muted/50 rounded-lg p-3 sm:p-4 border">
+                <h4 className="font-semibold text-sm flex items-center gap-2 mb-2">
+                  <ShieldCheck className="h-4 w-4 text-purple-600" />
+                  Self Code Review
+                </h4>
+                <p className="text-xs text-muted-foreground">
+                  Every PR gets an AI code review — checking security, performance, best practices, and more. Findings include file, line range, severity, and suggested fixes.
+                </p>
+              </div>
+              <div className="bg-muted/50 rounded-lg p-3 sm:p-4 border">
+                <h4 className="font-semibold text-sm flex items-center gap-2 mb-2">
+                  <GitPullRequest className="h-4 w-4 text-green-600" />
+                  Rich PR Output
+                </h4>
+                <p className="text-xs text-muted-foreground">
+                  Generated PRs include structured summaries, profile-matching checklists, full code review findings, and test execution results — ready for human approval.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* How to Use */}
+        <Card className="mb-6 sm:mb-8">
+          <CardHeader className="px-4 sm:px-6">
+            <CardTitle className="flex items-center gap-2 text-xl sm:text-2xl">
+              <Zap className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-500" />
+              How to Use
+            </CardTitle>
+            <CardDescription className="text-sm">
+              Quick guide for the main features of the extension
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 px-4 sm:px-6">
+            {/* Run Pipeline */}
+            <div className="bg-muted/50 rounded-xl p-4 sm:p-5 border">
+              <h4 className="font-semibold text-base mb-3 flex items-center gap-2">
+                <Workflow className="h-4 w-4 text-indigo-600" />
+                Run the AI Pipeline
+              </h4>
+              <ol className="space-y-2 text-xs sm:text-sm">
+                <li className="flex items-start gap-2">
+                  <span className="text-indigo-600 font-bold shrink-0">1.</span>
+                  <span>Click the <strong>TaskOS icon</strong> in the sidebar to open the panel</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-indigo-600 font-bold shrink-0">2.</span>
+                  <span>Select a task from your workspace</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-indigo-600 font-bold shrink-0">3.</span>
+                  <span>Click <strong>&quot;Run Pipeline & Create PR&quot;</strong> — the agent will implement, test, review, and open a PR</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-indigo-600 font-bold shrink-0">4.</span>
+                  <span>Or use <strong>&quot;Quick PR&quot;</strong> for a simpler code-and-commit flow without the full pipeline</span>
+                </li>
+              </ol>
+              <div className="mt-3 flex items-center gap-2 bg-background rounded-lg p-2 sm:p-3 font-mono text-xs sm:text-sm border overflow-hidden">
+                <Terminal className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
+                <code className="flex-1 overflow-x-auto whitespace-nowrap">Ctrl+Shift+P → &quot;TaskOS: Run Pipeline & Create PR&quot;</code>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className="shrink-0 h-7 w-7 p-0"
+                  onClick={() => copyToClipboard("TaskOS: Run Pipeline & Create PR", "pipeline-cmd")}
+                >
+                  {copied === "pipeline-cmd" ? <CheckCircle2 className="h-3 w-3 sm:h-4 sm:w-4 text-green-500" /> : <Copy className="h-3 w-3 sm:h-4 sm:w-4" />}
+                </Button>
+              </div>
+            </div>
+
+            {/* Configure Profiles */}
+            <div className="bg-muted/50 rounded-xl p-4 sm:p-5 border">
+              <h4 className="font-semibold text-base mb-3 flex items-center gap-2">
+                <Settings className="h-4 w-4 text-indigo-600" />
+                Configure Profiles
+              </h4>
+              <ol className="space-y-2 text-xs sm:text-sm">
+                <li className="flex items-start gap-2">
+                  <span className="text-indigo-600 font-bold shrink-0">1.</span>
+                  <span>Click <strong>&quot;Profiles&quot;</strong> in the TaskOS panel, or press <kbd className="px-1.5 py-0.5 bg-background rounded border text-xs font-mono">Ctrl+Shift+P</kbd> → <code className="px-1.5 py-0.5 bg-background rounded text-xs">TaskOS: Configure Profiles</code></span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-indigo-600 font-bold shrink-0">2.</span>
+                  <span>Choose between <strong>Code Review Profile</strong> (what to check) and <strong>Code Style Profile</strong> (how to write code)</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-indigo-600 font-bold shrink-0">3.</span>
+                  <span>Start with a preset (<strong>Default</strong> or <strong>Strict</strong>) and customize to match your team&apos;s standards</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-indigo-600 font-bold shrink-0">4.</span>
+                  <span>Set your active profiles in VS Code Settings → search <code className="px-1.5 py-0.5 bg-background rounded text-xs">taskos</code></span>
+                </li>
+              </ol>
+            </div>
+
+            {/* Available Commands */}
+            <div className="bg-muted/50 rounded-xl p-4 sm:p-5 border">
+              <h4 className="font-semibold text-base mb-3 flex items-center gap-2">
+                <Terminal className="h-4 w-4 text-indigo-600" />
+                All Commands (<kbd className="px-1.5 py-0.5 bg-background rounded border text-xs font-mono">Ctrl+Shift+P</kbd>)
+              </h4>
+              <div className="space-y-2">
+                {[
+                  { cmd: "TaskOS: Run Pipeline & Create PR", desc: "Full pipeline: implement → test → review → PR" },
+                  { cmd: "TaskOS: Configure Profiles", desc: "Open the profiles editor panel" },
+                  { cmd: "TaskOS: Refresh Tasks", desc: "Manually refresh the task list" },
+                  { cmd: "TaskOS: Quick Generate Code", desc: "Generate code for a task without full pipeline" },
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center gap-2 bg-background rounded-lg p-2 sm:p-3 border text-xs sm:text-sm overflow-hidden">
+                    <code className="flex-1 font-mono text-indigo-600 dark:text-indigo-400 overflow-x-auto whitespace-nowrap">{item.cmd}</code>
+                    <span className="text-muted-foreground hidden sm:block shrink-0 text-xs">— {item.desc}</span>
+                  </div>
+                ))}
               </div>
             </div>
           </CardContent>

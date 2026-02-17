@@ -105,6 +105,47 @@ export class GitService {
   }
 
   /**
+   * Get full diff against the default branch (for pipeline review)
+   */
+  async getFullDiff(): Promise<string> {
+    try {
+      const defaultBranch = await this.getDefaultBranch();
+      // First try: diff against default branch
+      try {
+        return await this.runGit(`diff ${defaultBranch}...HEAD`);
+      } catch {
+        // Fallback: diff of all uncommitted + staged changes
+        const staged = await this.runGit('diff --cached');
+        const unstaged = await this.runGit('diff');
+        return [staged, unstaged].filter(Boolean).join('\n');
+      }
+    } catch {
+      return '';
+    }
+  }
+
+  /**
+   * Get list of changed files (relative to default branch)
+   */
+  async getChangedFiles(): Promise<string[]> {
+    try {
+      const defaultBranch = await this.getDefaultBranch();
+      try {
+        const output = await this.runGit(`diff --name-only ${defaultBranch}...HEAD`);
+        return output.split('\n').filter(Boolean);
+      } catch {
+        const staged = await this.runGit('diff --cached --name-only');
+        const unstaged = await this.runGit('diff --name-only');
+        const untracked = await this.runGit('ls-files --others --exclude-standard');
+        const all = [staged, unstaged, untracked].join('\n');
+        return [...new Set(all.split('\n').filter(Boolean))];
+      }
+    } catch {
+      return [];
+    }
+  }
+
+  /**
    * Stage all changes, commit, and push
    */
   async commitAndPush(taskId: string, taskTitle: string, message?: string): Promise<{ branch: string; commitHash: string }> {
@@ -181,7 +222,7 @@ export class GitService {
   /**
    * Create a PR using gh CLI or generate a URL
    */
-  async createPullRequest(taskId: string, taskTitle: string, description: string): Promise<string> {
+  async createPullRequest(taskId: string, taskTitle: string, description: string, customBody?: string): Promise<string> {
     const githubRepo = await this.getGitHubRepo();
     const currentBranch = await this.getCurrentBranch();
     const defaultBranch = await this.getDefaultBranch();
@@ -191,7 +232,7 @@ export class GitService {
     }
     
     const prTitle = `feat: ${taskTitle}`;
-    const prBody = `## TaskOS Task\n\n**Task:** ${taskTitle}\n**Task ID:** ${taskId}\n\n---\n\n${description}\n\n---\n*Created via [TaskOS](https://taskos.vercel.app) VS Code Extension* 🤖`;
+    const prBody = customBody || `## TaskOS Task\n\n**Task:** ${taskTitle}\n**Task ID:** ${taskId}\n\n---\n\n${description}\n\n---\n*Created via [TaskOS](https://taskos.vercel.app) VS Code Extension* 🤖`;
     
     // Try gh CLI first
     try {

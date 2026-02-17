@@ -40,6 +40,8 @@
     "onCommand:taskos.configure",
     "onCommand:taskos.sendToAgent",
     "onCommand:taskos.createPR",
+    "onCommand:taskos.runPipeline",
+    "onCommand:taskos.configureProfiles",
     "onView:taskosTasks"
   ],
   "main": "./out/extension.js",
@@ -68,6 +70,14 @@
       {
         "command": "taskos.createPR",
         "title": "TaskOS: Create Pull Request"
+      },
+      {
+        "command": "taskos.runPipeline",
+        "title": "TaskOS: Run Pipeline & Create PR"
+      },
+      {
+        "command": "taskos.configureProfiles",
+        "title": "TaskOS: Configure Agent Profiles"
       }
     ],
     "views": {
@@ -117,6 +127,26 @@
           "minimum": 5,
           "maximum": 300,
           "description": "Auto-refresh interval in seconds (5-300)"
+        },
+        "taskos.testCommands": {
+          "type": "object",
+          "default": {},
+          "description": "Test commands per type (unit, integration, e2e). Example: {\"unit\": \"npm test\", \"integration\": \"npm run test:integration\"}",
+          "properties": {
+            "unit": { "type": "string", "description": "Command for unit tests" },
+            "integration": { "type": "string", "description": "Command for integration tests" },
+            "e2e": { "type": "string", "description": "Command for e2e tests" }
+          }
+        },
+        "taskos.activeReviewProfile": {
+          "type": "string",
+          "default": "",
+          "description": "ID of the active code review profile (leave empty for workspace default)"
+        },
+        "taskos.activeStyleProfile": {
+          "type": "string",
+          "default": "",
+          "description": "ID of the active code style profile (leave empty for workspace default)"
         }
       }
     },

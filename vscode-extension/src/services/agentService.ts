@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { Task } from '../api/client';
 import { GitService } from './gitService';
+import { CodeStyleProfile, CodeReviewProfile } from '../profiles/types';
 
 export class AgentService {
   private gitService: GitService;
@@ -10,9 +11,20 @@ export class AgentService {
   }
 
   /**
-   * Generate a comprehensive prompt from a task
+   * Generate a comprehensive prompt from a task (basic, backward-compatible)
    */
   generatePrompt(task: Task): string {
+    return this.generateEnhancedPrompt(task);
+  }
+
+  /**
+   * Generate an enhanced prompt with profile-driven instructions
+   */
+  generateEnhancedPrompt(
+    task: Task,
+    styleProfile?: CodeStyleProfile,
+    reviewProfile?: CodeReviewProfile
+  ): string {
     const lines: string[] = [];
 
     // Header
@@ -45,8 +57,7 @@ export class AgentService {
           lines.push(`${index + 1}. ${checkbox} ${step.content}`);
         });
       lines.push('');
-      
-      // Point out incomplete items
+
       const incomplete = task.steps.filter(s => !s.completed);
       if (incomplete.length > 0) {
         lines.push(`> Focus on the ${incomplete.length} incomplete item(s) above.`);
@@ -61,14 +72,105 @@ export class AgentService {
       lines.push('');
     }
 
-    // Instructions for the agent
+    // Code Style Profile instructions
+    if (styleProfile) {
+      lines.push('## Code Style Requirements (MANDATORY)');
+      lines.push('');
+
+      if (styleProfile.language_stack.length > 0) {
+        lines.push(`**Tech Stack:** ${styleProfile.language_stack.join(', ')}`);
+        lines.push('');
+      }
+
+      if (styleProfile.patterns_preferred.length > 0) {
+        lines.push('**Required Design Patterns:**');
+        styleProfile.patterns_preferred.forEach(p => lines.push(`- Use ${p}`));
+        lines.push('');
+      }
+
+      if (styleProfile.patterns_avoid.length > 0) {
+        lines.push('**Patterns to AVOID:**');
+        styleProfile.patterns_avoid.forEach(p => lines.push(`- DO NOT use ${p}`));
+        lines.push('');
+      }
+
+      if (styleProfile.architecture_constraints.length > 0) {
+        lines.push('**Architecture Constraints:**');
+        styleProfile.architecture_constraints.forEach(c => lines.push(`- ${c}`));
+        lines.push('');
+      }
+
+      if (styleProfile.naming_conventions.length > 0) {
+        lines.push('**Naming Conventions:**');
+        styleProfile.naming_conventions.forEach(n => lines.push(`- ${n}`));
+        lines.push('');
+      }
+
+      if (styleProfile.error_handling_policy) {
+        lines.push(`**Error Handling:** ${styleProfile.error_handling_policy}`);
+        lines.push('');
+      }
+
+      // Testing requirements from profile
+      const tp = styleProfile.testing_policy;
+      if (tp) {
+        lines.push('**Testing Requirements:**');
+        const conditions: string[] = [];
+        if (tp.test_required_when.business_logic_changed) conditions.push('business logic changes');
+        if (tp.test_required_when.api_changed) conditions.push('API changes');
+        if (tp.test_required_when.db_query_changed) conditions.push('database query changes');
+        if (tp.test_required_when.bugfix) conditions.push('bug fixes');
+
+        if (conditions.length > 0) {
+          lines.push(`- You MUST write tests when: ${conditions.join(', ')}`);
+        }
+        if (tp.test_types_required.length > 0) {
+          lines.push(`- Required test types: ${tp.test_types_required.join(', ')}`);
+        }
+        tp.minimum_expectations.forEach(e => lines.push(`- ${e}`));
+        if (!tp.allow_skip_with_reason) {
+          lines.push('- Tests CANNOT be skipped under any circumstances');
+        }
+        lines.push('');
+      }
+    }
+
+    // Review awareness (so AI knows what will be checked)
+    if (reviewProfile) {
+      lines.push('## Code Review Standards (your code WILL be reviewed against these)');
+      lines.push('');
+      lines.push(`**Strictness Level:** ${reviewProfile.strictness.toUpperCase()}`);
+      lines.push('');
+
+      if (reviewProfile.required_checks.length > 0) {
+        lines.push('**Required Checks (blockers if violated):**');
+        reviewProfile.required_checks.forEach(c => lines.push(`- ${c}`));
+        lines.push('');
+      }
+
+      const blockerRules = reviewProfile.rules.filter(r => r.severity === 'blocker');
+      if (blockerRules.length > 0) {
+        lines.push('**Blocker Rules:**');
+        blockerRules.forEach(r => lines.push(`- ${r.description}`));
+        lines.push('');
+      }
+    }
+
+    // Base instructions
     lines.push('## Instructions');
     lines.push('Please implement this task following these guidelines:');
     lines.push('1. Follow the existing code patterns and conventions in this project');
     lines.push('2. Write clean, well-documented code');
     lines.push('3. Include proper error handling');
-    lines.push('4. Add relevant tests if applicable');
-    lines.push('5. Make sure all existing tests still pass');
+
+    if (styleProfile?.testing_policy) {
+      lines.push('4. Write tests as specified in the Testing Requirements above');
+      lines.push('5. Make sure all existing tests still pass');
+    } else {
+      lines.push('4. Add relevant tests if applicable');
+      lines.push('5. Make sure all existing tests still pass');
+    }
+
     lines.push('');
     lines.push('After completing the implementation, provide a summary of all changes made.');
 

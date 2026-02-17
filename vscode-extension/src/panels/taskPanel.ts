@@ -30,7 +30,6 @@ export class TaskPanel {
 
     this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
     
-    // Listen for configuration changes
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration('taskos.autoRefresh') || e.affectsConfiguration('taskos.autoRefreshInterval')) {
         this._restartAutoRefresh();
@@ -92,6 +91,12 @@ export class TaskPanel {
           case 'createPR':
             await vscode.commands.executeCommand('taskos.createPR', message.taskId, message.taskTitle);
             break;
+          case 'runPipeline':
+            await vscode.commands.executeCommand('taskos.runPipeline', message.taskId);
+            break;
+          case 'configureProfiles':
+            await vscode.commands.executeCommand('taskos.configureProfiles');
+            break;
           case 'viewPrompt':
             await this._viewPrompt(message.taskId);
             break;
@@ -129,7 +134,6 @@ export class TaskPanel {
       } else {
         await this._update();
       }
-      vscode.window.showInformationMessage(`Task status updated to ${status}`);
     } catch (error) {
       vscode.window.showErrorMessage('Failed to update task status');
     }
@@ -143,7 +147,6 @@ export class TaskPanel {
       } else {
         await this._update();
       }
-      vscode.window.showInformationMessage(`Task priority updated to ${priority}`);
     } catch (error) {
       vscode.window.showErrorMessage('Failed to update task priority');
     }
@@ -153,7 +156,6 @@ export class TaskPanel {
     try {
       await this._apiClient.updateTask(taskId, updates);
       await this._showTaskDetail(taskId);
-      vscode.window.showInformationMessage('Task updated successfully!');
     } catch (error) {
       vscode.window.showErrorMessage('Failed to update task');
     }
@@ -161,7 +163,6 @@ export class TaskPanel {
 
   private async _addStep(taskId: string, content: string) {
     try {
-      // Steps are managed server-side - show message
       vscode.window.showInformationMessage('To add steps, please use the web app.');
       await this._showTaskDetail(taskId);
     } catch (error) {
@@ -171,7 +172,6 @@ export class TaskPanel {
 
   private async _toggleStep(taskId: string, stepId: string, completed: boolean) {
     try {
-      // Steps are managed server-side - show message
       vscode.window.showInformationMessage('To update steps, please use the web app.');
       await this._showTaskDetail(taskId);
     } catch (error) {
@@ -181,7 +181,6 @@ export class TaskPanel {
 
   private async _deleteStep(taskId: string, stepId: string) {
     try {
-      // Steps are managed server-side - show message
       vscode.window.showInformationMessage('To delete steps, please use the web app.');
       await this._showTaskDetail(taskId);
     } catch (error) {
@@ -226,7 +225,6 @@ export class TaskPanel {
         status: 'todo'
       });
       await this._update();
-      vscode.window.showInformationMessage('Task created successfully!');
     } catch (error) {
       vscode.window.showErrorMessage('Failed to create task');
     }
@@ -264,1212 +262,427 @@ export class TaskPanel {
     }
   }
 
-  private _getBaseStyles(): string {
+  // ===================== DESIGN SYSTEM =====================
+
+  private _getDesignTokens(): string {
     return `
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
-      
-      body {
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-        background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
-        color: #e4e4e7;
-        min-height: 100vh;
-        padding: 0;
-      }
+      :root {
+        --bg-primary: #06060a;
+        --bg-secondary: #0c0c14;
+        --bg-tertiary: #12121e;
+        --bg-card: #0e0e18;
+        --bg-card-hover: #141422;
+        --bg-elevated: #16162a;
+        --bg-input: #0e0e1a;
 
-      .btn {
-        padding: 10px 20px;
-        border-radius: 10px;
-        border: none;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        font-size: 14px;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-      }
+        --border-subtle: rgba(255,255,255,0.06);
+        --border-default: rgba(255,255,255,0.08);
+        --border-hover: rgba(255,255,255,0.12);
+        --border-focus: rgba(124,58,237,0.5);
+        --border-accent: rgba(124,58,237,0.3);
 
-      .btn-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-      }
+        --text-primary: #f0f0f5;
+        --text-secondary: rgba(240,240,245,0.65);
+        --text-tertiary: rgba(240,240,245,0.4);
+        --text-inverse: #06060a;
 
-      .btn-primary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
-      }
+        --accent-primary: #7C3AED;
+        --accent-primary-hover: #8B5CF6;
+        --accent-primary-subtle: rgba(124,58,237,0.12);
+        --accent-gradient: linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%);
+        --accent-gradient-vivid: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 50%, #6D28D9 100%);
 
-      .btn-secondary {
-        background: rgba(255,255,255,0.1);
-        color: #e4e4e7;
-        border: 1px solid rgba(255,255,255,0.2);
-      }
+        --success: #10B981;
+        --success-subtle: rgba(16,185,129,0.12);
+        --warning: #F59E0B;
+        --warning-subtle: rgba(245,158,11,0.12);
+        --danger: #EF4444;
+        --danger-subtle: rgba(239,68,68,0.12);
+        --info: #3B82F6;
+        --info-subtle: rgba(59,130,246,0.12);
 
-      .btn-secondary:hover {
-        background: rgba(255,255,255,0.15);
-        border-color: rgba(255,255,255,0.3);
-      }
+        --radius-sm: 6px;
+        --radius-md: 10px;
+        --radius-lg: 14px;
+        --radius-xl: 18px;
+        --radius-full: 100px;
 
-      .btn-danger {
-        background: rgba(239, 68, 68, 0.2);
-        color: #f87171;
-        border: 1px solid rgba(239, 68, 68, 0.3);
-      }
+        --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+        --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+        --shadow-lg: 0 8px 30px rgba(0,0,0,0.5);
+        --shadow-glow: 0 0 20px rgba(124,58,237,0.15);
 
-      .btn-danger:hover {
-        background: rgba(239, 68, 68, 0.3);
-      }
+        --font-sans: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+        --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas, monospace;
 
-      .btn-icon {
-        padding: 8px;
-        min-width: 36px;
-        justify-content: center;
-      }
-
-      .badge {
-        padding: 6px 12px;
-        border-radius: 20px;
-        font-size: 11px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-      }
-
-      .status-backlog { background: rgba(107, 114, 128, 0.2); color: #9ca3af; }
-      .status-todo { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
-      .status-in_progress { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
-      .status-review { background: rgba(168, 85, 247, 0.2); color: #c084fc; }
-      .status-done { background: rgba(16, 185, 129, 0.2); color: #34d399; }
-
-      .priority-urgent { background: rgba(239, 68, 68, 0.2); color: #f87171; }
-      .priority-high { background: rgba(249, 115, 22, 0.2); color: #fb923c; }
-      .priority-medium { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
-      .priority-low { background: rgba(16, 185, 129, 0.2); color: #34d399; }
-
-      .form-group {
-        margin-bottom: 20px;
-      }
-
-      .form-label {
-        display: block;
-        font-size: 14px;
-        font-weight: 600;
-        margin-bottom: 8px;
-        color: rgba(255,255,255,0.8);
-      }
-
-      .form-input, .form-select {
-        width: 100%;
-        padding: 14px 16px;
-        background: rgba(255,255,255,0.05);
-        border: 1px solid rgba(255,255,255,0.1);
-        border-radius: 12px;
-        color: #e4e4e7;
-        font-size: 14px;
-        transition: all 0.3s ease;
-      }
-
-      .form-input:focus, .form-select:focus {
-        outline: none;
-        border-color: #667eea;
-        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
-      }
-
-      .form-textarea {
-        min-height: 120px;
-        resize: vertical;
-        font-family: inherit;
-      }
-
-      ::-webkit-scrollbar {
-        width: 8px;
-      }
-
-      ::-webkit-scrollbar-track {
-        background: rgba(255,255,255,0.05);
-      }
-
-      ::-webkit-scrollbar-thumb {
-        background: rgba(255,255,255,0.2);
-        border-radius: 4px;
-      }
-
-      ::-webkit-scrollbar-thumb:hover {
-        background: rgba(255,255,255,0.3);
+        --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+        --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+        --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
       }
     `;
   }
 
-  private _getTaskDetailContent(task: Task): string {
-    const steps = task.steps || [];
-    const completedSteps = steps.filter(st => st.completed).length;
-    const progress = steps.length > 0 ? Math.round((completedSteps / steps.length) * 100) : 0;
+  private _getBaseStyles(): string {
+    return `
+      ${this._getDesignTokens()}
 
-    const stepsHtml = steps.map(step => `
-      <div class="step-item ${step.completed ? 'completed' : ''}">
-        <label class="step-checkbox">
-          <input type="checkbox" ${step.completed ? 'checked' : ''} 
-            onchange="toggleStep('${step.id}', this.checked)">
-          <span class="checkmark"></span>
-        </label>
-        <span class="step-content">${this._escapeHtml(step.content)}</span>
-      </div>
-    `).join('');
+      * { margin: 0; padding: 0; box-sizing: border-box; }
 
-    return `<!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <style>
-        ${this._getBaseStyles()}
+      body {
+        font-family: var(--font-sans);
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        min-height: 100vh;
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+      }
 
-        .detail-container {
-          max-width: 800px;
-          margin: 0 auto;
-          padding: 24px;
-        }
+      /* ---- Buttons ---- */
+      .btn {
+        display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+        padding: 9px 18px;
+        border-radius: var(--radius-md);
+        border: 1px solid transparent;
+        font-weight: 500; font-size: 13px; font-family: var(--font-sans);
+        cursor: pointer;
+        transition: all var(--transition-base);
+        white-space: nowrap;
+        line-height: 1.4;
+      }
+      .btn:active { transform: scale(0.97); }
 
-        .detail-header {
-          display: flex;
-          align-items: center;
-          gap: 16px;
-          margin-bottom: 24px;
-          padding-bottom: 24px;
-          border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
+      .btn-primary {
+        background: var(--accent-gradient);
+        color: #fff; border-color: transparent;
+        box-shadow: 0 1px 3px rgba(124,58,237,0.3), inset 0 1px 0 rgba(255,255,255,0.1);
+      }
+      .btn-primary:hover { box-shadow: 0 4px 16px rgba(124,58,237,0.4), inset 0 1px 0 rgba(255,255,255,0.1); }
 
-        .back-btn {
-          background: rgba(255,255,255,0.1);
-          border: none;
-          padding: 10px 12px;
-          border-radius: 10px;
-          color: #e4e4e7;
-          cursor: pointer;
-          transition: all 0.2s;
-          font-size: 18px;
-        }
+      .btn-ghost {
+        background: transparent;
+        color: var(--text-secondary); border-color: var(--border-default);
+      }
+      .btn-ghost:hover { background: rgba(255,255,255,0.04); border-color: var(--border-hover); color: var(--text-primary); }
 
-        .back-btn:hover {
-          background: rgba(255,255,255,0.2);
-        }
+      .btn-success {
+        background: var(--success); color: #fff;
+        box-shadow: 0 1px 3px rgba(16,185,129,0.3);
+      }
+      .btn-success:hover { box-shadow: 0 4px 16px rgba(16,185,129,0.4); }
 
-        .detail-title-section {
-          flex: 1;
-        }
+      .btn-warning {
+        background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+        color: var(--text-inverse); font-weight: 600;
+        box-shadow: 0 1px 3px rgba(245,158,11,0.3);
+      }
+      .btn-warning:hover { box-shadow: 0 4px 16px rgba(245,158,11,0.4); }
 
-        .detail-title {
-          font-size: 24px;
-          font-weight: 700;
-          color: #fff;
-          margin-bottom: 8px;
-        }
+      .btn-danger-ghost {
+        background: var(--danger-subtle); color: #F87171; border-color: rgba(239,68,68,0.2);
+      }
+      .btn-danger-ghost:hover { background: rgba(239,68,68,0.2); }
 
-        .detail-meta {
-          display: flex;
-          gap: 12px;
-          flex-wrap: wrap;
-        }
+      .btn-sm { padding: 6px 12px; font-size: 12px; border-radius: var(--radius-sm); }
+      .btn-lg { padding: 12px 24px; font-size: 14px; font-weight: 600; border-radius: var(--radius-lg); }
+      .btn-icon { padding: 8px; min-width: 34px; }
 
-        .section {
-          background: rgba(255,255,255,0.03);
-          border-radius: 16px;
-          padding: 24px;
-          margin-bottom: 20px;
-          border: 1px solid rgba(255,255,255,0.06);
-        }
+      /* ---- Badges ---- */
+      .badge {
+        display: inline-flex; align-items: center; gap: 5px;
+        padding: 3px 10px; border-radius: var(--radius-full);
+        font-size: 11px; font-weight: 600; letter-spacing: 0.3px;
+        text-transform: uppercase; line-height: 1.5;
+      }
 
-        .section-title {
-          font-size: 16px;
-          font-weight: 600;
-          color: #fff;
-          margin-bottom: 16px;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
+      .status-backlog  { background: rgba(107,114,128,0.15); color: #9CA3AF; }
+      .status-todo     { background: var(--info-subtle);      color: #60A5FA; }
+      .status-in_progress { background: var(--warning-subtle); color: #FBBF24; }
+      .status-review   { background: var(--accent-primary-subtle); color: #C084FC; }
+      .status-done     { background: var(--success-subtle);   color: #34D399; }
 
-        .status-priority-row {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 20px;
-        }
+      .priority-urgent { background: var(--danger-subtle);  color: #F87171; }
+      .priority-high   { background: rgba(249,115,22,0.12); color: #FB923C; }
+      .priority-medium { background: var(--warning-subtle); color: #FBBF24; }
+      .priority-low    { background: var(--success-subtle); color: #34D399; }
 
-        .select-wrapper {
-          position: relative;
-        }
+      /* ---- Forms ---- */
+      .form-group { margin-bottom: 20px; }
 
-        .select-wrapper select {
-          width: 100%;
-          padding: 12px 16px;
-          background: rgba(255,255,255,0.08);
-          border: 1px solid rgba(255,255,255,0.15);
-          border-radius: 10px;
-          color: #e4e4e7;
-          font-size: 14px;
-          cursor: pointer;
-          appearance: none;
-        }
+      .form-label {
+        display: block; font-size: 12px; font-weight: 600;
+        color: var(--text-secondary); text-transform: uppercase;
+        letter-spacing: 0.5px; margin-bottom: 8px;
+      }
 
-        .select-wrapper::after {
-          content: "▼";
-          position: absolute;
-          right: 16px;
-          top: 50%;
-          transform: translateY(-50%);
-          font-size: 10px;
-          color: rgba(255,255,255,0.5);
-          pointer-events: none;
-        }
+      .form-input, .form-select {
+        width: 100%; padding: 11px 14px;
+        background: var(--bg-input);
+        border: 1px solid var(--border-default);
+        border-radius: var(--radius-md);
+        color: var(--text-primary); font-size: 14px;
+        font-family: var(--font-sans);
+        transition: all var(--transition-base);
+      }
+      .form-input:focus, .form-select:focus {
+        outline: none; border-color: var(--border-focus);
+        box-shadow: 0 0 0 3px rgba(124,58,237,0.15);
+      }
+      .form-input::placeholder { color: var(--text-tertiary); }
+      .form-textarea { min-height: 100px; resize: vertical; font-family: var(--font-sans); }
+      .form-select { cursor: pointer; appearance: none; }
+      .form-select option { background: var(--bg-secondary); }
 
-        .select-wrapper select option {
-          background: #1a1a2e;
-        }
+      /* ---- Cards ---- */
+      .card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        transition: all var(--transition-base);
+      }
+      .card:hover { border-color: var(--border-hover); }
+      .card-body { padding: 20px; }
 
-        /* Checklist Steps */
-        .steps-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 16px;
-        }
+      /* ---- Scrollbar ---- */
+      ::-webkit-scrollbar { width: 6px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+      ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
 
-        .progress-bar {
-          height: 6px;
-          background: rgba(255,255,255,0.1);
-          border-radius: 3px;
-          overflow: hidden;
-          margin-bottom: 20px;
-        }
-
-        .progress-fill {
-          height: 100%;
-          background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-          border-radius: 3px;
-          transition: width 0.3s ease;
-        }
-
-        .progress-text {
-          font-size: 12px;
-          color: rgba(255,255,255,0.5);
-          margin-bottom: 12px;
-        }
-
-        .step-item {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          padding: 12px 16px;
-          background: rgba(255,255,255,0.05);
-          border-radius: 10px;
-          margin-bottom: 8px;
-          transition: all 0.2s;
-        }
-
-        .step-item:hover {
-          background: rgba(255,255,255,0.08);
-        }
-
-        .step-item.completed .step-content {
-          text-decoration: line-through;
-          color: rgba(255,255,255,0.4);
-        }
-
-        .step-checkbox {
-          position: relative;
-          width: 22px;
-          height: 22px;
-          cursor: pointer;
-        }
-
-        .step-checkbox input {
-          opacity: 0;
-          position: absolute;
-        }
-
-        .checkmark {
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 22px;
-          height: 22px;
-          background: rgba(255,255,255,0.1);
-          border: 2px solid rgba(255,255,255,0.3);
-          border-radius: 6px;
-          transition: all 0.2s;
-        }
-
-        .step-checkbox input:checked ~ .checkmark {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          border-color: transparent;
-        }
-
-        .checkmark::after {
-          content: "✓";
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          color: white;
-          font-size: 12px;
-          opacity: 0;
-          transition: opacity 0.2s;
-        }
-
-        .step-checkbox input:checked ~ .checkmark::after {
-          opacity: 1;
-        }
-
-        .step-content {
-          flex: 1;
-          font-size: 14px;
-          color: #e4e4e7;
-        }
-
-        .empty-steps {
-          text-align: center;
-          padding: 32px;
-          color: rgba(255,255,255,0.4);
-        }
-
-        .empty-steps-icon {
-          font-size: 48px;
-          margin-bottom: 12px;
-        }
-
-        /* AI Agent Button */
-        .btn-agent {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          color: white;
-          box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
-          padding: 12px 24px;
-          font-size: 15px;
-          font-weight: 700;
-          letter-spacing: 0.3px;
-        }
-
-        .btn-agent:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 8px 30px rgba(102, 126, 234, 0.6);
-        }
-
-        .btn-pr {
-          background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-          color: white;
-          box-shadow: 0 4px 20px rgba(16, 185, 129, 0.3);
-          padding: 12px 24px;
-          font-size: 15px;
-          font-weight: 700;
-        }
-
-        .btn-pr:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 8px 30px rgba(16, 185, 129, 0.5);
-        }
-
-        /* Actions */
-        .action-buttons {
-          display: flex;
-          gap: 12px;
-          margin-top: 24px;
-        }
-
-        /* Date inputs */
-        input[type="date"] {
-          color-scheme: dark;
-        }
-
-        /* Animations */
-        @keyframes slideIn {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-
-        .section {
-          animation: slideIn 0.3s ease forwards;
-        }
-
-        .section:nth-child(2) { animation-delay: 0.1s; }
-        .section:nth-child(3) { animation-delay: 0.2s; }
-        .section:nth-child(4) { animation-delay: 0.3s; }
-      </style>
-    </head>
-    <body>
-      <div class="detail-container">
-        <div class="detail-header">
-          <button class="back-btn" onclick="backToList()">←</button>
-          <div class="detail-title-section">
-            <div class="detail-title" id="taskTitle">${this._escapeHtml(task.title)}</div>
-            <div class="detail-meta">
-              <span class="badge status-${task.status}">${this._getStatusIcon(task.status)} ${this._getStatusLabel(task.status)}</span>
-              <span class="badge priority-${task.priority}">${this._getPriorityIcon(task.priority)} ${task.priority}</span>
-            </div>
-          </div>
-          <div style="display: flex; gap: 8px;">
-            <button class="btn btn-secondary" onclick="openInBrowser()" title="Open in Browser">🌐</button>
-          </div>
-        </div>
-
-        <!-- 🤖 AI Agent Section -->
-        <div class="section" style="border-color: rgba(102, 126, 234, 0.3); background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);">
-          <div class="section-title" style="color: #a78bfa;">🤖 AI Agent</div>
-          <p style="color: rgba(255,255,255,0.6); margin-bottom: 16px; font-size: 14px; line-height: 1.6;">
-            Send this task to Cursor's AI Agent. It will create a branch, generate a detailed prompt from the task details, and open the AI Composer to start working.
-          </p>
-          <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-            <button class="btn btn-agent" onclick="sendToAgent()">
-              🤖 Send to AI Agent
-            </button>
-            <button class="btn btn-secondary" onclick="viewPrompt()">
-              📋 View Prompt
-            </button>
-            <button class="btn btn-pr" onclick="createPR()">
-              🚀 Create PR
-            </button>
-          </div>
-        </div>
-
-        <!-- Edit Title & Description -->
-        <div class="section">
-          <div class="section-title">📝 Details</div>
-          <div class="form-group">
-            <label class="form-label">Title</label>
-            <input type="text" class="form-input" id="editTitle" value="${this._escapeHtml(task.title)}" onchange="saveTitle()">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Description</label>
-            <textarea class="form-input form-textarea" id="editDescription" placeholder="Add a description..." onchange="saveDescription()">${task.description ? this._escapeHtml(task.description) : ''}</textarea>
-          </div>
-        </div>
-
-        <!-- Status & Priority -->
-        <div class="section">
-          <div class="section-title">🎯 Status & Priority</div>
-          <div class="status-priority-row">
-            <div>
-              <label class="form-label">Status</label>
-              <div class="select-wrapper">
-                <select onchange="updateStatus(this.value)">
-                  <option value="backlog" ${task.status === 'backlog' ? 'selected' : ''}>📋 Backlog</option>
-                  <option value="todo" ${task.status === 'todo' ? 'selected' : ''}>📝 To Do</option>
-                  <option value="in_progress" ${task.status === 'in_progress' ? 'selected' : ''}>🔄 In Progress</option>
-                  <option value="review" ${task.status === 'review' ? 'selected' : ''}>👁️ Review</option>
-                  <option value="done" ${task.status === 'done' ? 'selected' : ''}>✅ Done</option>
-                </select>
-              </div>
-            </div>
-            <div>
-              <label class="form-label">Priority</label>
-              <div class="select-wrapper">
-                <select onchange="updatePriority(this.value)">
-                  <option value="low" ${task.priority === 'low' ? 'selected' : ''}>🟢 Low</option>
-                  <option value="medium" ${task.priority === 'medium' ? 'selected' : ''}>🟡 Medium</option>
-                  <option value="high" ${task.priority === 'high' ? 'selected' : ''}>🟠 High</option>
-                  <option value="urgent" ${task.priority === 'urgent' ? 'selected' : ''}>🔴 Urgent</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Dates -->
-        <div class="section">
-          <div class="section-title">📅 Dates</div>
-          <div class="status-priority-row">
-            <div class="form-group" style="margin-bottom: 0;">
-              <label class="form-label">Start Date</label>
-              <input type="date" class="form-input" id="startDate" 
-                value="${task.startDate ? task.startDate.split('T')[0] : ''}" 
-                onchange="saveDate('startDate', this.value)">
-            </div>
-            <div class="form-group" style="margin-bottom: 0;">
-              <label class="form-label">Due Date</label>
-              <input type="date" class="form-input" id="dueDate" 
-                value="${task.dueDate ? task.dueDate.split('T')[0] : ''}" 
-                onchange="saveDate('dueDate', this.value)">
-            </div>
-          </div>
-        </div>
-
-        <!-- Checklist -->
-        <div class="section">
-          <div class="steps-header">
-            <div class="section-title" style="margin-bottom: 0;">📋 Checklist</div>
-            <span class="progress-text">${completedSteps}/${steps.length} completed</span>
-          </div>
-          ${steps.length > 0 ? `
-            <div class="progress-bar">
-              <div class="progress-fill" style="width: ${progress}%"></div>
-            </div>
-            <div class="steps-list">
-              ${stepsHtml}
-            </div>
-          ` : `
-            <div class="empty-steps">
-              <div class="empty-steps-icon">✅</div>
-              <div>No checklist items yet</div>
-              <div style="font-size: 12px; margin-top: 8px; opacity: 0.6;">Add items via the web app</div>
-            </div>
-          `}
-        </div>
-
-        <!-- Danger Zone -->
-        <div class="section" style="border-color: rgba(239, 68, 68, 0.2);">
-          <div class="section-title" style="color: #f87171;">⚠️ Danger Zone</div>
-          <p style="color: rgba(255,255,255,0.5); margin-bottom: 16px; font-size: 14px;">
-            Once you delete a task, there is no going back. Please be certain.
-          </p>
-          <button class="btn btn-danger" onclick="confirmDelete()">🗑️ Delete Task</button>
-        </div>
-      </div>
-
-      <script>
-        const vscode = acquireVsCodeApi();
-        const taskId = '${task.id}';
-
-        function backToList() {
-          vscode.postMessage({ command: 'backToList' });
-        }
-
-        function openInBrowser() {
-          vscode.postMessage({ command: 'openInBrowser', taskId });
-        }
-
-        function updateStatus(status) {
-          vscode.postMessage({ command: 'updateStatus', taskId, status });
-        }
-
-        function updatePriority(priority) {
-          vscode.postMessage({ command: 'updatePriority', taskId, priority });
-        }
-
-        function saveTitle() {
-          const title = document.getElementById('editTitle').value.trim();
-          if (title) {
-            vscode.postMessage({ command: 'updateTask', taskId, updates: { title } });
-          }
-        }
-
-        function saveDescription() {
-          const description = document.getElementById('editDescription').value;
-          vscode.postMessage({ command: 'updateTask', taskId, updates: { description } });
-        }
-
-        function saveDate(field, value) {
-          const updates = {};
-          updates[field] = value || null;
-          vscode.postMessage({ command: 'updateTask', taskId, updates });
-        }
-
-        function toggleStep(stepId, completed) {
-          vscode.postMessage({ command: 'toggleStep', taskId, stepId, completed });
-        }
-
-        function sendToAgent() {
-          vscode.postMessage({ command: 'sendToAgent', taskId });
-        }
-
-        function viewPrompt() {
-          vscode.postMessage({ command: 'viewPrompt', taskId });
-        }
-
-        function createPR() {
-          const title = document.getElementById('editTitle')?.value || '';
-          vscode.postMessage({ command: 'createPR', taskId, taskTitle: title });
-        }
-
-        function confirmDelete() {
-          if (confirm('Are you sure you want to delete this task?')) {
-            vscode.postMessage({ command: 'deleteTask', taskId });
-          }
-        }
-      </script>
-    </body>
-    </html>`;
+      /* ---- Animations ---- */
+      @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+      @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
+    `;
   }
 
-  private _getStatusIcon(status: string): string {
-    const icons: { [key: string]: string } = {
-      backlog: '📋',
-      todo: '📝',
-      in_progress: '🔄',
-      review: '👁️',
-      done: '✅'
-    };
-    return icons[status] || '📋';
-  }
-
-  private _getStatusLabel(status: string): string {
-    const labels: { [key: string]: string } = {
-      backlog: 'Backlog',
-      todo: 'To Do',
-      in_progress: 'In Progress',
-      review: 'Review',
-      done: 'Done'
-    };
-    return labels[status] || status;
-  }
-
-  private _getPriorityIcon(priority: string): string {
-    const icons: { [key: string]: string } = {
-      urgent: '🔴',
-      high: '🟠',
-      medium: '🟡',
-      low: '🟢'
-    };
-    return icons[priority] || '🟡';
-  }
-
-  private _getErrorContent(error: any): string {
-    return `<!DOCTYPE html>
-    <html>
-    <head>
-      <style>
-        ${this._getBaseStyles()}
-        .error-container {
-          text-align: center;
-          padding: 60px 20px;
-          max-width: 400px;
-          margin: 100px auto;
-          background: rgba(255,255,255,0.05);
-          border-radius: 20px;
-          border: 1px solid rgba(255,255,255,0.1);
-        }
-        .error-icon { font-size: 64px; margin-bottom: 20px; }
-        .error-title { font-size: 24px; font-weight: 600; margin-bottom: 10px; color: #ff6b6b; }
-        .error-message { color: rgba(255,255,255,0.6); margin-bottom: 24px; }
-      </style>
-    </head>
-    <body>
-      <div class="error-container">
-        <div class="error-icon">😵</div>
-        <div class="error-title">Connection Failed</div>
-        <div class="error-message">${error?.message || 'Unable to connect to TaskOS'}</div>
-        <button class="btn btn-primary" onclick="refresh()">Try Again</button>
-      </div>
-      <script>
-        const vscode = acquireVsCodeApi();
-        function refresh() { vscode.postMessage({ command: 'refresh' }); }
-      </script>
-    </body>
-    </html>`;
-  }
+  // ===================== TASK LIST VIEW =====================
 
   private _getListContent(tasks: Task[]): string {
-    const taskCards = tasks.map(task => this._renderTaskCard(task)).join('');
-    
     const stats = {
       total: tasks.length,
       done: tasks.filter(t => t.status === 'done').length,
       inProgress: tasks.filter(t => t.status === 'in_progress').length,
       todo: tasks.filter(t => t.status === 'todo' || t.status === 'backlog').length,
-      high: tasks.filter(t => t.priority === 'high' || t.priority === 'urgent').length
     };
 
+    const taskCards = tasks.map((task, i) => this._renderTaskCard(task, i)).join('');
+
     return `<!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <style>
-        ${this._getBaseStyles()}
+    <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+      ${this._getBaseStyles()}
 
-        .header {
-          background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
-          backdrop-filter: blur(10px);
-          border-bottom: 1px solid rgba(255,255,255,0.1);
-          padding: 24px 32px;
-          position: sticky;
-          top: 0;
-          z-index: 100;
-        }
+      .shell { display: flex; flex-direction: column; min-height: 100vh; }
 
-        .header-top {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          margin-bottom: 20px;
-        }
+      /* ---- Top Bar ---- */
+      .topbar {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 16px 24px;
+        background: var(--bg-secondary);
+        border-bottom: 1px solid var(--border-subtle);
+        position: sticky; top: 0; z-index: 100;
+        backdrop-filter: blur(12px);
+      }
+      .topbar-brand { display: flex; align-items: center; gap: 10px; }
+      .topbar-logo {
+        width: 30px; height: 30px; border-radius: var(--radius-sm);
+        background: var(--accent-gradient);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 14px; font-weight: 800; color: #fff;
+        box-shadow: var(--shadow-glow);
+      }
+      .topbar-title { font-size: 15px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.3px; }
+      .topbar-actions { display: flex; align-items: center; gap: 8px; }
+      .live-dot {
+        display: flex; align-items: center; gap: 6px;
+        font-size: 11px; font-weight: 600; color: var(--success);
+        padding: 4px 10px; border-radius: var(--radius-full);
+        background: var(--success-subtle);
+      }
+      .live-dot::before {
+        content: ''; width: 6px; height: 6px; border-radius: 50%;
+        background: var(--success); animation: pulse 2s infinite;
+      }
 
-        .logo {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-        }
+      /* ---- Stats ---- */
+      .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 20px 24px 0; }
+      .stat {
+        background: var(--bg-card); border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg); padding: 16px;
+        transition: all var(--transition-base);
+      }
+      .stat:hover { border-color: var(--border-hover); transform: translateY(-1px); }
+      .stat-val { font-size: 26px; font-weight: 700; letter-spacing: -1px; margin-bottom: 2px; }
+      .stat-lbl { font-size: 11px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600; }
 
-        .logo-icon {
-          width: 40px;
-          height: 40px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          border-radius: 12px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 20px;
-          box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-        }
+      .stat-total .stat-val { color: var(--accent-primary-hover); }
+      .stat-prog  .stat-val { color: var(--warning); }
+      .stat-done  .stat-val { color: var(--success); }
+      .stat-todo  .stat-val { color: var(--info); }
 
-        .logo-text {
-          font-size: 24px;
-          font-weight: 700;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-        }
+      /* ---- Filters ---- */
+      .filters {
+        display: flex; gap: 10px; align-items: center; padding: 16px 24px;
+        border-bottom: 1px solid var(--border-subtle); flex-wrap: wrap;
+      }
+      .search-wrap { flex: 1; min-width: 200px; position: relative; }
+      .search-wrap input {
+        width: 100%; padding: 9px 14px 9px 38px;
+        background: var(--bg-input); border: 1px solid var(--border-default);
+        border-radius: var(--radius-md); color: var(--text-primary); font-size: 13px;
+        transition: all var(--transition-base);
+      }
+      .search-wrap input:focus { outline: none; border-color: var(--border-focus); box-shadow: 0 0 0 3px rgba(124,58,237,0.1); }
+      .search-wrap input::placeholder { color: var(--text-tertiary); }
+      .search-wrap svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-tertiary); }
 
-        .header-actions {
-          display: flex;
-          gap: 12px;
-          align-items: center;
-        }
+      .filter-sel {
+        padding: 9px 14px; background: var(--bg-input); border: 1px solid var(--border-default);
+        border-radius: var(--radius-md); color: var(--text-secondary); font-size: 13px;
+        cursor: pointer; transition: all var(--transition-base); appearance: none;
+        font-family: var(--font-sans);
+      }
+      .filter-sel:focus { outline: none; border-color: var(--border-focus); }
+      .filter-sel option { background: var(--bg-secondary); color: var(--text-primary); }
 
-        .auto-refresh-indicator {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 8px 14px;
-          background: rgba(16, 185, 129, 0.15);
-          border: 1px solid rgba(16, 185, 129, 0.3);
-          border-radius: 20px;
-          font-size: 12px;
-          font-weight: 600;
-          color: #34d399;
-          cursor: default;
-        }
+      /* ---- Task List ---- */
+      .task-list { padding: 16px 24px; display: grid; gap: 8px; }
+      .task-row {
+        display: flex; align-items: center; gap: 14px;
+        padding: 14px 16px; border-radius: var(--radius-md);
+        background: var(--bg-card); border: 1px solid var(--border-subtle);
+        cursor: pointer; transition: all var(--transition-base);
+        animation: fadeIn var(--transition-slow) ease both;
+      }
+      .task-row:hover { background: var(--bg-card-hover); border-color: var(--border-hover); }
+      .task-row:hover .task-agent-btn { opacity: 1; }
 
-        .pulse-dot {
-          width: 8px;
-          height: 8px;
-          background: #34d399;
-          border-radius: 50%;
-          animation: pulse 2s infinite;
-        }
+      .task-priority-dot {
+        width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+      }
+      .dot-urgent, .dot-high { background: var(--danger); box-shadow: 0 0 6px rgba(239,68,68,0.4); }
+      .dot-medium { background: var(--warning); box-shadow: 0 0 6px rgba(245,158,11,0.3); }
+      .dot-low { background: var(--success); box-shadow: 0 0 6px rgba(16,185,129,0.3); }
 
-        @keyframes pulse {
-          0% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.5; transform: scale(1.2); }
-          100% { opacity: 1; transform: scale(1); }
-        }
+      .task-info { flex: 1; min-width: 0; }
+      .task-name { font-size: 14px; font-weight: 500; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .task-sub { display: flex; gap: 8px; margin-top: 4px; align-items: center; }
 
-        .update-toast {
-          position: fixed;
-          bottom: 24px;
-          right: 24px;
-          background: linear-gradient(135deg, rgba(16, 185, 129, 0.9) 0%, rgba(5, 150, 105, 0.9) 100%);
-          color: white;
-          padding: 12px 20px;
-          border-radius: 12px;
-          font-size: 14px;
-          font-weight: 500;
-          box-shadow: 0 10px 30px rgba(16, 185, 129, 0.4);
-          display: none;
-          animation: slideUp 0.3s ease;
-          z-index: 1000;
-        }
+      .task-agent-btn {
+        opacity: 0; flex-shrink: 0;
+        background: var(--accent-gradient); border: none; border-radius: var(--radius-sm);
+        padding: 6px 10px; cursor: pointer; font-size: 12px; color: #fff;
+        transition: all var(--transition-base); font-weight: 600;
+      }
+      .task-agent-btn:hover { box-shadow: var(--shadow-glow); transform: scale(1.05); }
 
-        .update-toast.show {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
+      .task-steps-count {
+        font-size: 11px; color: var(--text-tertiary); background: rgba(255,255,255,0.04);
+        padding: 2px 8px; border-radius: var(--radius-full);
+      }
 
-        @keyframes slideUp {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
+      /* ---- Empty ---- */
+      .empty { text-align: center; padding: 80px 24px; }
+      .empty-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.4; }
+      .empty-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+      .empty-text { font-size: 13px; color: var(--text-tertiary); }
 
-        .stats-grid {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 16px;
-        }
-
-        .stat-card {
-          background: rgba(255,255,255,0.05);
-          border-radius: 16px;
-          padding: 16px 20px;
-          border: 1px solid rgba(255,255,255,0.08);
-          transition: all 0.3s ease;
-        }
-
-        .stat-card:hover {
-          background: rgba(255,255,255,0.08);
-          transform: translateY(-2px);
-        }
-
-        .stat-value {
-          font-size: 28px;
-          font-weight: 700;
-          margin-bottom: 4px;
-        }
-
-        .stat-label {
-          font-size: 12px;
-          color: rgba(255,255,255,0.5);
-          text-transform: uppercase;
-          letter-spacing: 1px;
-        }
-
-        .stat-total .stat-value { color: #667eea; }
-        .stat-progress .stat-value { color: #f59e0b; }
-        .stat-done .stat-value { color: #10b981; }
-        .stat-high .stat-value { color: #ef4444; }
-
-        .filters-bar {
-          padding: 20px 32px;
-          display: flex;
-          gap: 16px;
-          flex-wrap: wrap;
-          align-items: center;
-          border-bottom: 1px solid rgba(255,255,255,0.05);
-        }
-
-        .search-box {
-          flex: 1;
-          min-width: 250px;
-          position: relative;
-        }
-
-        .search-box input {
-          width: 100%;
-          padding: 12px 16px 12px 44px;
-          background: rgba(255,255,255,0.05);
-          border: 1px solid rgba(255,255,255,0.1);
-          border-radius: 12px;
-          color: #e4e4e7;
-          font-size: 14px;
-          transition: all 0.3s ease;
-        }
-
-        .search-box input:focus {
-          outline: none;
-          border-color: #667eea;
-          background: rgba(255,255,255,0.08);
-          box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
-        }
-
-        .search-box::before {
-          content: "🔍";
-          position: absolute;
-          left: 16px;
-          top: 50%;
-          transform: translateY(-50%);
-          font-size: 16px;
-        }
-
-        .filter-select {
-          padding: 12px 16px;
-          background: rgba(255,255,255,0.05);
-          border: 1px solid rgba(255,255,255,0.1);
-          border-radius: 12px;
-          color: #e4e4e7;
-          font-size: 14px;
-          cursor: pointer;
-          transition: all 0.3s ease;
-        }
-
-        .filter-select:focus {
-          outline: none;
-          border-color: #667eea;
-        }
-
-        .filter-select option {
-          background: #1a1a2e;
-          color: #e4e4e7;
-        }
-
-        .tasks-container {
-          padding: 24px 32px;
-        }
-
-        .tasks-grid {
-          display: grid;
-          gap: 16px;
-        }
-
-        .task-card {
-          background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%);
-          border-radius: 16px;
-          padding: 20px 24px;
-          border: 1px solid rgba(255,255,255,0.08);
-          transition: all 0.3s ease;
-          cursor: pointer;
-          position: relative;
-          overflow: hidden;
-        }
-
-        .task-card::before {
-          content: "";
-          position: absolute;
-          left: 0;
-          top: 0;
-          bottom: 0;
-          width: 4px;
-          border-radius: 4px 0 0 4px;
-        }
-
-        .task-card.priority-urgent::before,
-        .task-card.priority-high::before { background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%); }
-        .task-card.priority-medium::before { background: linear-gradient(180deg, #f59e0b 0%, #d97706 100%); }
-        .task-card.priority-low::before { background: linear-gradient(180deg, #10b981 0%, #059669 100%); }
-
-        .task-card:hover {
-          background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.04) 100%);
-          transform: translateX(4px);
-          border-color: rgba(255,255,255,0.15);
-          box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-        }
-
-        .task-card:hover .agent-quick-btn {
-          opacity: 1;
-          transform: scale(1);
-        }
-
-        .agent-quick-btn {
-          opacity: 0;
-          transform: scale(0.8);
-          transition: all 0.2s ease;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          border: none;
-          border-radius: 10px;
-          padding: 8px 12px;
-          cursor: pointer;
-          font-size: 16px;
-          box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-          flex-shrink: 0;
-        }
-
-        .agent-quick-btn:hover {
-          transform: scale(1.1) !important;
-          box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
-        }
-
-        .task-header {
-          display: flex;
-          align-items: flex-start;
-          justify-content: space-between;
-          margin-bottom: 12px;
-        }
-
-        .task-title {
-          font-size: 16px;
-          font-weight: 600;
-          color: #fff;
-          margin-bottom: 8px;
-          line-height: 1.4;
-        }
-
-        .task-description {
-          font-size: 14px;
-          color: rgba(255,255,255,0.5);
-          line-height: 1.5;
-          margin-bottom: 16px;
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-        }
-
-        .task-meta {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          flex-wrap: wrap;
-        }
-
-        .task-steps {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          font-size: 12px;
-          color: rgba(255,255,255,0.5);
-          background: rgba(255,255,255,0.05);
-          padding: 4px 10px;
-          border-radius: 12px;
-        }
-
-        .empty-state {
-          text-align: center;
-          padding: 60px 20px;
-        }
-
-        .empty-icon { font-size: 64px; margin-bottom: 20px; }
-        .empty-title { font-size: 20px; font-weight: 600; margin-bottom: 8px; }
-        .empty-text { color: rgba(255,255,255,0.5); }
-
-        .modal-overlay {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: rgba(0,0,0,0.7);
-          backdrop-filter: blur(5px);
-          display: none;
-          align-items: center;
-          justify-content: center;
-          z-index: 1000;
-        }
-
-        .modal-overlay.active {
-          display: flex;
-        }
-
-        .modal {
-          background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-          border-radius: 20px;
-          padding: 32px;
-          width: 90%;
-          max-width: 500px;
-          border: 1px solid rgba(255,255,255,0.1);
-          box-shadow: 0 25px 50px rgba(0,0,0,0.5);
-        }
-
-        .modal-title {
-          font-size: 24px;
-          font-weight: 700;
-          margin-bottom: 24px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-        }
-
-        .modal-actions {
-          display: flex;
-          gap: 12px;
-          justify-content: flex-end;
-          margin-top: 24px;
-        }
-
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-
-        .task-card {
-          animation: fadeIn 0.3s ease forwards;
-        }
-
-        .task-card:nth-child(1) { animation-delay: 0.05s; }
-        .task-card:nth-child(2) { animation-delay: 0.1s; }
-        .task-card:nth-child(3) { animation-delay: 0.15s; }
-        .task-card:nth-child(4) { animation-delay: 0.2s; }
-        .task-card:nth-child(5) { animation-delay: 0.25s; }
-      </style>
+      /* ---- Modal ---- */
+      .modal-overlay {
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+        display: none; align-items: center; justify-content: center; z-index: 200;
+      }
+      .modal-overlay.active { display: flex; }
+      .modal {
+        background: var(--bg-elevated); border: 1px solid var(--border-default);
+        border-radius: var(--radius-xl); padding: 28px; width: 92%; max-width: 480px;
+        box-shadow: var(--shadow-lg);
+        animation: fadeIn var(--transition-slow) ease;
+      }
+      .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 20px; color: var(--text-primary); }
+      .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+    </style>
     </head>
     <body>
-      <div class="header">
-        <div class="header-top">
-          <div class="logo">
-            <div class="logo-icon">✓</div>
-            <span class="logo-text">TaskOS</span>
+      <div class="shell">
+        <div class="topbar">
+          <div class="topbar-brand">
+            <div class="topbar-logo">T</div>
+            <span class="topbar-title">TaskOS</span>
           </div>
-          <div class="header-actions">
-            <div class="auto-refresh-indicator" id="autoRefreshIndicator" title="Auto-refresh enabled">
-              <span class="pulse-dot"></span>
-              <span>Live</span>
-            </div>
-            <button class="btn btn-secondary" onclick="refresh()">
-              <span>↻</span> Refresh
+          <div class="topbar-actions">
+            <span class="live-dot">Live</span>
+            <button class="btn btn-ghost btn-sm" onclick="refresh()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
             </button>
-            <button class="btn btn-primary" onclick="showCreateModal()">
-              <span>+</span> New Task
-            </button>
+            <button class="btn btn-primary btn-sm" onclick="showCreateModal()">+ New Task</button>
           </div>
         </div>
-        
-        <div class="stats-grid">
-          <div class="stat-card stat-total">
-            <div class="stat-value">${stats.total}</div>
-            <div class="stat-label">Total Tasks</div>
-          </div>
-          <div class="stat-card stat-progress">
-            <div class="stat-value">${stats.inProgress}</div>
-            <div class="stat-label">In Progress</div>
-          </div>
-          <div class="stat-card stat-done">
-            <div class="stat-value">${stats.done}</div>
-            <div class="stat-label">Completed</div>
-          </div>
-          <div class="stat-card stat-high">
-            <div class="stat-value">${stats.high}</div>
-            <div class="stat-label">High Priority</div>
-          </div>
-        </div>
-      </div>
 
-      <div class="filters-bar">
-        <div class="search-box">
-          <input type="text" id="searchInput" placeholder="Search tasks..." onkeyup="handleSearch(event)">
+        <div class="stats">
+          <div class="stat stat-total"><div class="stat-val">${stats.total}</div><div class="stat-lbl">Total</div></div>
+          <div class="stat stat-prog"><div class="stat-val">${stats.inProgress}</div><div class="stat-lbl">In Progress</div></div>
+          <div class="stat stat-done"><div class="stat-val">${stats.done}</div><div class="stat-lbl">Done</div></div>
+          <div class="stat stat-todo"><div class="stat-val">${stats.todo}</div><div class="stat-lbl">To Do</div></div>
         </div>
-        <select class="filter-select" id="statusFilter" onchange="applyFilters()">
-          <option value="all">All Status</option>
-          <option value="backlog">📋 Backlog</option>
-          <option value="todo">📝 To Do</option>
-          <option value="in_progress">🔄 In Progress</option>
-          <option value="review">👁️ Review</option>
-          <option value="done">✅ Done</option>
-        </select>
-        <select class="filter-select" id="priorityFilter" onchange="applyFilters()">
-          <option value="all">All Priority</option>
-          <option value="urgent">🔴 Urgent</option>
-          <option value="high">🟠 High</option>
-          <option value="medium">🟡 Medium</option>
-          <option value="low">🟢 Low</option>
-        </select>
-      </div>
 
-      <div class="tasks-container">
+        <div class="filters">
+          <div class="search-wrap">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input type="text" id="searchInput" placeholder="Search tasks..." onkeyup="handleSearch()">
+          </div>
+          <select class="filter-sel" id="statusFilter" onchange="applyFilters()">
+            <option value="all">All Status</option>
+            <option value="backlog">Backlog</option>
+            <option value="todo">To Do</option>
+            <option value="in_progress">In Progress</option>
+            <option value="review">Review</option>
+            <option value="done">Done</option>
+          </select>
+          <select class="filter-sel" id="priorityFilter" onchange="applyFilters()">
+            <option value="all">All Priority</option>
+            <option value="urgent">Urgent</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+
         ${tasks.length === 0 ? `
-          <div class="empty-state">
+          <div class="empty">
             <div class="empty-icon">📋</div>
             <div class="empty-title">No tasks found</div>
-            <div class="empty-text">Create your first task to get started!</div>
+            <div class="empty-text">Create your first task to get started</div>
           </div>
         ` : `
-          <div class="tasks-grid">
-            ${taskCards}
-          </div>
+          <div class="task-list">${taskCards}</div>
         `}
-      </div>
-
-      <div class="update-toast" id="updateToast">
-        ✨ Tasks updated
       </div>
 
       <div class="modal-overlay" id="createModal">
         <div class="modal">
-          <div class="modal-title">✨ Create New Task</div>
+          <div class="modal-title">Create Task</div>
           <div class="form-group">
             <label class="form-label">Title</label>
-            <input type="text" class="form-input" id="newTaskTitle" placeholder="Enter task title...">
+            <input class="form-input" id="newTaskTitle" placeholder="What needs to be done?">
           </div>
           <div class="form-group">
             <label class="form-label">Description</label>
-            <textarea class="form-input form-textarea" id="newTaskDescription" placeholder="Enter task description..."></textarea>
+            <textarea class="form-input form-textarea" id="newTaskDescription" placeholder="Add details..."></textarea>
           </div>
           <div class="form-group">
             <label class="form-label">Priority</label>
             <select class="form-input" id="newTaskPriority">
-              <option value="low">🟢 Low</option>
-              <option value="medium" selected>🟡 Medium</option>
-              <option value="high">🟠 High</option>
-              <option value="urgent">🔴 Urgent</option>
+              <option value="low">Low</option>
+              <option value="medium" selected>Medium</option>
+              <option value="high">High</option>
+              <option value="urgent">Urgent</option>
             </select>
           </div>
           <div class="modal-actions">
-            <button class="btn btn-secondary" onclick="hideCreateModal()">Cancel</button>
-            <button class="btn btn-primary" onclick="createTask()">Create Task</button>
+            <button class="btn btn-ghost" onclick="hideCreateModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="createTask()">Create</button>
           </div>
         </div>
       </div>
@@ -1477,173 +690,388 @@ export class TaskPanel {
       <script>
         const vscode = acquireVsCodeApi();
         let searchTimeout;
-
-        function refresh() {
-          vscode.postMessage({ command: 'refresh' });
-        }
-
-        function handleSearch(event) {
-          clearTimeout(searchTimeout);
-          searchTimeout = setTimeout(() => {
-            applyFilters();
-          }, 300);
-        }
-
+        function refresh() { vscode.postMessage({ command: 'refresh' }); }
+        function handleSearch() { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => applyFilters(), 250); }
         function applyFilters() {
-          const status = document.getElementById('statusFilter').value;
-          const priority = document.getElementById('priorityFilter').value;
-          const search = document.getElementById('searchInput').value;
-          vscode.postMessage({ command: 'filter', status, priority, search });
+          vscode.postMessage({ command: 'filter', status: document.getElementById('statusFilter').value, priority: document.getElementById('priorityFilter').value, search: document.getElementById('searchInput').value });
         }
-
-        function openTask(taskId) {
-          vscode.postMessage({ command: 'openTask', taskId });
-        }
-
-        function quickSendToAgent(taskId) {
-          vscode.postMessage({ command: 'sendToAgent', taskId });
-        }
-
-        function showCreateModal() {
-          document.getElementById('createModal').classList.add('active');
-        }
-
-        function hideCreateModal() {
-          document.getElementById('createModal').classList.remove('active');
-        }
-
+        function openTask(id) { vscode.postMessage({ command: 'openTask', taskId: id }); }
+        function quickAgent(e, id) { e.stopPropagation(); vscode.postMessage({ command: 'sendToAgent', taskId: id }); }
+        function showCreateModal() { document.getElementById('createModal').classList.add('active'); document.getElementById('newTaskTitle').focus(); }
+        function hideCreateModal() { document.getElementById('createModal').classList.remove('active'); }
         function createTask() {
-          const title = document.getElementById('newTaskTitle').value;
-          const description = document.getElementById('newTaskDescription').value;
-          const priority = document.getElementById('newTaskPriority').value;
-          
-          if (!title.trim()) return;
-
-          vscode.postMessage({ command: 'createTask', title, description, priority });
-          
-          hideCreateModal();
-          document.getElementById('newTaskTitle').value = '';
-          document.getElementById('newTaskDescription').value = '';
+          const t = document.getElementById('newTaskTitle').value;
+          if (!t.trim()) return;
+          vscode.postMessage({ command: 'createTask', title: t, description: document.getElementById('newTaskDescription').value, priority: document.getElementById('newTaskPriority').value });
+          hideCreateModal(); document.getElementById('newTaskTitle').value = ''; document.getElementById('newTaskDescription').value = '';
         }
-
-        document.addEventListener('keydown', (e) => {
-          if (e.key === 'Escape') hideCreateModal();
-        });
-
-        document.getElementById('createModal').addEventListener('click', (e) => {
-          if (e.target.id === 'createModal') hideCreateModal();
-        });
-
-        // Handle messages from extension
-        window.addEventListener('message', event => {
-          const message = event.data;
-          if (message.command === 'showUpdateNotification') {
-            showUpdateToast();
-          }
-        });
-
-        function showUpdateToast() {
-          const toast = document.getElementById('updateToast');
-          toast.classList.add('show');
-          setTimeout(() => {
-            toast.classList.remove('show');
-          }, 3000);
-        }
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') hideCreateModal(); });
+        document.getElementById('createModal').addEventListener('click', e => { if (e.target.id === 'createModal') hideCreateModal(); });
       </script>
-    </body>
-    </html>`;
+    </body></html>`;
   }
 
-  private _renderTaskCard(task: Task): string {
+  private _renderTaskCard(task: Task, index: number): string {
     const steps = task.steps || [];
-    const completedSteps = steps.filter(st => st.completed).length;
-    const hasSteps = steps.length > 0;
+    const done = steps.filter(s => s.completed).length;
+    const delay = Math.min(index * 30, 200);
 
     return `
-      <div class="task-card priority-${task.priority}" onclick="openTask('${task.id}')">
-        <div class="task-header">
-          <div style="flex: 1;">
-            <div class="task-title">${this._escapeHtml(task.title)}</div>
-            ${task.description ? `<div class="task-description">${this._escapeHtml(task.description)}</div>` : ''}
+      <div class="task-row" onclick="openTask('${task.id}')" style="animation-delay:${delay}ms">
+        <div class="task-priority-dot dot-${task.priority}"></div>
+        <div class="task-info">
+          <div class="task-name">${this._escapeHtml(task.title)}</div>
+          <div class="task-sub">
+            <span class="badge status-${task.status}">${this._getStatusLabel(task.status)}</span>
+            ${steps.length > 0 ? `<span class="task-steps-count">${done}/${steps.length}</span>` : ''}
+            ${task.dueDate ? `<span style="font-size:11px;color:var(--text-tertiary);">${new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>` : ''}
           </div>
-          <button class="agent-quick-btn" onclick="event.stopPropagation(); quickSendToAgent('${task.id}')" title="Send to AI Agent">
-            🤖
-          </button>
         </div>
-        <div class="task-meta">
-          <span class="badge status-${task.status}">${this._getStatusIcon(task.status)} ${this._getStatusLabel(task.status)}</span>
-          <span class="badge priority-${task.priority}">${this._getPriorityIcon(task.priority)} ${task.priority}</span>
-          ${task.dueDate ? `<span class="badge" style="background: rgba(99, 102, 241, 0.2); color: #a5b4fc;">📅 ${new Date(task.dueDate).toLocaleDateString()}</span>` : ''}
-          ${hasSteps ? `<span class="task-steps">📋 ${completedSteps}/${steps.length}</span>` : ''}
-        </div>
+        <button class="task-agent-btn" onclick="quickAgent(event,'${task.id}')">AI Agent</button>
       </div>
     `;
   }
 
+  // ===================== TASK DETAIL VIEW =====================
+
+  private _getTaskDetailContent(task: Task): string {
+    const steps = task.steps || [];
+    const completedSteps = steps.filter(s => s.completed).length;
+    const progress = steps.length > 0 ? Math.round((completedSteps / steps.length) * 100) : 0;
+
+    const stepsHtml = steps.map(step => `
+      <div class="step ${step.completed ? 'step-done' : ''}">
+        <div class="step-check ${step.completed ? 'checked' : ''}" onclick="toggleStep('${step.id}', ${!step.completed})">
+          ${step.completed ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>' : ''}
+        </div>
+        <span class="step-text">${this._escapeHtml(step.content)}</span>
+      </div>
+    `).join('');
+
+    return `<!DOCTYPE html>
+    <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+      ${this._getBaseStyles()}
+
+      .detail { max-width: 720px; margin: 0 auto; padding: 24px; }
+
+      .detail-topbar {
+        display: flex; align-items: center; gap: 12px; margin-bottom: 28px;
+        padding-bottom: 20px; border-bottom: 1px solid var(--border-subtle);
+      }
+      .back-btn {
+        background: transparent; border: 1px solid var(--border-default);
+        border-radius: var(--radius-sm); padding: 8px 10px;
+        color: var(--text-secondary); cursor: pointer;
+        transition: all var(--transition-base); display: flex;
+      }
+      .back-btn:hover { background: rgba(255,255,255,0.04); color: var(--text-primary); }
+      .back-btn svg { width: 16px; height: 16px; }
+
+      .detail-heading { flex: 1; }
+      .detail-title { font-size: 22px; font-weight: 700; color: var(--text-primary); line-height: 1.3; letter-spacing: -0.3px; margin-bottom: 8px; }
+      .detail-badges { display: flex; gap: 8px; flex-wrap: wrap; }
+
+      /* ---- Sections ---- */
+      .section { margin-bottom: 16px; border-radius: var(--radius-lg); border: 1px solid var(--border-subtle); overflow: hidden; animation: fadeIn var(--transition-slow) ease both; }
+      .section:nth-child(2) { animation-delay: 50ms; }
+      .section:nth-child(3) { animation-delay: 100ms; }
+      .section:nth-child(4) { animation-delay: 150ms; }
+      .section-head { display: flex; align-items: center; gap: 8px; padding: 14px 18px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border-subtle); }
+      .section-icon { font-size: 14px; }
+      .section-title { font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+      .section-body { padding: 18px; }
+
+      /* ---- AI Pipeline Section ---- */
+      .ai-section { border-color: var(--border-accent); }
+      .ai-section .section-head { background: var(--accent-primary-subtle); }
+      .ai-section .section-title { color: var(--accent-primary-hover); }
+      .ai-desc { font-size: 13px; color: var(--text-tertiary); line-height: 1.6; margin-bottom: 16px; }
+      .ai-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+      .ai-divider { border-top: 1px solid var(--border-subtle); margin: 14px 0; }
+      .ai-label { font-size: 11px; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 10px; }
+
+      /* ---- Inline grid ---- */
+      .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+      .sel-wrap { position: relative; }
+      .sel-wrap select {
+        width: 100%; padding: 10px 14px;
+        background: var(--bg-input); border: 1px solid var(--border-default);
+        border-radius: var(--radius-md); color: var(--text-primary);
+        font-size: 13px; cursor: pointer; appearance: none; font-family: var(--font-sans);
+        transition: all var(--transition-base);
+      }
+      .sel-wrap select:focus { outline: none; border-color: var(--border-focus); }
+      .sel-wrap select option { background: var(--bg-secondary); }
+      .sel-wrap::after {
+        content: ''; position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+        border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 5px solid var(--text-tertiary);
+        pointer-events: none;
+      }
+
+      /* ---- Steps ---- */
+      .progress-bar { height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px; margin-bottom: 14px; }
+      .progress-fill { height: 100%; border-radius: 2px; background: var(--accent-gradient); transition: width 0.4s ease; }
+      .progress-label { font-size: 11px; color: var(--text-tertiary); margin-bottom: 8px; }
+
+      .step {
+        display: flex; align-items: center; gap: 10px;
+        padding: 10px 12px; border-radius: var(--radius-sm);
+        margin-bottom: 4px; transition: background var(--transition-fast);
+      }
+      .step:hover { background: rgba(255,255,255,0.03); }
+      .step-check {
+        width: 20px; height: 20px; border-radius: 5px;
+        border: 2px solid var(--border-default);
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer; transition: all var(--transition-base); flex-shrink: 0;
+      }
+      .step-check.checked { background: var(--accent-primary); border-color: var(--accent-primary); }
+      .step-check.checked svg { color: #fff; }
+      .step-text { font-size: 13px; color: var(--text-primary); }
+      .step-done .step-text { text-decoration: line-through; color: var(--text-tertiary); }
+
+      .empty-steps { text-align: center; padding: 24px; color: var(--text-tertiary); font-size: 13px; }
+
+      /* ---- Danger ---- */
+      .danger-section { border-color: rgba(239,68,68,0.15); }
+      .danger-section .section-head { background: rgba(239,68,68,0.05); }
+      .danger-section .section-title { color: #F87171; }
+
+      /* ---- Date input ---- */
+      input[type="date"] { color-scheme: dark; }
+    </style>
+    </head>
+    <body>
+      <div class="detail">
+        <div class="detail-topbar">
+          <button class="back-btn" onclick="backToList()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+          </button>
+          <div class="detail-heading">
+            <div class="detail-title" id="taskTitleDisplay">${this._escapeHtml(task.title)}</div>
+            <div class="detail-badges">
+              <span class="badge status-${task.status}">${this._getStatusLabel(task.status)}</span>
+              <span class="badge priority-${task.priority}">${task.priority}</span>
+            </div>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="openInBrowser()" title="Open in browser">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </button>
+        </div>
+
+        <!-- AI Pipeline -->
+        <div class="section ai-section">
+          <div class="section-head">
+            <span class="section-icon">⚡</span>
+            <span class="section-title">AI Pipeline</span>
+          </div>
+          <div class="section-body">
+            <div class="ai-desc">Send to AI for implementation, then run the automated pipeline to test, review, and ship.</div>
+            <div class="ai-actions">
+              <button class="btn btn-primary" onclick="sendToAgent()">Send to AI Agent</button>
+              <button class="btn btn-ghost btn-sm" onclick="viewPrompt()">View Prompt</button>
+            </div>
+            <div class="ai-divider"></div>
+            <div class="ai-label">After implementation</div>
+            <div class="ai-actions">
+              <button class="btn btn-warning" onclick="runPipeline()">Run Pipeline & Create PR</button>
+              <button class="btn btn-success btn-sm" onclick="createPR()">Quick PR</button>
+              <button class="btn btn-ghost btn-sm" onclick="configureProfiles()">Profiles</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Details -->
+        <div class="section">
+          <div class="section-head">
+            <span class="section-icon">📝</span>
+            <span class="section-title">Details</span>
+          </div>
+          <div class="section-body">
+            <div class="form-group">
+              <label class="form-label">Title</label>
+              <input class="form-input" id="editTitle" value="${this._escapeHtml(task.title)}" onchange="saveTitle()">
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Description</label>
+              <textarea class="form-input form-textarea" id="editDescription" placeholder="Add a description..." onchange="saveDescription()">${task.description ? this._escapeHtml(task.description) : ''}</textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Status & Priority -->
+        <div class="section">
+          <div class="section-head">
+            <span class="section-icon">🎯</span>
+            <span class="section-title">Status & Priority</span>
+          </div>
+          <div class="section-body">
+            <div class="grid-2">
+              <div>
+                <label class="form-label">Status</label>
+                <div class="sel-wrap">
+                  <select onchange="updateStatus(this.value)">
+                    <option value="backlog" ${task.status === 'backlog' ? 'selected' : ''}>Backlog</option>
+                    <option value="todo" ${task.status === 'todo' ? 'selected' : ''}>To Do</option>
+                    <option value="in_progress" ${task.status === 'in_progress' ? 'selected' : ''}>In Progress</option>
+                    <option value="review" ${task.status === 'review' ? 'selected' : ''}>Review</option>
+                    <option value="done" ${task.status === 'done' ? 'selected' : ''}>Done</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label class="form-label">Priority</label>
+                <div class="sel-wrap">
+                  <select onchange="updatePriority(this.value)">
+                    <option value="low" ${task.priority === 'low' ? 'selected' : ''}>Low</option>
+                    <option value="medium" ${task.priority === 'medium' ? 'selected' : ''}>Medium</option>
+                    <option value="high" ${task.priority === 'high' ? 'selected' : ''}>High</option>
+                    <option value="urgent" ${task.priority === 'urgent' ? 'selected' : ''}>Urgent</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dates -->
+        <div class="section">
+          <div class="section-head">
+            <span class="section-icon">📅</span>
+            <span class="section-title">Dates</span>
+          </div>
+          <div class="section-body">
+            <div class="grid-2">
+              <div>
+                <label class="form-label">Start Date</label>
+                <input type="date" class="form-input" id="startDate" value="${task.startDate ? task.startDate.split('T')[0] : ''}" onchange="saveDate('startDate', this.value)">
+              </div>
+              <div>
+                <label class="form-label">Due Date</label>
+                <input type="date" class="form-input" id="dueDate" value="${task.dueDate ? task.dueDate.split('T')[0] : ''}" onchange="saveDate('dueDate', this.value)">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Checklist -->
+        <div class="section">
+          <div class="section-head">
+            <span class="section-icon">✅</span>
+            <span class="section-title">Checklist</span>
+            <span style="margin-left:auto;font-size:11px;color:var(--text-tertiary);">${completedSteps}/${steps.length}</span>
+          </div>
+          <div class="section-body">
+            ${steps.length > 0 ? `
+              <div class="progress-bar"><div class="progress-fill" style="width:${progress}%"></div></div>
+              ${stepsHtml}
+            ` : `
+              <div class="empty-steps">No checklist items yet</div>
+            `}
+          </div>
+        </div>
+
+        <!-- Danger -->
+        <div class="section danger-section">
+          <div class="section-head">
+            <span class="section-icon">⚠️</span>
+            <span class="section-title">Danger Zone</span>
+          </div>
+          <div class="section-body">
+            <p style="font-size:13px;color:var(--text-tertiary);margin-bottom:12px;">This action cannot be undone.</p>
+            <button class="btn btn-danger-ghost btn-sm" onclick="confirmDelete()">Delete Task</button>
+          </div>
+        </div>
+      </div>
+
+      <script>
+        const vscode = acquireVsCodeApi();
+        const taskId = '${task.id}';
+        function backToList() { vscode.postMessage({ command: 'backToList' }); }
+        function openInBrowser() { vscode.postMessage({ command: 'openInBrowser', taskId }); }
+        function updateStatus(s) { vscode.postMessage({ command: 'updateStatus', taskId, status: s }); }
+        function updatePriority(p) { vscode.postMessage({ command: 'updatePriority', taskId, priority: p }); }
+        function saveTitle() { const t = document.getElementById('editTitle').value.trim(); if (t) vscode.postMessage({ command: 'updateTask', taskId, updates: { title: t } }); }
+        function saveDescription() { vscode.postMessage({ command: 'updateTask', taskId, updates: { description: document.getElementById('editDescription').value } }); }
+        function saveDate(f, v) { const u = {}; u[f] = v || null; vscode.postMessage({ command: 'updateTask', taskId, updates: u }); }
+        function toggleStep(sid, c) { vscode.postMessage({ command: 'toggleStep', taskId, stepId: sid, completed: c }); }
+        function sendToAgent() { vscode.postMessage({ command: 'sendToAgent', taskId }); }
+        function viewPrompt() { vscode.postMessage({ command: 'viewPrompt', taskId }); }
+        function createPR() { vscode.postMessage({ command: 'createPR', taskId, taskTitle: document.getElementById('editTitle')?.value || '' }); }
+        function runPipeline() { vscode.postMessage({ command: 'runPipeline', taskId }); }
+        function configureProfiles() { vscode.postMessage({ command: 'configureProfiles' }); }
+        function confirmDelete() { if (confirm('Delete this task permanently?')) vscode.postMessage({ command: 'deleteTask', taskId }); }
+      </script>
+    </body></html>`;
+  }
+
+  // ===================== ERROR VIEW =====================
+
+  private _getErrorContent(error: any): string {
+    return `<!DOCTYPE html><html><head><style>${this._getBaseStyles()}
+      .err { text-align: center; padding: 80px 24px; max-width: 400px; margin: 0 auto; }
+      .err-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.5; }
+      .err-title { font-size: 18px; font-weight: 600; color: #F87171; margin-bottom: 8px; }
+      .err-msg { font-size: 13px; color: var(--text-tertiary); margin-bottom: 24px; }
+    </style></head>
+    <body>
+      <div class="err">
+        <div class="err-icon">⚠️</div>
+        <div class="err-title">Connection Failed</div>
+        <div class="err-msg">${error?.message || 'Unable to connect to TaskOS'}</div>
+        <button class="btn btn-primary" onclick="vscode.postMessage({command:'refresh'})">Retry</button>
+      </div>
+      <script>const vscode = acquireVsCodeApi();</script>
+    </body></html>`;
+  }
+
+  // ===================== HELPERS =====================
+
+  private _getStatusLabel(status: string): string {
+    const labels: Record<string, string> = { backlog: 'Backlog', todo: 'To Do', in_progress: 'In Progress', review: 'Review', done: 'Done' };
+    return labels[status] || status;
+  }
+
   private _escapeHtml(text: string): string {
-    const map: { [key: string]: string } = {
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;',
-      "'": '&#039;'
-    };
+    const map: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
     return text.replace(/[&<>"']/g, m => map[m]);
   }
+
+  // ===================== AUTO REFRESH =====================
 
   private _startAutoRefresh() {
     const config = vscode.workspace.getConfiguration('taskos');
     const autoRefresh = config.get<boolean>('autoRefresh', true);
     const intervalSeconds = config.get<number>('autoRefreshInterval', 15);
-
     if (autoRefresh) {
-      this._autoRefreshInterval = setInterval(async () => {
-        await this._checkForUpdates();
-      }, intervalSeconds * 1000);
+      this._autoRefreshInterval = setInterval(async () => { await this._checkForUpdates(); }, intervalSeconds * 1000);
     }
   }
 
   private _stopAutoRefresh() {
-    if (this._autoRefreshInterval) {
-      clearInterval(this._autoRefreshInterval);
-      this._autoRefreshInterval = null;
-    }
+    if (this._autoRefreshInterval) { clearInterval(this._autoRefreshInterval); this._autoRefreshInterval = null; }
   }
 
-  private _restartAutoRefresh() {
-    this._stopAutoRefresh();
-    this._startAutoRefresh();
-  }
+  private _restartAutoRefresh() { this._stopAutoRefresh(); this._startAutoRefresh(); }
 
   private async _checkForUpdates() {
     if (this._currentView !== 'list') return;
-    
     try {
       const { tasks } = await this._apiClient.listTasks(this._workspaceId, { limit: 50 });
-      const newHash = this._computeTasksHash(tasks);
-      
+      const newHash = tasks.map(t => `${t.id}:${t.status}:${t.priority}:${t.title}:${t.updatedAt}`).join('|');
       if (newHash !== this._lastTasksHash) {
         this._lastTasksHash = newHash;
         this._panel.webview.html = this._getListContent(tasks);
-        // Show subtle notification
-        this._panel.webview.postMessage({ command: 'showUpdateNotification' });
       }
-    } catch (error) {
-      // Silently ignore errors during auto-refresh
-    }
-  }
-
-  private _computeTasksHash(tasks: Task[]): string {
-    return tasks.map(t => `${t.id}:${t.status}:${t.priority}:${t.title}:${t.updatedAt}`).join('|');
+    } catch { /* silent */ }
   }
 
   public dispose() {
     TaskPanel.currentPanel = undefined;
     this._stopAutoRefresh();
     this._panel.dispose();
-    while (this._disposables.length) {
-      const x = this._disposables.pop();
-      if (x) x.dispose();
-    }
+    while (this._disposables.length) { const x = this._disposables.pop(); if (x) x.dispose(); }
   }
 }
