@@ -37,6 +37,11 @@ export class PipelineService {
    */
   async runPipeline(
     task: Task,
+    customPRConfig?: {
+      customPRTitle?: string;
+      customCommitMessage?: string;
+      customBaseBranch?: string;
+    },
   ): Promise<PipelineResult> {
     const result: PipelineResult = {
       success: false,
@@ -228,18 +233,23 @@ export class PipelineService {
           // Commit and push first if there are uncommitted changes
           const hasChanges = await this.gitService.hasUncommittedChanges();
           if (hasChanges) {
+            const commitMsg = customPRConfig?.customCommitMessage
+              ? `${customPRConfig.customCommitMessage}\n\nTaskOS Task: ${task.id}`
+              : undefined;
             await this.gitService.commitAndPush(
               task.id,
               task.title,
-              `feat: ${task.title}\n\nTaskOS Task: ${task.id}`
+              commitMsg,
+              task.workspaceId,
             );
           }
 
           const prUrl = await this.gitService.createPullRequest(
             task.id,
-            task.title,
+            customPRConfig?.customPRTitle || task.title,
             task.description || '',
-            result.pr_body
+            result.pr_body,
+            task.workspaceId,
           );
           result.pr_url = prUrl;
           result.stages_completed.push('open_pr');

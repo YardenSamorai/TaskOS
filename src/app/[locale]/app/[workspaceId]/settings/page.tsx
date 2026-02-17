@@ -23,6 +23,7 @@ import {
 import { toast } from "sonner";
 import { useWorkspace } from "@/lib/hooks/use-workspaces";
 import { updateWorkspace, deleteWorkspace, regenerateInviteCode } from "@/lib/actions/workspace";
+import { BranchConventions } from "@/components/settings/branch-conventions";
 
 const SettingsPage = () => {
   const params = useParams();
@@ -220,6 +221,9 @@ const SettingsPage = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Branch Conventions */}
+      <BranchConventions workspaceId={workspaceId} canEdit={canEdit} />
 
       {/* Danger Zone */}
       {canDelete && (

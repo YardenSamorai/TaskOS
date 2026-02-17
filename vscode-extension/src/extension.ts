@@ -455,7 +455,7 @@ export function activate(context: vscode.ExtensionContext) {
   });
   context.subscriptions.push(sendToAgentCommand);
 
-  // Register create PR command
+  // Register create PR command (legacy — still used as fallback)
   const createPRCommand = vscode.commands.registerCommand('taskos.createPR', async (taskId?: string, taskTitle?: string) => {
     const gitService = agentService.getGitService();
     
@@ -477,57 +477,42 @@ export function activate(context: vscode.ExtensionContext) {
       await vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
-          title: '🚀 Creating Pull Request...',
+          title: 'Creating Pull Request...',
           cancellable: false,
         },
         async (progress) => {
-          // Check for uncommitted changes
           const hasChanges = await gitService.hasUncommittedChanges();
           
           if (hasChanges) {
             progress.report({ message: 'Committing changes...' });
-            
             const title = taskTitle || currentBranch.replace('taskos/', '').replace(/-[a-f0-9]+$/, '').replace(/-/g, ' ');
             const id = taskId || currentBranch.match(/-([a-f0-9]+)$/)?.[1] || '';
-            
             await gitService.commitAndPush(id, title);
           } else {
-            // Just push
             progress.report({ message: 'Pushing to remote...' });
             try {
               const { exec } = require('child_process');
               const { promisify } = require('util');
               const execAsync = promisify(exec);
               const folders = vscode.workspace.workspaceFolders;
-              await execAsync(`git push -u origin ${currentBranch}`, { 
-                cwd: folders?.[0]?.uri.fsPath, 
-                timeout: 30000 
-              });
+              await execAsync(`git push -u origin ${currentBranch}`, { cwd: folders?.[0]?.uri.fsPath, timeout: 30000 });
             } catch {
               // May already be pushed
             }
           }
 
           progress.report({ message: 'Opening PR...' });
-
-          // Try to create PR
           const title = taskTitle || currentBranch.replace('taskos/', '').replace(/-[a-f0-9]+$/, '').replace(/-/g, ' ');
           const id = taskId || '';
           const description = 'Implemented via TaskOS AI Agent integration.';
           
           try {
             const prUrl = await gitService.createPullRequest(id, title, description);
-            
-            const action = await vscode.window.showInformationMessage(
-              `✅ Pull Request ready!`,
-              'Open in Browser'
-            );
-            
+            const action = await vscode.window.showInformationMessage('Pull Request ready!', 'Open in Browser');
             if (action === 'Open in Browser') {
               vscode.env.openExternal(vscode.Uri.parse(prUrl));
             }
           } catch (error) {
-            // Fallback: open GitHub compare page
             const githubRepo = await gitService.getGitHubRepo();
             if (githubRepo) {
               const url = `https://github.com/${githubRepo.owner}/${githubRepo.repo}/compare/${defaultBranch}...${currentBranch}?expand=1`;
@@ -537,13 +522,8 @@ export function activate(context: vscode.ExtensionContext) {
             }
           }
 
-          // Update task status to review
           if (apiClient && taskId) {
-            try {
-              await apiClient.updateTask(taskId, { status: 'review' });
-            } catch {
-              // Non-fatal
-            }
+            try { await apiClient.updateTask(taskId, { status: 'review' }); } catch { /* Non-fatal */ }
           }
         }
       );
@@ -552,6 +532,110 @@ export function activate(context: vscode.ExtensionContext) {
     }
   });
   context.subscriptions.push(createPRCommand);
+
+  // Register create PR WITH user-configured values (from the PR dialog)
+  const createPRWithConfigCommand = vscode.commands.registerCommand(
+    'taskos.createPRWithConfig',
+    async (taskId: string, taskTitle: string, branchName: string, prTitle: string, commitMessage: string, baseBranch: string) => {
+      const gitService = agentService.getGitService();
+
+      try {
+        const isGit = await gitService.isGitRepo();
+        if (!isGit) {
+          vscode.window.showErrorMessage('TaskOS: Not a git repository.');
+          return;
+        }
+
+        await vscode.window.withProgress(
+          {
+            location: vscode.ProgressLocation.Notification,
+            title: 'Creating Pull Request...',
+            cancellable: false,
+          },
+          async (progress) => {
+            // Ensure we're on the right branch
+            const currentBranch = await gitService.getCurrentBranch();
+            if (currentBranch !== branchName) {
+              progress.report({ message: `Switching to branch ${branchName}...` });
+              try {
+                // Check if branch exists
+                const branches = await gitService.runGitPublic('branch --list');
+                if (branches.includes(branchName)) {
+                  await gitService.runGitPublic(`checkout ${branchName}`);
+                } else {
+                  await gitService.runGitPublic(`checkout -b ${branchName}`);
+                }
+              } catch {
+                // Stay on current branch if switch fails
+              }
+            }
+
+            // Commit with user-configured message
+            const hasChanges = await gitService.hasUncommittedChanges();
+            if (hasChanges) {
+              progress.report({ message: 'Committing changes...' });
+              await gitService.commitAndPush(
+                taskId, taskTitle,
+                `${commitMessage}\n\nTaskOS Task: ${taskId}`,
+              );
+            } else {
+              progress.report({ message: 'Pushing to remote...' });
+              try {
+                const { exec } = require('child_process');
+                const { promisify } = require('util');
+                const execAsync = promisify(exec);
+                const folders = vscode.workspace.workspaceFolders;
+                const branch = await gitService.getCurrentBranch();
+                await execAsync(`git push -u origin ${branch}`, { cwd: folders?.[0]?.uri.fsPath, timeout: 30000 });
+              } catch { /* May already be pushed */ }
+            }
+
+            progress.report({ message: 'Opening PR...' });
+
+            const description = `## TaskOS Task\n\n**Task:** ${taskTitle}\n**Task ID:** ${taskId}\n\n---\n*Created via [TaskOS](https://www.task-os.app) VS Code Extension*`;
+
+            // Build PR with user-chosen title and base branch
+            const githubRepo = await gitService.getGitHubRepo();
+            const branch = await gitService.getCurrentBranch();
+
+            if (!githubRepo) {
+              vscode.window.showErrorMessage('TaskOS: Could not detect GitHub repository.');
+              return;
+            }
+
+            // Try gh CLI
+            let prUrl: string | undefined;
+            try {
+              const { exec } = require('child_process');
+              const { promisify } = require('util');
+              const execAsync = promisify(exec);
+              const result = await execAsync(
+                `gh pr create --title "${prTitle.replace(/"/g, '\\"')}" --body "${description.replace(/"/g, '\\"')}" --base ${baseBranch}`,
+                { cwd: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath, timeout: 30000 }
+              );
+              prUrl = result.stdout.trim();
+            } catch {
+              // Fallback: GitHub URL
+              prUrl = `https://github.com/${githubRepo.owner}/${githubRepo.repo}/compare/${baseBranch}...${branch}?expand=1&title=${encodeURIComponent(prTitle)}&body=${encodeURIComponent(description)}`;
+            }
+
+            const action = await vscode.window.showInformationMessage('Pull Request ready!', 'Open in Browser');
+            if (action === 'Open in Browser' && prUrl) {
+              vscode.env.openExternal(vscode.Uri.parse(prUrl));
+            }
+
+            // Update task status
+            if (apiClient && taskId) {
+              try { await apiClient.updateTask(taskId, { status: 'review' }); } catch { /* Non-fatal */ }
+            }
+          }
+        );
+      } catch (error) {
+        vscode.window.showErrorMessage(`TaskOS: Failed to create PR. ${error}`);
+      }
+    }
+  );
+  context.subscriptions.push(createPRWithConfigCommand);
 
   // Register run pipeline command
   const runPipelineCommand = vscode.commands.registerCommand('taskos.runPipeline', async (taskId?: string) => {
@@ -629,6 +713,53 @@ export function activate(context: vscode.ExtensionContext) {
     }
   });
   context.subscriptions.push(runPipelineCommand);
+
+  // Register run pipeline WITH user-configured PR values
+  const runPipelineWithConfigCommand = vscode.commands.registerCommand(
+    'taskos.runPipelineWithConfig',
+    async (taskId: string, prTitle: string, commitMessage: string, baseBranch: string) => {
+      if (!apiClient) {
+        OnboardingPanel.createOrShow(context.extensionUri);
+        return;
+      }
+
+      if (!pipelineService) {
+        const config = vscode.workspace.getConfiguration('taskos');
+        const workspaceId = config.get<string>('defaultWorkspaceId', '');
+        profileManager = new ProfileManager(apiClient, workspaceId);
+        pipelineService = new PipelineService(apiClient, profileManager);
+      }
+
+      try {
+        const task = await apiClient.getTask(taskId);
+        const result = await pipelineService!.runPipeline(task, {
+          customPRTitle: prTitle,
+          customCommitMessage: commitMessage,
+          customBaseBranch: baseBranch,
+        });
+
+        if (result.success) {
+          const action = await vscode.window.showInformationMessage(
+            `Pipeline completed! ${result.blockers.length > 0 ? `(${result.blockers.length} blockers)` : 'All clear!'}`,
+            result.pr_url ? 'Open PR' : 'Done'
+          );
+          if (action === 'Open PR' && result.pr_url) {
+            vscode.env.openExternal(vscode.Uri.parse(result.pr_url));
+          }
+
+          try { await apiClient!.updateTask(task.id, { status: 'review' }); } catch { /* Non-fatal */ }
+        } else {
+          const completedStages = result.stages_completed.join(' -> ');
+          vscode.window.showWarningMessage(
+            `Pipeline stopped. Completed: ${completedStages}. ${result.blockers.length} blocker(s) found.`
+          );
+        }
+      } catch (error) {
+        vscode.window.showErrorMessage(`TaskOS: Pipeline failed. ${error}`);
+      }
+    }
+  );
+  context.subscriptions.push(runPipelineWithConfigCommand);
 
   // Register configure profiles command
   const configureProfilesCommand = vscode.commands.registerCommand('taskos.configureProfiles', async () => {

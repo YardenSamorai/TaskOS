@@ -1,6 +1,13 @@
 import * as vscode from 'vscode';
 import { TaskOSApiClient, Task, TaskStep } from '../api/client';
 import { AgentService } from '../services/agentService';
+import {
+  BranchConventionManager,
+  renderConvention,
+  DEFAULT_BRANCH_CONVENTION,
+  type BranchConventionConfig,
+  type RenderedConvention,
+} from '../services/branchConvention';
 
 export class TaskPanel {
   public static currentPanel: TaskPanel | undefined;
@@ -13,6 +20,7 @@ export class TaskPanel {
   private _selectedTaskId: string | null = null;
   private _autoRefreshInterval: NodeJS.Timeout | null = null;
   private _lastTasksHash: string = '';
+  private _conventionManager: BranchConventionManager;
 
   private constructor(
     panel: vscode.WebviewPanel,
@@ -24,6 +32,10 @@ export class TaskPanel {
     this._extensionUri = extensionUri;
     this._apiClient = apiClient;
     this._workspaceId = workspaceId;
+    this._conventionManager = new BranchConventionManager(
+      () => vscode.workspace.getConfiguration('taskos').get<string>('apiKey') || '',
+      () => vscode.workspace.getConfiguration('taskos').get<string>('apiUrl') || '',
+    );
 
     this._update();
     this._startAutoRefresh();
@@ -89,10 +101,30 @@ export class TaskPanel {
             await vscode.commands.executeCommand('taskos.sendToAgent', message.taskId);
             break;
           case 'createPR':
-            await vscode.commands.executeCommand('taskos.createPR', message.taskId, message.taskTitle);
+            await this._showPRConfigModal(message.taskId, message.taskTitle, 'pr');
             break;
           case 'runPipeline':
-            await vscode.commands.executeCommand('taskos.runPipeline', message.taskId);
+            await this._showPRConfigModal(message.taskId, message.taskTitle, 'pipeline');
+            break;
+          case 'confirmCreatePR':
+            await vscode.commands.executeCommand(
+              'taskos.createPRWithConfig',
+              message.taskId,
+              message.taskTitle,
+              message.branchName,
+              message.prTitle,
+              message.commitMessage,
+              message.baseBranch,
+            );
+            break;
+          case 'confirmRunPipeline':
+            await vscode.commands.executeCommand(
+              'taskos.runPipelineWithConfig',
+              message.taskId,
+              message.prTitle,
+              message.commitMessage,
+              message.baseBranch,
+            );
             break;
           case 'configureProfiles':
             await vscode.commands.executeCommand('taskos.configureProfiles');
@@ -185,6 +217,80 @@ export class TaskPanel {
       await this._showTaskDetail(taskId);
     } catch (error) {
       vscode.window.showErrorMessage('Failed to delete step');
+    }
+  }
+
+  private async _showPRConfigModal(taskId: string, taskTitle: string, mode: 'pr' | 'pipeline') {
+    try {
+      const config = await this._conventionManager.getConfig(this._workspaceId);
+      const agentService = new AgentService();
+      const gitService = agentService.getGitService();
+
+      // Get git username
+      let username = 'user';
+      try {
+        const { exec } = require('child_process');
+        const { promisify } = require('util');
+        const execAsync = promisify(exec);
+        const folders = vscode.workspace.workspaceFolders;
+        const result = await execAsync('git config user.name', { cwd: folders?.[0]?.uri.fsPath, timeout: 5000 });
+        username = result.stdout.trim() || 'user';
+      } catch { /* use default */ }
+
+      // Compute convention-based previews for all task types
+      const allPreviews: Record<string, RenderedConvention> = {};
+      for (const mapping of config.taskTypeMappings) {
+        allPreviews[mapping.taskType] = renderConvention(config, {
+          taskTitle: taskTitle || 'Task',
+          taskId: taskId,
+          taskType: mapping.taskType,
+          username,
+        });
+      }
+
+      // Try to get AI-generated commit message based on task + diff
+      let aiCommitMessage = '';
+      let aiPRTitle = '';
+      let aiPRSummary = '';
+      try {
+        let diffSummary = '';
+        let changedFiles: string[] = [];
+        try {
+          diffSummary = await gitService.getDiffSummary();
+          changedFiles = await gitService.getChangedFiles();
+        } catch { /* no diff available */ }
+
+        // Fetch the full task for description
+        const task = await this._apiClient.getTask(taskId);
+
+        const aiResult = await this._apiClient.generateCommitMessage({
+          taskTitle: task.title,
+          taskDescription: task.description || undefined,
+          diffSummary: diffSummary || undefined,
+          changedFiles: changedFiles.length > 0 ? changedFiles : undefined,
+        });
+
+        aiCommitMessage = aiResult.commitMessage || '';
+        aiPRTitle = aiResult.prTitle || '';
+        aiPRSummary = aiResult.prSummary || '';
+      } catch {
+        // AI not available — fall back to convention-based values
+      }
+
+      this._panel.webview.postMessage({
+        command: 'showPRConfig',
+        mode,
+        taskId,
+        taskTitle,
+        taskTypes: config.taskTypeMappings.map(m => m.taskType),
+        defaultTaskType: config.defaultTaskType,
+        previews: allPreviews,
+        aiCommitMessage,
+        aiPRTitle,
+        aiPRSummary,
+      });
+    } catch (error) {
+      vscode.window.showErrorMessage(`Failed to load PR config: ${error}`);
     }
   }
 
@@ -986,9 +1092,61 @@ export class TaskPanel {
         </div>
       </div>
 
+      <!-- PR Config Modal -->
+      <div class="modal-overlay" id="prConfigModal">
+        <div class="modal" style="max-width:560px;">
+          <div class="modal-title" id="prModalTitle">Configure Pull Request</div>
+
+          <!-- Source toggle: AI vs Convention -->
+          <div style="display:flex;gap:6px;margin-bottom:16px;">
+            <button class="btn btn-sm" id="srcAI" onclick="setSource('ai')" style="flex:1;">AI Generated</button>
+            <button class="btn btn-sm btn-ghost" id="srcConv" onclick="setSource('convention')" style="flex:1;">Convention</button>
+          </div>
+
+          <div class="form-group" id="taskTypeGroup">
+            <label class="form-label">Task Type</label>
+            <select class="form-input" id="prTaskType" onchange="onTaskTypeChange()">
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Branch Name</label>
+            <input class="form-input" id="prBranchName" style="font-family:var(--font-mono);font-size:13px;">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">PR Title</label>
+            <input class="form-input" id="prTitle">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Commit Message</label>
+            <input class="form-input" id="prCommitMsg">
+          </div>
+
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Base Branch</label>
+            <input class="form-input" id="prBaseBranch" style="font-family:var(--font-mono);font-size:13px;">
+          </div>
+
+          <div class="modal-actions">
+            <button class="btn btn-ghost" onclick="hidePRModal()">Cancel</button>
+            <button class="btn btn-primary" id="prConfirmBtn" onclick="confirmPR()">Create PR</button>
+          </div>
+        </div>
+      </div>
+
       <script>
         const vscode = acquireVsCodeApi();
         const taskId = '${task.id}';
+
+        // PR Config state
+        let prMode = 'pr';
+        let prPreviews = {};
+        let prCurrentTaskTitle = '';
+        let prSource = 'ai'; // 'ai' or 'convention'
+        let prAI = { commitMessage: '', prTitle: '', prSummary: '' };
+
         function backToList() { vscode.postMessage({ command: 'backToList' }); }
         function openInBrowser() { vscode.postMessage({ command: 'openInBrowser', taskId }); }
         function updateStatus(s) { vscode.postMessage({ command: 'updateStatus', taskId, status: s }); }
@@ -999,10 +1157,137 @@ export class TaskPanel {
         function toggleStep(sid, c) { vscode.postMessage({ command: 'toggleStep', taskId, stepId: sid, completed: c }); }
         function sendToAgent() { vscode.postMessage({ command: 'sendToAgent', taskId }); }
         function viewPrompt() { vscode.postMessage({ command: 'viewPrompt', taskId }); }
-        function createPR() { vscode.postMessage({ command: 'createPR', taskId, taskTitle: document.getElementById('editTitle')?.value || '' }); }
-        function runPipeline() { vscode.postMessage({ command: 'runPipeline', taskId }); }
         function configureProfiles() { vscode.postMessage({ command: 'configureProfiles' }); }
         function confirmDelete() { if (confirm('Delete this task permanently?')) vscode.postMessage({ command: 'deleteTask', taskId }); }
+
+        // PR flow: request config from extension host
+        function createPR() {
+          vscode.postMessage({ command: 'createPR', taskId, taskTitle: document.getElementById('editTitle')?.value || '' });
+        }
+        function runPipeline() {
+          vscode.postMessage({ command: 'runPipeline', taskId, taskTitle: document.getElementById('editTitle')?.value || '' });
+        }
+
+        // Receive messages from extension host
+        window.addEventListener('message', event => {
+          const msg = event.data;
+          if (msg.command === 'showPRConfig') {
+            prMode = msg.mode;
+            prPreviews = msg.previews;
+            prCurrentTaskTitle = msg.taskTitle;
+            prAI = {
+              commitMessage: msg.aiCommitMessage || '',
+              prTitle: msg.aiPRTitle || '',
+              prSummary: msg.aiPRSummary || '',
+            };
+
+            // Populate task type dropdown
+            const sel = document.getElementById('prTaskType');
+            sel.innerHTML = '';
+            msg.taskTypes.forEach(t => {
+              const opt = document.createElement('option');
+              opt.value = t;
+              opt.textContent = t.charAt(0).toUpperCase() + t.slice(1);
+              if (t === msg.defaultTaskType) opt.selected = true;
+              sel.appendChild(opt);
+            });
+
+            // Set modal title + button label
+            document.getElementById('prModalTitle').textContent =
+              msg.mode === 'pipeline' ? 'Configure Pipeline & PR' : 'Configure Pull Request';
+            document.getElementById('prConfirmBtn').textContent =
+              msg.mode === 'pipeline' ? 'Run Pipeline' : 'Create PR';
+
+            // Default to AI if available, otherwise convention
+            if (prAI.commitMessage) {
+              setSource('ai');
+            } else {
+              setSource('convention');
+            }
+
+            // Show modal
+            document.getElementById('prConfigModal').classList.add('active');
+          }
+        });
+
+        function setSource(source) {
+          prSource = source;
+          const aiBtn = document.getElementById('srcAI');
+          const convBtn = document.getElementById('srcConv');
+          const typeGroup = document.getElementById('taskTypeGroup');
+
+          if (source === 'ai') {
+            aiBtn.className = 'btn btn-sm btn-primary';
+            convBtn.className = 'btn btn-sm btn-ghost';
+            typeGroup.style.display = 'none';
+            // Fill with AI values
+            document.getElementById('prTitle').value = prAI.prTitle || prCurrentTaskTitle;
+            document.getElementById('prCommitMsg').value = prAI.commitMessage || '';
+            // Keep branch from convention (AI doesn't generate branch names)
+            const type = document.getElementById('prTaskType').value;
+            const preview = prPreviews[type];
+            if (preview) {
+              document.getElementById('prBranchName').value = preview.branchName;
+              document.getElementById('prBaseBranch').value = preview.baseBranch;
+            }
+          } else {
+            aiBtn.className = 'btn btn-sm btn-ghost';
+            convBtn.className = 'btn btn-sm btn-primary';
+            typeGroup.style.display = 'block';
+            onTaskTypeChange();
+          }
+
+          // If AI not available, disable AI button
+          if (!prAI.commitMessage) {
+            aiBtn.style.opacity = '0.5';
+            aiBtn.style.pointerEvents = 'none';
+            aiBtn.textContent = 'AI (no diff)';
+          } else {
+            aiBtn.style.opacity = '1';
+            aiBtn.style.pointerEvents = 'auto';
+            aiBtn.textContent = 'AI Generated';
+          }
+        }
+
+        function onTaskTypeChange() {
+          if (prSource !== 'convention') return;
+          const type = document.getElementById('prTaskType').value;
+          const preview = prPreviews[type];
+          if (!preview) return;
+          document.getElementById('prBranchName').value = preview.branchName;
+          document.getElementById('prTitle').value = preview.prTitle;
+          document.getElementById('prCommitMsg').value = preview.commitMessage;
+          document.getElementById('prBaseBranch').value = preview.baseBranch;
+        }
+
+        function hidePRModal() {
+          document.getElementById('prConfigModal').classList.remove('active');
+        }
+
+        function confirmPR() {
+          const data = {
+            taskId,
+            taskTitle: prCurrentTaskTitle,
+            branchName: document.getElementById('prBranchName').value,
+            prTitle: document.getElementById('prTitle').value,
+            commitMessage: document.getElementById('prCommitMsg').value,
+            baseBranch: document.getElementById('prBaseBranch').value,
+          };
+
+          if (prMode === 'pipeline') {
+            vscode.postMessage({ command: 'confirmRunPipeline', ...data });
+          } else {
+            vscode.postMessage({ command: 'confirmCreatePR', ...data });
+          }
+
+          hidePRModal();
+        }
+
+        // Close modal on Escape
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') hidePRModal(); });
+        document.getElementById('prConfigModal').addEventListener('click', e => {
+          if (e.target.id === 'prConfigModal') hidePRModal();
+        });
       </script>
     </body></html>`;
   }

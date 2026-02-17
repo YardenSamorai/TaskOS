@@ -533,6 +533,7 @@ export const workspacesRelations = relations(workspaces, ({ one, many }) => ({
   templates: many(templates),
   activityLogs: many(activityLogs),
   agentProfiles: many(agentProfiles),
+  branchConvention: one(branchConventions),
 }));
 
 export const workspaceMembersRelations = relations(
@@ -903,6 +904,37 @@ export const agentProfilesRelations = relations(agentProfiles, ({ one }) => ({
   }),
 }));
 
+// ============== BRANCH CONVENTIONS ==============
+// Workspace-level configurable branch / PR title / commit patterns
+export const branchConventions = pgTable("branch_conventions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id")
+    .notNull()
+    .unique()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  config: text("config").notNull(), // JSON string: BranchConventionConfig
+  createdBy: uuid("created_by")
+    .notNull()
+    .references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+export const branchConventionsRelations = relations(branchConventions, ({ one }) => ({
+  workspace: one(workspaces, {
+    fields: [branchConventions.workspaceId],
+    references: [workspaces.id],
+  }),
+  creator: one(users, {
+    fields: [branchConventions.createdBy],
+    references: [users.id],
+  }),
+}));
+
 // ============== API KEYS ==============
 export const apiKeys = pgTable("api_keys", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -975,3 +1007,5 @@ export type InvitationStatus = "pending" | "accepted" | "expired" | "cancelled";
 export type AgentProfile = typeof agentProfiles.$inferSelect;
 export type NewAgentProfile = typeof agentProfiles.$inferInsert;
 export type AgentProfileType = "code_review" | "code_style";
+export type BranchConvention = typeof branchConventions.$inferSelect;
+export type NewBranchConvention = typeof branchConventions.$inferInsert;

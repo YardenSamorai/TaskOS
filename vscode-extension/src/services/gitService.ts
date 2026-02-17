@@ -1,15 +1,29 @@
 import * as vscode from 'vscode';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import {
+  BranchConventionManager,
+  renderConvention,
+  DEFAULT_BRANCH_CONVENTION,
+  type BranchConventionConfig,
+  type RenderContext,
+  type RenderedConvention,
+} from './branchConvention';
 
 const execAsync = promisify(exec);
 
 export class GitService {
   private workspacePath: string;
+  private conventionManager: BranchConventionManager;
 
   constructor() {
     const folders = vscode.workspace.workspaceFolders;
     this.workspacePath = folders?.[0]?.uri.fsPath || '';
+
+    this.conventionManager = new BranchConventionManager(
+      () => vscode.workspace.getConfiguration('taskos').get<string>('apiKey') || '',
+      () => vscode.workspace.getConfiguration('taskos').get<string>('apiUrl') || '',
+    );
   }
 
   private async runGit(command: string): Promise<string> {
@@ -25,6 +39,11 @@ export class GitService {
     } catch (error: any) {
       throw new Error(`Git error: ${error.stderr || error.message}`);
     }
+  }
+
+  /** Public wrapper around runGit for commands called from outside. */
+  async runGitPublic(command: string): Promise<string> {
+    return this.runGit(command);
   }
 
   /**
@@ -55,23 +74,26 @@ export class GitService {
   }
 
   /**
-   * Create a new branch for a task
+   * Create a new branch for a task using the workspace convention.
    */
-  async createTaskBranch(taskId: string, taskTitle: string): Promise<string> {
-    // Sanitize branch name
-    const sanitized = taskTitle
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '')
-      .substring(0, 50);
-    
-    const branchName = `taskos/${sanitized}-${taskId.substring(0, 8)}`;
+  async createTaskBranch(
+    taskId: string,
+    taskTitle: string,
+    workspaceId?: string,
+    taskType?: string,
+  ): Promise<string> {
+    const rendered = await this.renderForTask(workspaceId, {
+      taskTitle,
+      taskId,
+      taskType,
+    });
+
+    const branchName = rendered.branchName;
 
     // Check if branch already exists
     try {
       const branches = await this.runGit('branch --list');
       if (branches.includes(branchName)) {
-        // Switch to existing branch
         await this.runGit(`checkout ${branchName}`);
         return branchName;
       }
@@ -146,21 +168,34 @@ export class GitService {
   }
 
   /**
-   * Stage all changes, commit, and push
+   * Stage all changes, commit, and push.
+   * Uses the workspace convention for the commit message if no custom message given.
    */
-  async commitAndPush(taskId: string, taskTitle: string, message?: string): Promise<{ branch: string; commitHash: string }> {
-    const commitMsg = message || `feat: ${taskTitle}\n\nTaskOS Task: ${taskId}`;
-    
+  async commitAndPush(
+    taskId: string,
+    taskTitle: string,
+    message?: string,
+    workspaceId?: string,
+    taskType?: string,
+  ): Promise<{ branch: string; commitHash: string }> {
+    let commitMsg = message;
+    if (!commitMsg) {
+      const rendered = await this.renderForTask(workspaceId, {
+        taskTitle,
+        taskId,
+        taskType,
+      });
+      commitMsg = `${rendered.commitMessage}\n\nTaskOS Task: ${taskId}`;
+    }
+
     await this.runGit('add -A');
     await this.runGit(`commit -m "${commitMsg.replace(/"/g, '\\"')}"`);
     
     const branch = await this.getCurrentBranch();
     
-    // Push to remote (set upstream if needed)
     try {
       await this.runGit(`push -u origin ${branch}`);
     } catch {
-      // Try without -u flag
       await this.runGit(`push origin ${branch}`);
     }
     
@@ -220,32 +255,74 @@ export class GitService {
   }
 
   /**
-   * Create a PR using gh CLI or generate a URL
+   * Create a PR using gh CLI or generate a URL.
+   * Uses the workspace convention for the PR title and base branch.
    */
-  async createPullRequest(taskId: string, taskTitle: string, description: string, customBody?: string): Promise<string> {
+  async createPullRequest(
+    taskId: string,
+    taskTitle: string,
+    description: string,
+    customBody?: string,
+    workspaceId?: string,
+    taskType?: string,
+  ): Promise<string> {
     const githubRepo = await this.getGitHubRepo();
     const currentBranch = await this.getCurrentBranch();
-    const defaultBranch = await this.getDefaultBranch();
-    
+
     if (!githubRepo) {
       throw new Error('Could not detect GitHub repository from remote URL');
     }
-    
-    const prTitle = `feat: ${taskTitle}`;
-    const prBody = customBody || `## TaskOS Task\n\n**Task:** ${taskTitle}\n**Task ID:** ${taskId}\n\n---\n\n${description}\n\n---\n*Created via [TaskOS](https://www.task-os.app) VS Code Extension* 🤖`;
-    
+
+    const rendered = await this.renderForTask(workspaceId, {
+      taskTitle,
+      taskId,
+      taskType,
+    });
+
+    const prTitle = rendered.prTitle;
+    const baseBranch = rendered.baseBranch || await this.getDefaultBranch();
+    const prBody = customBody || `## TaskOS Task\n\n**Task:** ${taskTitle}\n**Task ID:** ${taskId}\n\n---\n\n${description}\n\n---\n*Created via [TaskOS](https://www.task-os.app) VS Code Extension*`;
+
     // Try gh CLI first
     try {
-      const result = await this.runGit(`-c core.editor=true`); // just check git works
+      await this.runGit(`-c core.editor=true`);
       const prUrl = await execAsync(
-        `gh pr create --title "${prTitle.replace(/"/g, '\\"')}" --body "${prBody.replace(/"/g, '\\"')}" --base ${defaultBranch}`,
+        `gh pr create --title "${prTitle.replace(/"/g, '\\"')}" --body "${prBody.replace(/"/g, '\\"')}" --base ${baseBranch}`,
         { cwd: this.workspacePath, timeout: 30000 }
       );
       return prUrl.stdout.trim();
     } catch {
       // Fallback: Generate GitHub PR URL
-      const prUrl = `https://github.com/${githubRepo.owner}/${githubRepo.repo}/compare/${defaultBranch}...${currentBranch}?expand=1&title=${encodeURIComponent(prTitle)}&body=${encodeURIComponent(prBody)}`;
+      const prUrl = `https://github.com/${githubRepo.owner}/${githubRepo.repo}/compare/${baseBranch}...${currentBranch}?expand=1&title=${encodeURIComponent(prTitle)}&body=${encodeURIComponent(prBody)}`;
       return prUrl;
+    }
+  }
+
+  // ─── Convention helpers ──────────────────────────────────────────────────
+
+  /**
+   * Render convention for a task. Fetches config from API (with cache + fallback).
+   */
+  async renderForTask(
+    workspaceId: string | undefined,
+    ctx: Omit<RenderContext, 'username'>,
+  ): Promise<RenderedConvention> {
+    const username = await this.getGitUsername();
+
+    if (workspaceId) {
+      return this.conventionManager.render(workspaceId, { ...ctx, username });
+    }
+
+    // No workspace ID – use defaults
+    return renderConvention(DEFAULT_BRANCH_CONVENTION, { ...ctx, username });
+  }
+
+  /** Get the git user.name for placeholder rendering. */
+  private async getGitUsername(): Promise<string> {
+    try {
+      return await this.runGit('config user.name');
+    } catch {
+      return 'user';
     }
   }
 }

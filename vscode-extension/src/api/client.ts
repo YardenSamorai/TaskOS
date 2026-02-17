@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import type { BranchConventionConfig } from '../services/branchConvention';
 
 export interface TaskStep {
   id: string;
@@ -238,6 +239,33 @@ export class TaskOSApiClient {
     await this.request<any>(
       'DELETE',
       `/workspaces/${workspaceId}/profiles/${profileId}`
+    );
+  }
+
+  // ============== AI COMMIT MESSAGE ==============
+
+  async generateCommitMessage(payload: {
+    taskTitle: string;
+    taskDescription?: string;
+    diffSummary?: string;
+    changedFiles?: string[];
+  }): Promise<{ commitMessage: string; prTitle: string; prSummary: string }> {
+    return await this.request<{
+      commitMessage: string;
+      prTitle: string;
+      prSummary: string;
+    }>('POST', '/ai/generate-commit', payload);
+  }
+
+  // ============== BRANCH CONVENTIONS ==============
+
+  async getBranchConvention(workspaceId: string): Promise<{
+    config: BranchConventionConfig;
+    isCustom: boolean;
+  }> {
+    return await this.request<{ config: BranchConventionConfig; isCustom: boolean }>(
+      'GET',
+      `/workspaces/${workspaceId}/branch-convention`
     );
   }
 
