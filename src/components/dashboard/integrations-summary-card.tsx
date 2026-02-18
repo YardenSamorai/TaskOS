@@ -65,7 +65,7 @@ export const IntegrationsSummaryCard = ({
       integrations.some((i) => i.provider === p.key && i.isActive)
     );
     if (connected.length > 0 && !activeTab) {
-      setActiveTab(connected[0].provider);
+      setActiveTab(connected[0].key);
     }
     return connected;
   }, [integrations, activeTab]);
