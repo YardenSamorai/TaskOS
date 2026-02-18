@@ -21,7 +21,7 @@ interface Integration {
   provider: string;
   isActive: boolean;
   displayName?: string | null;
-  createdAt: string;
+  createdAt: string | Date;
 }
 
 const PROVIDERS = [
