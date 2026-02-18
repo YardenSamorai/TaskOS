@@ -36,7 +36,6 @@ import {
   deleteIntegration, 
   toggleIntegration 
 } from "@/lib/actions/integration";
-import type { Integration } from "@/lib/db/schema";
 import { AzureDevOpsConnectDialog } from "@/components/azure-devops/azure-devops-connect-dialog";
 
 interface IntegrationsDialogProps {
@@ -148,7 +147,7 @@ export const IntegrationsDialog = ({
   onOpenChange,
   workspaceId 
 }: IntegrationsDialogProps) => {
-  const [integrations, setIntegrations] = useState<Integration[]>([]);
+  const [integrations, setIntegrations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState<string | null>(null);
   const [azureConnectOpen, setAzureConnectOpen] = useState(false);
