@@ -1,7 +1,3 @@
-import { NextRequest, NextResponse } from "next/server";
-
-// In-memory rate limit store
-// In production, consider using Redis or a database
 interface RateLimitEntry {
   count: number;
   resetTime: number;
@@ -9,7 +5,6 @@ interface RateLimitEntry {
 
 const rateLimitStore = new Map<string, RateLimitEntry>();
 
-// Rate limit configuration per plan
 export const RATE_LIMITS = {
   pro: {
     requestsPerMinute: 60,
@@ -23,7 +18,11 @@ export const RATE_LIMITS = {
   },
 } as const;
 
-// Clean up old entries every 5 minutes
+const AUTH_FAIL_LIMITS = {
+  perMinute: 5,
+  perHour: 20,
+};
+
 setInterval(() => {
   const now = Date.now();
   for (const [key, entry] of rateLimitStore.entries()) {
@@ -33,63 +32,32 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000);
 
-/**
- * Check rate limit for an API key
- * @param apiKeyId - The API key ID
- * @param plan - User plan (pro or enterprise)
- * @param window - Time window in seconds (60 for minute, 3600 for hour, 86400 for day)
- * @param limit - Maximum requests in the window
- * @returns Object with allowed status and remaining requests
- */
 function checkRateLimit(
-  apiKeyId: string,
-  plan: "pro" | "enterprise",
+  key: string,
   window: number,
   limit: number
 ): { allowed: boolean; remaining: number; resetTime: number } {
-  const limits = RATE_LIMITS[plan];
-  const key = `${apiKeyId}:${window}`;
   const now = Date.now();
   const resetTime = now + window * 1000;
+  const storeKey = `${key}:${window}`;
 
-  const entry = rateLimitStore.get(key);
+  const entry = rateLimitStore.get(storeKey);
 
   if (!entry || entry.resetTime < now) {
-    // New window or expired entry
-    rateLimitStore.set(key, {
-      count: 1,
-      resetTime,
-    });
-    return {
-      allowed: true,
-      remaining: limit - 1,
-      resetTime,
-    };
+    rateLimitStore.set(storeKey, { count: 1, resetTime });
+    return { allowed: true, remaining: limit - 1, resetTime };
   }
 
   if (entry.count >= limit) {
-    return {
-      allowed: false,
-      remaining: 0,
-      resetTime: entry.resetTime,
-    };
+    return { allowed: false, remaining: 0, resetTime: entry.resetTime };
   }
 
-  // Increment count
   entry.count++;
-  rateLimitStore.set(key, entry);
+  rateLimitStore.set(storeKey, entry);
 
-  return {
-    allowed: true,
-    remaining: limit - entry.count,
-    resetTime: entry.resetTime,
-  };
+  return { allowed: true, remaining: limit - entry.count, resetTime: entry.resetTime };
 }
 
-/**
- * Rate limit middleware for API requests
- * Checks per-minute, per-hour, and per-day limits
- */
 export async function rateLimitApiRequest(
   apiKeyId: string,
   plan: "pro" | "enterprise"
@@ -101,9 +69,9 @@ export async function rateLimitApiRequest(
 }> {
   const limits = RATE_LIMITS[plan];
 
-  // Check per-minute limit
-  const minuteCheck = checkRateLimit(apiKeyId, plan, 60, limits.requestsPerMinute);
+  const minuteCheck = checkRateLimit(apiKeyId, 60, limits.requestsPerMinute);
   if (!minuteCheck.allowed) {
+    console.warn(`[rate-limit] Minute limit hit for key=${apiKeyId}`);
     return {
       allowed: false,
       error: "Rate limit exceeded. Too many requests per minute.",
@@ -117,9 +85,9 @@ export async function rateLimitApiRequest(
     };
   }
 
-  // Check per-hour limit
-  const hourCheck = checkRateLimit(apiKeyId, plan, 3600, limits.requestsPerHour);
+  const hourCheck = checkRateLimit(apiKeyId, 3600, limits.requestsPerHour);
   if (!hourCheck.allowed) {
+    console.warn(`[rate-limit] Hour limit hit for key=${apiKeyId}`);
     return {
       allowed: false,
       error: "Rate limit exceeded. Too many requests per hour.",
@@ -133,9 +101,9 @@ export async function rateLimitApiRequest(
     };
   }
 
-  // Check per-day limit
-  const dayCheck = checkRateLimit(apiKeyId, plan, 86400, limits.requestsPerDay);
+  const dayCheck = checkRateLimit(apiKeyId, 86400, limits.requestsPerDay);
   if (!dayCheck.allowed) {
+    console.warn(`[rate-limit] Day limit hit for key=${apiKeyId}`);
     return {
       allowed: false,
       error: "Rate limit exceeded. Too many requests per day.",
@@ -149,7 +117,6 @@ export async function rateLimitApiRequest(
     };
   }
 
-  // All checks passed
   return {
     allowed: true,
     headers: {
@@ -161,4 +128,40 @@ export async function rateLimitApiRequest(
       "X-RateLimit-Remaining-Day": dayCheck.remaining.toString(),
     },
   };
+}
+
+/**
+ * Rate-limit failed authentication attempts, keyed by IP + identifier
+ * to prevent lockout of users behind NAT.
+ */
+export function checkAuthRateLimit(
+  ip: string,
+  identifier: string
+): { allowed: boolean; retryAfterSeconds?: number } {
+  const compositeKey = `auth_fail:${ip}:${identifier}`;
+
+  const minuteCheck = checkRateLimit(compositeKey, 60, AUTH_FAIL_LIMITS.perMinute);
+  if (!minuteCheck.allowed) {
+    const retryAfter = Math.ceil((minuteCheck.resetTime - Date.now()) / 1000);
+    console.warn(`[rate-limit] Auth rate limit hit: ip=${ip}, id=${identifier}`);
+    return { allowed: false, retryAfterSeconds: retryAfter };
+  }
+
+  const hourCheck = checkRateLimit(compositeKey, 3600, AUTH_FAIL_LIMITS.perHour);
+  if (!hourCheck.allowed) {
+    const retryAfter = Math.ceil((hourCheck.resetTime - Date.now()) / 1000);
+    console.warn(`[rate-limit] Auth hour limit hit: ip=${ip}, id=${identifier}`);
+    return { allowed: false, retryAfterSeconds: retryAfter };
+  }
+
+  return { allowed: true };
+}
+
+/**
+ * Record a failed authentication attempt for rate limiting.
+ */
+export function recordAuthFailure(ip: string, identifier: string): void {
+  const compositeKey = `auth_fail:${ip}:${identifier}`;
+  checkRateLimit(compositeKey, 60, AUTH_FAIL_LIMITS.perMinute);
+  checkRateLimit(compositeKey, 3600, AUTH_FAIL_LIMITS.perHour);
 }

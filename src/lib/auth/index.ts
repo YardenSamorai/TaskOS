@@ -6,6 +6,9 @@ import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { users, accounts } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
+import { logAudit } from "@/lib/audit";
+
+const isProduction = process.env.NODE_ENV === "production";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: DrizzleAdapter(db, {
@@ -14,6 +17,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   }),
   session: {
     strategy: "jwt",
+    maxAge: 24 * 60 * 60, // 24 hours
+    updateAge: 60 * 60,   // refresh token every 1 hour
+  },
+  cookies: {
+    sessionToken: {
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: isProduction,
+      },
+    },
   },
   pages: {
     signIn: "/en/sign-in",
@@ -23,8 +37,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      // Allow linking accounts with the same email
-      allowDangerousEmailAccountLinking: true,
     }),
     Credentials({
       name: "credentials",
@@ -124,6 +136,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             }
           }
         }
+      }
+
+      if (user?.id) {
+        await logAudit({
+          userId: user.id,
+          action: "user.signed_in",
+          entityType: "user",
+          entityId: user.id,
+          metadata: { provider: account?.provider || "credentials" },
+        });
       }
 
       return true;

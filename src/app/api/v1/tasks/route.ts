@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authenticateApiRequest } from "@/lib/middleware/api-auth";
+import { authenticateApiRequest, requireScope, requireApiWorkspaceAccess } from "@/lib/middleware/api-auth";
 import { rateLimitApiRequest } from "@/lib/middleware/rate-limit";
 import { db } from "@/lib/db";
 import { tasks, taskAssignees, taskTags, taskComments, taskSteps } from "@/lib/db/schema";
 import { eq, and, desc, asc, or } from "drizzle-orm";
 import { z } from "zod";
+import { errorResponse } from "@/lib/api-error";
 
 // Maximum request body size (1MB)
 const MAX_BODY_SIZE = 1024 * 1024;
@@ -23,7 +24,11 @@ export async function GET(request: NextRequest) {
 
     const { userId, apiKeyId, userPlan } = auth.request;
 
-    // Check rate limit
+    const scopeCheck = requireScope(auth.request, "read:tasks");
+    if (!scopeCheck.allowed) {
+      return NextResponse.json({ error: scopeCheck.error }, { status: 403 });
+    }
+
     const rateLimit = await rateLimitApiRequest(apiKeyId, userPlan);
     if (!rateLimit.allowed) {
       return NextResponse.json(
@@ -38,7 +43,6 @@ export async function GET(request: NextRequest) {
     const responseHeaders = rateLimit.headers || {};
     const { searchParams } = new URL(request.url);
 
-    // Get query parameters
     const workspaceId = searchParams.get("workspaceId");
     const status = searchParams.get("status");
     const priority = searchParams.get("priority");
@@ -46,15 +50,15 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "50");
     const offset = parseInt(searchParams.get("offset") || "0");
 
-    // Build query conditions
     const conditions = [];
 
-    // Must be in a workspace the user has access to
     if (workspaceId) {
+      const wsAccess = await requireApiWorkspaceAccess(auth.request, workspaceId, "read");
+      if (!wsAccess.allowed) {
+        return NextResponse.json({ error: wsAccess.error }, { status: wsAccess.status || 403 });
+      }
       conditions.push(eq(tasks.workspaceId, workspaceId));
     } else {
-      // If no workspace specified, get all workspaces user is member of
-      // For now, we'll require workspaceId
       return NextResponse.json(
         { error: "workspaceId is required" },
         { status: 400 }
@@ -196,7 +200,11 @@ export async function POST(request: NextRequest) {
 
     const { userId, apiKeyId, userPlan } = auth.request;
 
-    // Check rate limit
+    const scopeCheck = requireScope(auth.request, "write:tasks");
+    if (!scopeCheck.allowed) {
+      return NextResponse.json({ error: scopeCheck.error }, { status: 403 });
+    }
+
     const rateLimit = await rateLimitApiRequest(apiKeyId, userPlan);
     if (!rateLimit.allowed) {
       return NextResponse.json(
@@ -211,7 +219,6 @@ export async function POST(request: NextRequest) {
     const responseHeaders = rateLimit.headers || {};
     const body = await request.json();
 
-    // Validate input
     const schema = z.object({
       workspaceId: z.string().uuid(),
       projectId: z.string().uuid().optional(),
@@ -227,7 +234,11 @@ export async function POST(request: NextRequest) {
 
     const data = schema.parse(body);
 
-    // Create task
+    const wsAccess = await requireApiWorkspaceAccess(auth.request, data.workspaceId, "create");
+    if (!wsAccess.allowed) {
+      return NextResponse.json({ error: wsAccess.error }, { status: wsAccess.status || 403 });
+    }
+
     const [task] = await db
       .insert(tasks)
       .values({

@@ -4,18 +4,18 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { hasFeature } from "@/lib/plans";
-import type { UserPlan } from "@/lib/db/schema";
+import { getTaskWithMembership, getWorkspaceMembership, hasPermission } from "@/lib/auth/permissions";
+import type { UserPlan, WorkspaceRole } from "@/lib/db/schema";
+import type { Action } from "@/lib/auth/permissions";
 
 export interface AuthenticatedRequest extends NextRequest {
   userId: string;
   apiKeyId: string;
   userPlan: "pro" | "enterprise";
+  scopes: string[];
+  boundWorkspaceId?: string;
 }
 
-/**
- * Middleware to authenticate API requests using API keys
- * Returns the authenticated request with userId and apiKeyId
- */
 export async function authenticateApiRequest(
   request: NextRequest
 ): Promise<{
@@ -25,7 +25,6 @@ export async function authenticateApiRequest(
   status?: number;
 }> {
   try {
-    // Get API key from Authorization header
     const authHeader = request.headers.get("Authorization");
 
     if (!authHeader) {
@@ -36,7 +35,6 @@ export async function authenticateApiRequest(
       };
     }
 
-    // Extract Bearer token
     const parts = authHeader.split(" ");
     if (parts.length !== 2 || parts[0] !== "Bearer") {
       return {
@@ -47,8 +45,6 @@ export async function authenticateApiRequest(
     }
 
     const apiKey = parts[1];
-
-    // Verify API key
     const verification = await verifyApiKey(apiKey);
 
     if (!verification.valid || !verification.userId) {
@@ -59,7 +55,6 @@ export async function authenticateApiRequest(
       };
     }
 
-    // Check if user has API access feature (Pro and above)
     const user = await db.query.users.findFirst({
       where: eq(users.id, verification.userId),
     });
@@ -81,14 +76,14 @@ export async function authenticateApiRequest(
       };
     }
 
-    // Ensure plan is pro or enterprise for rate limiting
     const planForRateLimit = userPlan === "enterprise" ? "enterprise" : "pro";
 
-    // Add user info to request
     const authenticatedRequest = request as AuthenticatedRequest;
     authenticatedRequest.userId = verification.userId;
     authenticatedRequest.apiKeyId = verification.apiKeyId!;
     authenticatedRequest.userPlan = planForRateLimit;
+    authenticatedRequest.scopes = verification.scopes || ["read:tasks"];
+    authenticatedRequest.boundWorkspaceId = verification.workspaceId || undefined;
 
     return {
       authenticated: true,
@@ -102,4 +97,115 @@ export async function authenticateApiRequest(
       status: 500,
     };
   }
+}
+
+/**
+ * Verify the authenticated request has the required scope.
+ */
+export function requireScope(
+  request: AuthenticatedRequest,
+  scope: string
+): { allowed: boolean; error?: string } {
+  if (!request.scopes.includes(scope)) {
+    return {
+      allowed: false,
+      error: `API key lacks required scope: ${scope}`,
+    };
+  }
+  return { allowed: true };
+}
+
+/**
+ * Verify workspace access for API-authenticated user.
+ * Checks scope, workspace binding, membership, and action permission.
+ */
+export async function requireApiWorkspaceAccess(
+  request: AuthenticatedRequest,
+  workspaceId: string,
+  action: Action
+): Promise<{ allowed: boolean; role?: WorkspaceRole; error?: string; status?: number }> {
+  // Check workspace binding
+  if (request.boundWorkspaceId && request.boundWorkspaceId !== workspaceId) {
+    return { allowed: false, error: "API key is bound to a different workspace", status: 403 };
+  }
+
+  // Check scope
+  const scopeMap: Record<string, string> = {
+    read: "read:tasks",
+    comment: "write:tasks",
+    create: "write:tasks",
+    update: "write:tasks",
+    delete: "write:tasks",
+    manage: "manage:workspace",
+    admin: "manage:workspace",
+  };
+  const requiredScope = scopeMap[action] || "read:tasks";
+  const scopeCheck = requireScope(request, requiredScope);
+  if (!scopeCheck.allowed) {
+    return { allowed: false, error: scopeCheck.error, status: 403 };
+  }
+
+  // Check membership
+  const membership = await getWorkspaceMembership(request.userId, workspaceId);
+  if (!membership) {
+    return { allowed: false, error: "Not a member of this workspace", status: 403 };
+  }
+
+  // Check role permission
+  if (!hasPermission(membership.role, action)) {
+    return { allowed: false, error: `Insufficient permissions for action: ${action}`, status: 403 };
+  }
+
+  return { allowed: true, role: membership.role };
+}
+
+/**
+ * Verify task access for API-authenticated user.
+ * Resolves the task, checks workspace membership and action permission.
+ */
+export async function requireApiTaskAccess(
+  request: AuthenticatedRequest,
+  taskId: string,
+  action: Action
+): Promise<{
+  allowed: boolean;
+  task?: any;
+  role?: WorkspaceRole;
+  error?: string;
+  status?: number;
+}> {
+  const { task, membership } = await getTaskWithMembership(request.userId, taskId);
+
+  if (!task) {
+    return { allowed: false, error: "Task not found", status: 404 };
+  }
+
+  // Check workspace binding
+  if (request.boundWorkspaceId && request.boundWorkspaceId !== task.workspaceId) {
+    return { allowed: false, error: "Task not found", status: 404 };
+  }
+
+  // Check scope
+  const scopeMap: Record<string, string> = {
+    read: "read:tasks",
+    comment: "write:tasks",
+    create: "write:tasks",
+    update: "write:tasks",
+    delete: "write:tasks",
+  };
+  const requiredScope = scopeMap[action] || "read:tasks";
+  const scopeCheck = requireScope(request, requiredScope);
+  if (!scopeCheck.allowed) {
+    return { allowed: false, error: scopeCheck.error, status: 403 };
+  }
+
+  if (!membership) {
+    return { allowed: false, error: "Not a member of this workspace", status: 403 };
+  }
+
+  if (!hasPermission(membership.role, action)) {
+    return { allowed: false, error: `Insufficient permissions for action: ${action}`, status: 403 };
+  }
+
+  return { allowed: true, task, role: membership.role };
 }

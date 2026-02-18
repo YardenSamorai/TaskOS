@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authenticateApiRequest } from "@/lib/middleware/api-auth";
+import { authenticateApiRequest, requireScope, requireApiTaskAccess } from "@/lib/middleware/api-auth";
 import { rateLimitApiRequest } from "@/lib/middleware/rate-limit";
 import { db } from "@/lib/db";
 import { tasks, taskAssignees, taskTags, taskSteps } from "@/lib/db/schema";
 import { eq, and, asc } from "drizzle-orm";
 import { z } from "zod";
+import { errorResponse } from "@/lib/api-error";
 
 // Maximum request body size (1MB)
 const MAX_BODY_SIZE = 1024 * 1024;
@@ -26,7 +27,11 @@ export async function GET(
 
     const { apiKeyId, userPlan } = auth.request;
 
-    // Check rate limit
+    const scopeCheck = requireScope(auth.request, "read:tasks");
+    if (!scopeCheck.allowed) {
+      return NextResponse.json({ error: scopeCheck.error }, { status: 403 });
+    }
+
     const rateLimit = await rateLimitApiRequest(apiKeyId, userPlan);
     if (!rateLimit.allowed) {
       return NextResponse.json(
@@ -40,6 +45,11 @@ export async function GET(
 
     const responseHeaders = rateLimit.headers || {};
     const { taskId } = await params;
+
+    const taskAccess = await requireApiTaskAccess(auth.request, taskId, "read");
+    if (!taskAccess.allowed) {
+      return NextResponse.json({ error: taskAccess.error }, { status: taskAccess.status || 403 });
+    }
 
     const task = await db.query.tasks.findFirst({
       where: eq(tasks.id, taskId),
@@ -181,7 +191,11 @@ export async function PUT(
 
     const { apiKeyId, userPlan } = auth.request;
 
-    // Check rate limit
+    const scopeCheck = requireScope(auth.request, "write:tasks");
+    if (!scopeCheck.allowed) {
+      return NextResponse.json({ error: scopeCheck.error }, { status: 403 });
+    }
+
     const rateLimit = await rateLimitApiRequest(apiKeyId, userPlan);
     if (!rateLimit.allowed) {
       return NextResponse.json(
@@ -195,9 +209,14 @@ export async function PUT(
 
     const responseHeaders = rateLimit.headers || {};
     const { taskId } = await params;
+
+    const taskAccess = await requireApiTaskAccess(auth.request, taskId, "update");
+    if (!taskAccess.allowed) {
+      return NextResponse.json({ error: taskAccess.error }, { status: taskAccess.status || 403 });
+    }
+
     const body = await request.json();
 
-    // Validate input
     const schema = z.object({
       title: z.string().min(1).max(500).optional(),
       description: z.string().optional().nullable(),
@@ -376,7 +395,11 @@ export async function DELETE(
 
     const { apiKeyId, userPlan } = auth.request;
 
-    // Check rate limit
+    const scopeCheck = requireScope(auth.request, "write:tasks");
+    if (!scopeCheck.allowed) {
+      return NextResponse.json({ error: scopeCheck.error }, { status: 403 });
+    }
+
     const rateLimit = await rateLimitApiRequest(apiKeyId, userPlan);
     if (!rateLimit.allowed) {
       return NextResponse.json(
@@ -391,16 +414,11 @@ export async function DELETE(
     const responseHeaders = rateLimit.headers || {};
     const { taskId } = await params;
 
-    // Check if task exists
-    const existingTask = await db.query.tasks.findFirst({
-      where: eq(tasks.id, taskId),
-    });
-
-    if (!existingTask) {
-      return NextResponse.json({ error: "Task not found" }, { status: 404 });
+    const taskAccess = await requireApiTaskAccess(auth.request, taskId, "delete");
+    if (!taskAccess.allowed) {
+      return NextResponse.json({ error: taskAccess.error }, { status: taskAccess.status || 403 });
     }
 
-    // Delete task (cascade will handle related records)
     await db.delete(tasks).where(eq(tasks.id, taskId));
 
     return NextResponse.json(

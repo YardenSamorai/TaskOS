@@ -941,10 +941,14 @@ export const apiKeys = pgTable("api_keys", {
   userId: uuid("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
-  keyHash: varchar("key_hash", { length: 255 }).notNull().unique(), // Hashed API key
-  name: varchar("name", { length: 255 }).notNull(), // e.g., "VS Code Extension"
+  workspaceId: uuid("workspace_id")
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  keyHash: varchar("key_hash", { length: 255 }).notNull().unique(),
+  name: varchar("name", { length: 255 }).notNull(),
+  scopes: text("scopes").default('["read:tasks"]').notNull(),
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
   lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
-  expiresAt: timestamp("expires_at", { withTimezone: true }), // null = never expires
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
@@ -954,11 +958,54 @@ export const apiKeys = pgTable("api_keys", {
 }, (table) => ({
   userIdIdx: index("api_keys_user_id_idx").on(table.userId),
   keyHashIdx: index("api_keys_key_hash_idx").on(table.keyHash),
+  workspaceIdIdx: index("api_keys_workspace_id_idx").on(table.workspaceId),
 }));
 
 export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
   user: one(users, {
     fields: [apiKeys.userId],
+    references: [users.id],
+  }),
+  workspace: one(workspaces, {
+    fields: [apiKeys.workspaceId],
+    references: [workspaces.id],
+  }),
+}));
+
+// ============== AUDIT LOGS ==============
+export const auditLogs = pgTable("audit_logs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id")
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  action: varchar("action", { length: 100 }).notNull(),
+  entityType: varchar("entity_type", { length: 50 }).notNull(),
+  entityId: uuid("entity_id"),
+  metadata: text("metadata"),
+  ipAddress: varchar("ip_address", { length: 45 }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (table) => ({
+  workspaceCreatedIdx: index("audit_workspace_created_idx").on(
+    table.workspaceId,
+    table.createdAt
+  ),
+  userCreatedIdx: index("audit_user_created_idx").on(
+    table.userId,
+    table.createdAt
+  ),
+}));
+
+export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
+  workspace: one(workspaces, {
+    fields: [auditLogs.workspaceId],
+    references: [workspaces.id],
+  }),
+  user: one(users, {
+    fields: [auditLogs.userId],
     references: [users.id],
   }),
 }));
@@ -968,6 +1015,8 @@ export type Todo = typeof todos.$inferSelect;
 export type NewTodo = typeof todos.$inferInsert;
 export type ApiKey = typeof apiKeys.$inferSelect;
 export type NewApiKey = typeof apiKeys.$inferInsert;
+export type AuditLog = typeof auditLogs.$inferSelect;
+export type NewAuditLog = typeof auditLogs.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Account = typeof accounts.$inferSelect;

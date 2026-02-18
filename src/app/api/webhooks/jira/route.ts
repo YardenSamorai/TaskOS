@@ -53,17 +53,19 @@ async function findLinkedTask(issueKey: string, cloudId: string | null) {
 export async function POST(request: NextRequest) {
   try {
     const webhookSecret = process.env.JIRA_WEBHOOK_SECRET;
-    if (webhookSecret) {
-      const authHeader = request.headers.get("authorization");
-      if (!authHeader || authHeader !== `Bearer ${webhookSecret}`) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
+    if (!webhookSecret) {
+      console.error("[Jira Webhook] JIRA_WEBHOOK_SECRET is not configured -- rejecting request");
+      return NextResponse.json({ error: "Webhook not configured" }, { status: 503 });
+    }
+
+    const authHeader = request.headers.get("authorization");
+    if (!authHeader || authHeader !== `Bearer ${webhookSecret}`) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const payload = await request.json();
     const event = payload.webhookEvent;
 
-    // Handle different event types
     switch (event) {
       case "jira:issue_updated":
         await handleIssueUpdated(payload);

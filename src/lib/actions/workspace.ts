@@ -3,7 +3,8 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 import { db } from "@/lib/db";
 import { workspaces, workspaceMembers, users } from "@/lib/db/schema";
-import { getCurrentUser, requireWorkspaceAdmin, requireWorkspaceOwner } from "@/lib/auth/permissions";
+import { getCurrentUser, requireWorkspaceAdmin, requireWorkspaceOwner, canAssignRole } from "@/lib/auth/permissions";
+import { logAudit } from "@/lib/audit";
 import { checkCanCreateWorkspace, checkCanAddMember, PlanLimitError } from "@/lib/auth/plan-check";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
@@ -243,16 +244,15 @@ export const joinWorkspaceByInvite = async (inviteCode: string) => {
   }
 };
 
-// Update member role
+// Update member role with anti-escalation
 export const updateMemberRole = async (
   workspaceId: string,
   memberId: string,
   role: "admin" | "member" | "viewer"
 ) => {
   try {
-    await requireWorkspaceAdmin(workspaceId);
+    const { user, member: actingMember } = await requireWorkspaceAdmin(workspaceId);
 
-    // Find the membership
     const membership = await db.query.workspaceMembers.findFirst({
       where: and(
         eq(workspaceMembers.workspaceId, workspaceId),
@@ -264,15 +264,29 @@ export const updateMemberRole = async (
       return { success: false, error: "Member not found" };
     }
 
-    // Can't change owner's role
     if (membership.role === "owner") {
       return { success: false, error: "Cannot change owner's role" };
     }
+
+    if (!canAssignRole(actingMember.role, role)) {
+      return { success: false, error: "You do not have permission to assign this role" };
+    }
+
+    const previousRole = membership.role;
 
     await db
       .update(workspaceMembers)
       .set({ role })
       .where(eq(workspaceMembers.id, memberId));
+
+    await logAudit({
+      userId: user.id,
+      workspaceId,
+      action: "member.role_changed",
+      entityType: "workspace_member",
+      entityId: memberId,
+      metadata: { from: previousRole, to: role, targetUserId: membership.userId },
+    });
 
     revalidatePath(`/app/${workspaceId}/settings`);
 
