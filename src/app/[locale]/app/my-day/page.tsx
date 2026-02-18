@@ -180,12 +180,13 @@ export default function MyDayPage() {
   const fetchData = useCallback(async () => {
     try {
       setIsLoading(true);
-      const [dayData, allTodos, ws] = await Promise.all([
+      const [dayData, todosResult, ws] = await Promise.all([
         getMyDayData(),
         getTodos(),
         getUserWorkspaces(),
       ]);
 
+      const allTodos = todosResult.todos || [];
       const incompleteTodos = allTodos.filter((t) => !t.completed);
       const completedTodosData = allTodos.filter((t) => t.completed);
       
