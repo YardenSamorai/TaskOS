@@ -453,7 +453,7 @@ export const IntegrationsDialog = ({
         onOpenChange={setAzureConnectOpen}
         workspaceId={workspaceId}
         onConnected={() => {
-          loadIntegrations();
+          fetchIntegrations();
         }}
       />
     </ResponsiveDialog>
