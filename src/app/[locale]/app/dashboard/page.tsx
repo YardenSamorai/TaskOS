@@ -38,7 +38,7 @@ interface WorkspaceWithRole {
   description?: string | null;
   slug: string;
   role: string;
-  createdAt: string;
+  createdAt: string | Date;
 }
 
 interface WorkspaceStats {
