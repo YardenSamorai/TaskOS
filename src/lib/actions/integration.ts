@@ -19,9 +19,14 @@ export async function getUserIntegrations(workspaceId?: string) {
       orderBy: [desc(integrations.createdAt)],
     });
 
-    console.log("[getUserIntegrations] Found integrations:", result.length, "for user:", user.id);
+    // Strip sensitive fields before returning to client
+    const safeIntegrations = result.map(({ accessToken, refreshToken, ...rest }) => ({
+      ...rest,
+      hasAccessToken: !!accessToken,
+      hasRefreshToken: !!refreshToken,
+    }));
 
-    return { success: true, integrations: result };
+    return { success: true, integrations: safeIntegrations };
   } catch (error) {
     console.error("Error getting integrations:", error);
     return { success: false, integrations: [] };
@@ -43,7 +48,8 @@ export async function getIntegration(integrationId: string) {
       return { success: false, error: "Integration not found" };
     }
 
-    return { success: true, integration };
+    const { accessToken, refreshToken, ...safe } = integration;
+    return { success: true, integration: { ...safe, hasAccessToken: !!accessToken, hasRefreshToken: !!refreshToken } };
   } catch (error) {
     console.error("Error getting integration:", error);
     return { success: false, error: "Failed to get integration" };
@@ -96,11 +102,12 @@ export async function createIntegration(data: {
         .returning();
 
       revalidatePath("/app");
-      return { success: true, integration: updated };
+      const { accessToken: _at, refreshToken: _rt, ...safeUpdated } = updated;
+      return { success: true, integration: safeUpdated };
     }
 
     // Create new integration
-    const [integration] = await db
+    const [created] = await db
       .insert(integrations)
       .values({
         userId: user.id,
@@ -117,7 +124,8 @@ export async function createIntegration(data: {
       .returning();
 
     revalidatePath("/app");
-    return { success: true, integration };
+    const { accessToken: _at2, refreshToken: _rt2, ...safeCreated } = created;
+    return { success: true, integration: safeCreated };
   } catch (error) {
     console.error("Error creating integration:", error);
     return { success: false, error: "Failed to create integration" };
@@ -179,7 +187,8 @@ export async function toggleIntegration(integrationId: string) {
       .returning();
 
     revalidatePath("/app");
-    return { success: true, integration: updated };
+    const { accessToken: _at, refreshToken: _rt, ...safeToggled } = updated;
+    return { success: true, integration: safeToggled };
   } catch (error) {
     console.error("Error toggling integration:", error);
     return { success: false, error: "Failed to toggle integration" };

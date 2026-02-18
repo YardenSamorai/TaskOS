@@ -36,6 +36,7 @@ import {
 import { format, parseISO, isPast, isToday, isTomorrow, differenceInDays } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -50,7 +51,7 @@ import { TasksFilters } from "@/components/tasks/tasks-filters";
 import { CreateTaskDialog } from "@/components/tasks/create-task-dialog";
 import { useWorkspace } from "@/lib/hooks/use-workspaces";
 import { useTasks } from "@/lib/hooks/use-tasks";
-import { updateTaskStatus, deleteTask } from "@/lib/actions/task";
+import { updateTaskStatus, deleteTask, deleteTasksByStatus } from "@/lib/actions/task";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { TaskStatus, TaskPriority, Task, User } from "@/lib/db/schema";
@@ -92,6 +93,12 @@ const TasksPage = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // Bulk delete state
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
+  const [bulkDeleteGroup, setBulkDeleteGroup] = useState<{ key: string; label: string; count: number } | null>(null);
+  const [bulkDeleteConfirmText, setBulkDeleteConfirmText] = useState("");
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   const filters = {
     status: searchParams.get("status")?.split(",") as TaskStatus[] | undefined,
@@ -172,6 +179,34 @@ const TasksPage = () => {
   const handleDeleteClick = (taskId: string) => {
     setTaskToDelete(taskId);
     setDeleteDialogOpen(true);
+  };
+
+  const handleBulkDeleteClick = (groupKey: string, label: string, count: number) => {
+    setBulkDeleteGroup({ key: groupKey, label, count });
+    setBulkDeleteConfirmText("");
+    setBulkDeleteDialogOpen(true);
+  };
+
+  const handleBulkDelete = async () => {
+    if (!bulkDeleteGroup || bulkDeleteConfirmText !== "confirm") return;
+
+    setBulkDeleting(true);
+    try {
+      const result = await deleteTasksByStatus(workspaceId, bulkDeleteGroup.key as TaskStatus);
+      if (result.success) {
+        toast.success(`Deleted ${result.deletedCount} tasks from ${bulkDeleteGroup.label}`);
+        refetch();
+      } else {
+        toast.error(result.error || "Failed to delete tasks");
+      }
+    } catch {
+      toast.error("Something went wrong");
+    } finally {
+      setBulkDeleting(false);
+      setBulkDeleteDialogOpen(false);
+      setBulkDeleteGroup(null);
+      setBulkDeleteConfirmText("");
+    }
   };
 
   const handleDelete = async () => {
@@ -322,6 +357,10 @@ const TasksPage = () => {
                     group={group} 
                     count={tasks.length} 
                     groupBy={groupBy}
+                    onDeleteAll={groupBy === "status" && tasks.length > 0
+                      ? () => handleBulkDeleteClick(group, statusConfig[group]?.label || group, tasks.length)
+                      : undefined
+                    }
                   />
                 )}
                 
@@ -377,7 +416,7 @@ const TasksPage = () => {
         members={members}
       />
 
-      {/* Delete confirmation dialog */}
+      {/* Delete single task dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -401,6 +440,64 @@ const TasksPage = () => {
                 </>
               ) : (
                 "Delete"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk delete confirmation dialog */}
+      <AlertDialog open={bulkDeleteDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          setBulkDeleteDialogOpen(false);
+          setBulkDeleteGroup(null);
+          setBulkDeleteConfirmText("");
+        }
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-destructive" />
+              Delete All &quot;{bulkDeleteGroup?.label}&quot; Tasks
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  This will permanently delete <strong className="text-foreground">{bulkDeleteGroup?.count} task{(bulkDeleteGroup?.count ?? 0) !== 1 ? "s" : ""}</strong> in
+                  the <strong className="text-foreground">{bulkDeleteGroup?.label}</strong> category. This action cannot be undone.
+                </p>
+                <div className="space-y-2">
+                  <p className="text-sm">
+                    Type <strong className="text-foreground font-mono">confirm</strong> to proceed:
+                  </p>
+                  <Input
+                    value={bulkDeleteConfirmText}
+                    onChange={(e) => setBulkDeleteConfirmText(e.target.value)}
+                    placeholder="Type confirm here..."
+                    className="font-mono"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkDelete}
+              disabled={bulkDeleting || bulkDeleteConfirmText !== "confirm"}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {bulkDeleting ? (
+                <>
+                  <Loader2 className="w-4 h-4 me-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4 me-2" />
+                  Delete {bulkDeleteGroup?.count} Tasks
+                </>
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -459,11 +556,13 @@ const StatsCard = ({
 const GroupHeader = ({ 
   group, 
   count, 
-  groupBy 
+  groupBy,
+  onDeleteAll,
 }: { 
   group: string; 
   count: number; 
   groupBy: GroupBy;
+  onDeleteAll?: () => void;
 }) => {
   const config = groupBy === "status" ? statusConfig[group] : priorityConfig[group];
   
@@ -476,6 +575,17 @@ const GroupHeader = ({
       <Badge variant="secondary" className="rounded-full">
         {count}
       </Badge>
+      {onDeleteAll && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="ms-auto h-7 text-xs text-muted-foreground hover:text-destructive"
+          onClick={onDeleteAll}
+        >
+          <Trash2 className="w-3.5 h-3.5 me-1.5" />
+          Delete All
+        </Button>
+      )}
     </div>
   );
 };

@@ -17,7 +17,9 @@ const publicPaths = [
   "/sign-up",
   "/forgot-password",
   "/reset-password",
-  "/invite", // Public invitation page
+  "/invite",
+  "/terms",
+  "/privacy",
   "/api/auth",
   "/api/webhooks",
 ];
@@ -38,6 +40,15 @@ function isApiRoute(pathname: string): boolean {
   return pathname.startsWith("/api");
 }
 
+function addSecurityHeaders(response: NextResponse): NextResponse {
+  response.headers.set("X-Content-Type-Options", "nosniff");
+  response.headers.set("X-Frame-Options", "DENY");
+  response.headers.set("X-XSS-Protection", "1; mode=block");
+  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  return response;
+}
+
 export default async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -51,7 +62,8 @@ export default async function middleware(request: NextRequest) {
 
   // Handle API routes (no intl middleware)
   if (isApiRoute(pathname)) {
-    return NextResponse.next();
+    const response = NextResponse.next();
+    return addSecurityHeaders(response);
   }
 
   // Check authentication for protected routes
@@ -59,7 +71,6 @@ export default async function middleware(request: NextRequest) {
     const session = await auth();
     
     if (!session) {
-      // Redirect to sign-in if not authenticated
       const locale = pathname.split("/")[1] || defaultLocale;
       const signInUrl = new URL(`/${locale}/sign-in`, request.url);
       signInUrl.searchParams.set("callbackUrl", pathname);
@@ -67,8 +78,8 @@ export default async function middleware(request: NextRequest) {
     }
   }
 
-  // Apply intl middleware for non-API routes
-  return intlMiddleware(request);
+  const response = intlMiddleware(request);
+  return addSecurityHeaders(response as NextResponse);
 }
 
 export const config = {

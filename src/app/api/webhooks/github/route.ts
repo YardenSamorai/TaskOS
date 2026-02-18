@@ -66,13 +66,14 @@ export async function POST(request: NextRequest) {
 
     console.log("[GitHub Webhook] Received event:", event);
 
-    // Verify webhook secret if configured
     const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET;
-    if (webhookSecret && signature) {
-      if (!verifySignature(payload, signature, webhookSecret)) {
-        console.error("[GitHub Webhook] Invalid signature");
-        return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
-      }
+    if (!webhookSecret) {
+      console.error("[GitHub Webhook] GITHUB_WEBHOOK_SECRET not configured");
+      return NextResponse.json({ error: "Webhook not configured" }, { status: 500 });
+    }
+    if (!signature || !verifySignature(payload, signature, webhookSecret)) {
+      console.error("[GitHub Webhook] Invalid or missing signature");
+      return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
 
     const data = JSON.parse(payload);

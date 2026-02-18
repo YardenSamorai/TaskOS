@@ -5,7 +5,6 @@ import { eq, and, desc } from "drizzle-orm";
 
 // Find task linked to Jira issue
 async function findLinkedTask(issueKey: string, cloudId: string | null) {
-  console.log("[Jira Webhook] Finding linked task for:", issueKey, "cloudId:", cloudId);
   
   // Search in activity logs for the imported_from_jira action
   const allActivities = await db.query.activityLogs.findMany({
@@ -53,14 +52,16 @@ async function findLinkedTask(issueKey: string, cloudId: string | null) {
 
 export async function POST(request: NextRequest) {
   try {
+    const webhookSecret = process.env.JIRA_WEBHOOK_SECRET;
+    if (webhookSecret) {
+      const authHeader = request.headers.get("authorization");
+      if (!authHeader || authHeader !== `Bearer ${webhookSecret}`) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+    }
+
     const payload = await request.json();
     const event = payload.webhookEvent;
-
-    console.log("[Jira Webhook] ========== WEBHOOK RECEIVED ==========");
-    console.log("[Jira Webhook] Event type:", event);
-    console.log("[Jira Webhook] Issue key:", payload.issue?.key);
-    console.log("[Jira Webhook] Issue self URL:", payload.issue?.self);
-    console.log("[Jira Webhook] Changelog items:", JSON.stringify(payload.changelog?.items?.map((i: any) => i.field)));
 
     // Handle different event types
     switch (event) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams } from "next/navigation";
 import {
   Copy,
@@ -35,6 +35,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { regenerateInviteCode } from "@/lib/actions/workspace";
 import { createInvitation } from "@/lib/actions/invitation";
+import { useWorkspaces, useWorkspace } from "@/lib/hooks/use-workspaces";
 
 interface InviteMembersDialogProps {
   workspaceId: string;
@@ -47,9 +48,9 @@ interface InviteMembersDialogProps {
 }
 
 export const InviteMembersDialog = ({
-  workspaceId,
-  workspaceName,
-  inviteCode,
+  workspaceId: initialWorkspaceId,
+  workspaceName: initialWorkspaceName,
+  inviteCode: initialInviteCode,
   canManage,
   children,
   onInviteCodeRegenerated,
@@ -57,11 +58,37 @@ export const InviteMembersDialog = ({
 }: InviteMembersDialogProps) => {
   const params = useParams();
   const locale = params.locale as string;
-  
+
+  const { data: allWorkspaces = [] } = useWorkspaces();
+
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState(initialWorkspaceId);
+
+  // Only show workspaces where user is owner or admin
+  const manageableWorkspaces = useMemo(
+    () => allWorkspaces.filter((ws: any) => ws.role === "owner" || ws.role === "admin"),
+    [allWorkspaces]
+  );
+
+  // Fetch full details for the selected workspace (for inviteCode)
+  const { data: selectedWsData } = useWorkspace(selectedWorkspaceId);
+
+  const isCurrentWorkspace = selectedWorkspaceId === initialWorkspaceId;
+  const activeWorkspaceName = isCurrentWorkspace
+    ? initialWorkspaceName
+    : (selectedWsData?.workspace?.name || manageableWorkspaces.find((ws: any) => ws.id === selectedWorkspaceId)?.name || "");
+  const activeInviteCode = isCurrentWorkspace
+    ? initialInviteCode
+    : (selectedWsData?.workspace?.inviteCode || null);
+
   const [copied, setCopied] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
-  const [currentInviteCode, setCurrentInviteCode] = useState(inviteCode);
-  
+  const [currentInviteCode, setCurrentInviteCode] = useState(activeInviteCode);
+
+  // Sync invite code when selected workspace changes
+  useEffect(() => {
+    setCurrentInviteCode(activeInviteCode);
+  }, [activeInviteCode]);
+
   // Email invitation state
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"admin" | "member" | "viewer">("member");
@@ -86,13 +113,15 @@ export const InviteMembersDialog = ({
 
   const handleRegenerateCode = async () => {
     if (!canManage) return;
-    
+
     setIsRegenerating(true);
     try {
-      const result = await regenerateInviteCode(workspaceId);
+      const result = await regenerateInviteCode(selectedWorkspaceId);
       if (result.success && result.inviteCode) {
         setCurrentInviteCode(result.inviteCode);
-        onInviteCodeRegenerated?.(result.inviteCode);
+        if (isCurrentWorkspace) {
+          onInviteCodeRegenerated?.(result.inviteCode);
+        }
         toast.success("Invite link regenerated! Previous links are now invalid.");
       } else {
         toast.error(result.error || "Failed to regenerate invite code");
@@ -106,7 +135,7 @@ export const InviteMembersDialog = ({
 
   const handleSendInvitation = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!email.trim()) {
       toast.error("Please enter an email address");
       return;
@@ -115,17 +144,19 @@ export const InviteMembersDialog = ({
     setIsSending(true);
     try {
       const formData = new FormData();
-      formData.append("workspaceId", workspaceId);
+      formData.append("workspaceId", selectedWorkspaceId);
       formData.append("email", email.trim());
       formData.append("role", role);
 
       const result = await createInvitation(formData);
-      
+
       if (result.success) {
         toast.success(`Invitation sent to ${email}`);
         setEmail("");
         setRole("member");
-        onInvitationSent?.();
+        if (isCurrentWorkspace) {
+          onInvitationSent?.();
+        }
       } else {
         toast.error(result.error || "Failed to send invitation");
       }
@@ -137,9 +168,9 @@ export const InviteMembersDialog = ({
   };
 
   const shareViaEmail = () => {
-    const subject = encodeURIComponent(`Join ${workspaceName} on TaskOS`);
+    const subject = encodeURIComponent(`Join ${activeWorkspaceName} on TaskOS`);
     const body = encodeURIComponent(
-      `Hey!\n\nI'd like to invite you to join "${workspaceName}" workspace on TaskOS.\n\nClick the link below to join:\n${inviteLink}\n\nSee you there!`
+      `Hey!\n\nI'd like to invite you to join "${activeWorkspaceName}" workspace on TaskOS.\n\nClick the link below to join:\n${inviteLink}\n\nSee you there!`
     );
     window.open(`mailto:?subject=${subject}&body=${body}`);
   };
@@ -148,8 +179,8 @@ export const InviteMembersDialog = ({
     if (navigator.share) {
       try {
         await navigator.share({
-          title: `Join ${workspaceName}`,
-          text: `Join "${workspaceName}" workspace on TaskOS`,
+          title: `Join ${activeWorkspaceName}`,
+          text: `Join "${activeWorkspaceName}" workspace on TaskOS`,
           url: inviteLink,
         });
       } catch (error) {
@@ -174,9 +205,40 @@ export const InviteMembersDialog = ({
             Invite Members
           </ResponsiveDialogTitle>
           <ResponsiveDialogDescription>
-            Invite people to join <strong>{workspaceName}</strong>
+            Invite people to join <strong>{activeWorkspaceName}</strong>
           </ResponsiveDialogDescription>
         </ResponsiveDialogHeader>
+
+        {/* Workspace Selector */}
+        {manageableWorkspaces.length > 1 && (
+          <div className="space-y-2 mt-2">
+            <Label htmlFor="workspace-select">Workspace</Label>
+            <Select
+              value={selectedWorkspaceId}
+              onValueChange={setSelectedWorkspaceId}
+            >
+              <SelectTrigger id="workspace-select" className="w-full">
+                <SelectValue placeholder="Select workspace" />
+              </SelectTrigger>
+              <SelectContent>
+                {manageableWorkspaces.map((ws: any) => (
+                  <SelectItem key={ws.id} value={ws.id}>
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-2 h-2 rounded-full shrink-0"
+                        style={{ backgroundColor: ws.id === initialWorkspaceId ? "var(--accent-color)" : "hsl(var(--muted-foreground))" }}
+                      />
+                      <span>{ws.name}</span>
+                      {ws.id === initialWorkspaceId && (
+                        <span className="text-xs text-muted-foreground">(current)</span>
+                      )}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         <Tabs defaultValue="email" className="mt-4">
           <TabsList className="grid w-full grid-cols-2">

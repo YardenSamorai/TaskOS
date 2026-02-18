@@ -22,7 +22,6 @@ import {
   Calendar,
   Target,
   Settings,
-  Users,
   Plus,
   Moon,
   Sun,
@@ -191,19 +190,11 @@ export const CommandPalette = () => {
             </CommandItem>
             <CommandItem
               onSelect={() => runCommand(() => 
-                router.push(`/${locale}/app/${workspaceId}/members`)
-              )}
-            >
-              <Users className="mr-2 h-4 w-4" />
-              <span>Members</span>
-            </CommandItem>
-            <CommandItem
-              onSelect={() => runCommand(() => 
                 router.push(`/${locale}/app/${workspaceId}/settings`)
               )}
             >
               <Settings className="mr-2 h-4 w-4" />
-              <span>Settings</span>
+              <span>Manage Workspace</span>
             </CommandItem>
           </CommandGroup>
         )}

@@ -2,11 +2,17 @@
 
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { integrations, tasks, activityLogs } from "@/lib/db/schema";
+import { integrations, tasks, activityLogs, taskAssignees } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { decrypt } from "@/lib/encryption";
 import {
   getAzureDevOpsProjects,
+  getProjectTeams,
+  getTeamIterations,
+  getTeamBoards,
+  getBoardColumns,
+  getTeamFieldValues,
   queryWorkItems,
   getWorkItem,
   createWorkItem,
@@ -19,67 +25,7 @@ import {
   type AzureDevOpsWorkItem,
 } from "@/lib/azure-devops";
 
-// Refresh Azure DevOps access token
-async function refreshAzureToken(integration: any): Promise<string | null> {
-  if (!integration.refreshToken) {
-    console.log("[Azure DevOps] No refresh token available");
-    return null;
-  }
-
-  const clientSecret = process.env.AZURE_DEVOPS_CLIENT_SECRET;
-  if (!clientSecret) {
-    console.error("[Azure DevOps] Missing client secret for token refresh");
-    return null;
-  }
-
-  try {
-    console.log("[Azure DevOps] Refreshing access token...");
-
-    const response = await fetch(
-      "https://app.vssps.visualstudio.com/oauth2/token",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          client_assertion_type:
-            "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
-          client_assertion: clientSecret,
-          grant_type: "refresh_token",
-          assertion: integration.refreshToken,
-          redirect_uri: `${process.env.NEXTAUTH_URL}/api/integrations/azure-devops/callback`,
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("[Azure DevOps] Token refresh failed:", response.status, errorText);
-      return null;
-    }
-
-    const tokenData = await response.json();
-    const { access_token, refresh_token, expires_in } = tokenData;
-
-    const tokenExpiresAt = expires_in
-      ? new Date(Date.now() + expires_in * 1000)
-      : null;
-
-    await db.update(integrations).set({
-      accessToken: access_token,
-      refreshToken: refresh_token || integration.refreshToken,
-      tokenExpiresAt,
-      updatedAt: new Date(),
-    }).where(eq(integrations.id, integration.id));
-
-    console.log("[Azure DevOps] Token refreshed successfully");
-    return access_token;
-  } catch (error) {
-    console.error("[Azure DevOps] Error refreshing token:", error);
-    return null;
-  }
-}
-
-// Get Azure DevOps access token for current user
+// Get Azure DevOps PAT and organization for current user
 export async function getAzureDevOpsToken() {
   const session = await auth();
   if (!session?.user?.id) {
@@ -98,35 +44,18 @@ export async function getAzureDevOpsToken() {
     return { success: false as const, error: "Azure DevOps not connected" };
   }
 
-  let accessToken = integration.accessToken;
-  const tokenExpiry = integration.tokenExpiresAt;
-  const fiveMinutesFromNow = new Date(Date.now() + 5 * 60 * 1000);
-
-  if (tokenExpiry && new Date(tokenExpiry) < fiveMinutesFromNow) {
-    console.log("[Azure DevOps] Token expired or expiring soon, refreshing...");
-    const newToken = await refreshAzureToken(integration);
-    if (newToken) {
-      accessToken = newToken;
-    } else {
-      return { success: false as const, error: "Token expired. Please reconnect to Azure DevOps." };
-    }
+  const pat = integration.accessToken ? decrypt(integration.accessToken) : null;
+  if (!pat) {
+    return { success: false as const, error: "No PAT found. Please reconnect." };
   }
 
-  // Parse organizations from metadata
-  let organizations: { id: string; name: string; uri: string }[] = [];
-  if (integration.metadata) {
-    try {
-      const metadata = JSON.parse(integration.metadata as string);
-      organizations = metadata.organizations || [];
-    } catch (e) {
-      console.error("[Azure DevOps] Error parsing metadata:", e);
-    }
-  }
+  // Organization is stored in providerAccountId
+  const organization = integration.providerAccountId || "";
 
   return {
     success: true as const,
-    accessToken,
-    organizations,
+    accessToken: pat,
+    organizations: [{ id: organization, name: organization, uri: `https://dev.azure.com/${organization}` }],
     integration,
   };
 }
@@ -157,11 +86,175 @@ export async function getUserAzureDevOpsProjects(
   }
 }
 
+// Get teams for a project
+export async function getProjectTeamsList(
+  organization: string,
+  project: string
+): Promise<{
+  success: boolean;
+  teams?: { id: string; name: string }[];
+  error?: string;
+}> {
+  try {
+    const tokenResult = await getAzureDevOpsToken();
+    if (!tokenResult.success || !tokenResult.accessToken) {
+      return { success: false, error: tokenResult.error || "Not connected" };
+    }
+    const teams = await getProjectTeams(tokenResult.accessToken, organization, project);
+    return { success: true, teams };
+  } catch (error: any) {
+    console.error("Error fetching teams:", error);
+    return { success: false, error: error.message || "Failed to fetch teams" };
+  }
+}
+
+// Get boards for a team
+export async function getTeamBoardsList(
+  organization: string,
+  project: string,
+  team: string
+): Promise<{
+  success: boolean;
+  boards?: { id: string; name: string }[];
+  error?: string;
+}> {
+  try {
+    const tokenResult = await getAzureDevOpsToken();
+    if (!tokenResult.success || !tokenResult.accessToken) {
+      return { success: false, error: tokenResult.error || "Not connected" };
+    }
+    const boards = await getTeamBoards(tokenResult.accessToken, organization, project, team);
+    return { success: true, boards };
+  } catch (error: any) {
+    console.error("Error fetching boards:", error);
+    return { success: false, error: error.message || "Failed to fetch boards" };
+  }
+}
+
+// Get board columns + work items for a team board
+export async function getTeamBoardWorkItems(
+  organization: string,
+  project: string,
+  team: string,
+  boardName: string
+): Promise<{
+  success: boolean;
+  columns?: { name: string; columnType: string; items: AzureDevOpsWorkItem[] }[];
+  error?: string;
+}> {
+  try {
+    const tokenResult = await getAzureDevOpsToken();
+    if (!tokenResult.success || !tokenResult.accessToken) {
+      return { success: false, error: tokenResult.error || "Not connected" };
+    }
+
+    // Get board columns
+    const columns = await getBoardColumns(
+      tokenResult.accessToken, organization, project, team, boardName
+    );
+
+    // Get team area paths to filter work items
+    const areaPaths = await getTeamFieldValues(
+      tokenResult.accessToken, organization, project, team
+    );
+
+    // Fetch work items for this team's area
+    const result = await queryWorkItems(
+      tokenResult.accessToken, organization, project, {
+        areaPaths: areaPaths.length > 0 ? areaPaths : undefined,
+        maxResults: 200,
+      }
+    );
+
+    // Group by board column
+    const columnMap = new Map<string, AzureDevOpsWorkItem[]>();
+    for (const col of columns) {
+      columnMap.set(col.name, []);
+    }
+
+    for (const item of result.workItems) {
+      const col = item.fields["System.BoardColumn"] || item.fields["System.State"] || "New";
+      if (columnMap.has(col)) {
+        columnMap.get(col)!.push(item);
+      } else {
+        // Put in first matching column by state
+        const stateColumnMap: Record<string, string[]> = {
+          New: ["New", "To Do", "Backlog"],
+          Active: ["Active", "In Progress", "Doing"],
+          Resolved: ["Resolved", "In Review", "In PR"],
+          Closed: ["Closed", "Done"],
+        };
+        const state = item.fields["System.State"];
+        let placed = false;
+        for (const [, aliases] of Object.entries(stateColumnMap)) {
+          if (aliases.includes(state)) {
+            for (const alias of aliases) {
+              if (columnMap.has(alias)) {
+                columnMap.get(alias)!.push(item);
+                placed = true;
+                break;
+              }
+            }
+          }
+          if (placed) break;
+        }
+        if (!placed) {
+          // Add to first non-incoming column
+          const firstCol = columns.find(c => c.columnType !== "incoming");
+          if (firstCol) {
+            columnMap.get(firstCol.name)?.push(item);
+          }
+        }
+      }
+    }
+
+    return {
+      success: true,
+      columns: columns.map(col => ({
+        name: col.name,
+        columnType: col.columnType,
+        items: columnMap.get(col.name) || [],
+      })),
+    };
+  } catch (error: any) {
+    console.error("Error fetching board work items:", error);
+    return { success: false, error: error.message || "Failed to fetch board data" };
+  }
+}
+
+// Get iterations (sprints/boards) for a project
+export async function getProjectIterations(
+  organization: string,
+  project: string
+): Promise<{
+  success: boolean;
+  iterations?: { id: string; name: string; path: string; timeFrame?: string }[];
+  error?: string;
+}> {
+  try {
+    const tokenResult = await getAzureDevOpsToken();
+    if (!tokenResult.success || !tokenResult.accessToken) {
+      return { success: false, error: tokenResult.error || "Not connected" };
+    }
+
+    const iterations = await getTeamIterations(
+      tokenResult.accessToken,
+      organization,
+      project
+    );
+
+    return { success: true, iterations };
+  } catch (error: any) {
+    console.error("Error fetching iterations:", error);
+    return { success: false, error: error.message || "Failed to fetch iterations" };
+  }
+}
+
 // Get work items for a project
 export async function getProjectWorkItems(
   organization: string,
   project: string,
-  options?: { states?: string[]; maxResults?: number }
+  options?: { states?: string[]; iterationPath?: string; maxResults?: number }
 ): Promise<{
   success: boolean;
   workItems?: AzureDevOpsWorkItem[];
@@ -236,6 +329,9 @@ export async function importAzureWorkItemsAsTasks(data: {
 
       const workItemUrl = `https://dev.azure.com/${data.organization}/${data.project}/_workitems/edit/${workItemId}`;
 
+      const rawDueDate = fields["Microsoft.VSTS.Scheduling.DueDate"];
+      const dueDate = rawDueDate ? rawDueDate.split("T")[0] : null;
+
       const [newTask] = await db
         .insert(tasks)
         .values({
@@ -244,7 +340,7 @@ export async function importAzureWorkItemsAsTasks(data: {
           description: description || null,
           status: status as any,
           priority: priority as any,
-          dueDate: fields["Microsoft.VSTS.Scheduling.DueDate"] || null,
+          dueDate,
           createdBy: session.user.id,
           metadata: JSON.stringify({
             azure_devops: {
@@ -259,6 +355,16 @@ export async function importAzureWorkItemsAsTasks(data: {
           }),
         })
         .returning();
+
+      try {
+        await db.insert(taskAssignees).values({
+          taskId: newTask.id,
+          userId: session.user.id,
+          assignedBy: session.user.id,
+        });
+      } catch (e) {
+        console.error("Failed to auto-assign task:", e);
+      }
 
       await db.insert(activityLogs).values({
         workspaceId: data.workspaceId,
@@ -285,9 +391,9 @@ export async function importAzureWorkItemsAsTasks(data: {
     revalidatePath(`/app/${data.workspaceId}/dashboard`);
 
     return { success: true, imported };
-  } catch (error) {
-    console.error("Error importing work items:", error);
-    return { success: false, error: "Failed to import work items" };
+  } catch (error: any) {
+    console.error("Error importing work items:", error?.message || error);
+    return { success: false, error: error?.message || "Failed to import work items" };
   }
 }
 

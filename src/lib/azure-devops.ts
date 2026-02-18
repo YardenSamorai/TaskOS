@@ -1,29 +1,30 @@
 // Azure DevOps API utility functions
+// Uses Personal Access Token (PAT) with Basic authentication
+
+function buildBasicAuth(pat: string): string {
+  return `Basic ${Buffer.from(`:${pat}`).toString("base64")}`;
+}
 
 async function azureDevOpsFetch(
   organization: string,
   path: string,
-  accessToken: string,
+  pat: string,
   options?: RequestInit
 ) {
   const url = `https://dev.azure.com/${organization}${path}`;
-  console.log("[Azure DevOps API] Calling:", url);
 
   const response = await fetch(url, {
     ...options,
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      Authorization: buildBasicAuth(pat),
       "Content-Type": "application/json",
       ...options?.headers,
     },
     cache: "no-store",
   });
 
-  console.log("[Azure DevOps API] Response status:", response.status);
-
   if (!response.ok) {
-    const errorText = await response.text();
-    console.error("[Azure DevOps API] Error:", response.status, errorText);
+    console.error("[Azure DevOps API] Error:", response.status);
     throw new Error(
       `Azure DevOps API error: ${response.status} ${response.statusText}`
     );
@@ -72,6 +73,8 @@ export interface AzureDevOpsWorkItem {
     "System.Tags"?: string;
     "System.AreaPath"?: string;
     "System.IterationPath"?: string;
+    "System.TeamProject"?: string;
+    "System.BoardColumn"?: string;
   };
 }
 
@@ -93,6 +96,122 @@ export async function getAzureDevOpsProjects(
   return data.value || [];
 }
 
+// Get teams for a project
+export async function getProjectTeams(
+  accessToken: string,
+  organization: string,
+  project: string
+): Promise<{ id: string; name: string }[]> {
+  const data = await azureDevOpsFetch(
+    organization,
+    `/_apis/projects/${project}/teams?api-version=7.1`,
+    accessToken
+  );
+  return (data.value || []).map((t: any) => ({ id: t.id, name: t.name }));
+}
+
+// Get iterations (sprints) for a project team
+export async function getTeamIterations(
+  accessToken: string,
+  organization: string,
+  project: string,
+  team?: string
+): Promise<{ id: string; name: string; path: string; startDate?: string; finishDate?: string; timeFrame?: string }[]> {
+  const teamSegment = team ? `/${encodeURIComponent(team)}` : "";
+  const data = await azureDevOpsFetch(
+    organization,
+    `/${project}${teamSegment}/_apis/work/teamsettings/iterations?api-version=7.1`,
+    accessToken
+  );
+  return (data.value || []).map((iter: any) => ({
+    id: iter.id,
+    name: iter.name,
+    path: iter.path,
+    startDate: iter.attributes?.startDate,
+    finishDate: iter.attributes?.finishDate,
+    timeFrame: iter.attributes?.timeFrame,
+  }));
+}
+
+// Get boards for a project team
+export async function getTeamBoards(
+  accessToken: string,
+  organization: string,
+  project: string,
+  team?: string
+): Promise<{ id: string; name: string }[]> {
+  const teamSegment = team ? `/${encodeURIComponent(team)}` : "";
+  const data = await azureDevOpsFetch(
+    organization,
+    `/${project}${teamSegment}/_apis/work/boards?api-version=7.1`,
+    accessToken
+  );
+  return (data.value || []).map((b: any) => ({ id: b.id, name: b.name }));
+}
+
+// Get board columns for a specific board
+export async function getBoardColumns(
+  accessToken: string,
+  organization: string,
+  project: string,
+  team: string,
+  boardName: string
+): Promise<{ id: string; name: string; itemLimit: number; columnType: string }[]> {
+  const data = await azureDevOpsFetch(
+    organization,
+    `/${project}/${encodeURIComponent(team)}/_apis/work/boards/${encodeURIComponent(boardName)}/columns?api-version=7.1`,
+    accessToken
+  );
+  return (data.value || []).map((c: any) => ({
+    id: c.id,
+    name: c.name,
+    itemLimit: c.itemLimit || 0,
+    columnType: c.columnType || "inProgress",
+  }));
+}
+
+// Get team area path (to filter work items by team)
+export async function getTeamSettings(
+  accessToken: string,
+  organization: string,
+  project: string,
+  team: string
+): Promise<{ defaultIteration?: string; backlogIteration?: string; areaPath?: string }> {
+  try {
+    const data = await azureDevOpsFetch(
+      organization,
+      `/${project}/${encodeURIComponent(team)}/_apis/work/teamsettings?api-version=7.1`,
+      accessToken
+    );
+    return {
+      defaultIteration: data.defaultIteration?.path,
+      backlogIteration: data.backlogIteration?.path,
+      areaPath: data.defaultIteration?.path,
+    };
+  } catch {
+    return {};
+  }
+}
+
+// Get team field values (area paths for the team)
+export async function getTeamFieldValues(
+  accessToken: string,
+  organization: string,
+  project: string,
+  team: string
+): Promise<string[]> {
+  try {
+    const data = await azureDevOpsFetch(
+      organization,
+      `/${project}/${encodeURIComponent(team)}/_apis/work/teamsettings/teamfieldvalues?api-version=7.1`,
+      accessToken
+    );
+    return (data.values || []).map((v: any) => v.value);
+  } catch {
+    return [];
+  }
+}
+
 // Query work items using WIQL
 export async function queryWorkItems(
   accessToken: string,
@@ -102,31 +221,42 @@ export async function queryWorkItems(
     states?: string[];
     workItemTypes?: string[];
     assignedTo?: string;
+    iterationPath?: string;
+    areaPaths?: string[];
     maxResults?: number;
   }
 ): Promise<{ workItems: AzureDevOpsWorkItem[]; total: number }> {
-  const { states, workItemTypes, assignedTo, maxResults = 50 } = options || {};
+  const { states, workItemTypes, assignedTo, iterationPath, areaPaths, maxResults = 50 } = options || {};
 
-  // Build WIQL query
-  const conditions: string[] = [`[System.TeamProject] = '${project}'`];
+  // Sanitize WIQL inputs to prevent injection
+  const sanitizeWiql = (val: string) => val.replace(/'/g, "''");
+
+  const conditions: string[] = [`[System.TeamProject] = '${sanitizeWiql(project)}'`];
 
   if (states && states.length > 0) {
-    const stateList = states.map((s) => `'${s}'`).join(", ");
+    const stateList = states.map((s) => `'${sanitizeWiql(s)}'`).join(", ");
     conditions.push(`[System.State] IN (${stateList})`);
   }
 
   if (workItemTypes && workItemTypes.length > 0) {
-    const typeList = workItemTypes.map((t) => `'${t}'`).join(", ");
+    const typeList = workItemTypes.map((t) => `'${sanitizeWiql(t)}'`).join(", ");
     conditions.push(`[System.WorkItemType] IN (${typeList})`);
   }
 
   if (assignedTo) {
-    conditions.push(`[System.AssignedTo] = '${assignedTo}'`);
+    conditions.push(`[System.AssignedTo] = '${sanitizeWiql(assignedTo)}'`);
+  }
+
+  if (iterationPath) {
+    conditions.push(`[System.IterationPath] UNDER '${sanitizeWiql(iterationPath)}'`);
+  }
+
+  if (areaPaths && areaPaths.length > 0) {
+    const areaConditions = areaPaths.map((a) => `[System.AreaPath] UNDER '${sanitizeWiql(a)}'`);
+    conditions.push(`(${areaConditions.join(" OR ")})`);
   }
 
   const wiql = `SELECT [System.Id] FROM WorkItems WHERE ${conditions.join(" AND ")} ORDER BY [System.ChangedDate] DESC`;
-
-  console.log("[Azure DevOps] WIQL query:", wiql);
 
   const queryResult = await azureDevOpsFetch(
     organization,
@@ -179,6 +309,8 @@ export async function getWorkItemsByIds(
     "System.Tags",
     "System.AreaPath",
     "System.IterationPath",
+    "System.TeamProject",
+    "System.BoardColumn",
   ];
 
   const data = await azureDevOpsFetch(
@@ -282,7 +414,7 @@ export async function createWorkItem(
   const response = await fetch(url, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      Authorization: buildBasicAuth(accessToken),
       "Content-Type": "application/json-patch+json",
     },
     body: JSON.stringify(patchDocument),
@@ -367,7 +499,7 @@ export async function updateWorkItem(
   const response = await fetch(url, {
     method: "PATCH",
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      Authorization: buildBasicAuth(accessToken),
       "Content-Type": "application/json-patch+json",
     },
     body: JSON.stringify(patchDocument),
@@ -423,6 +555,67 @@ export function mapTaskPriorityToAzure(priority: string): number {
       return 4;
     default:
       return 3;
+  }
+}
+
+// Validate PAT by fetching user profile
+export async function validatePat(
+  pat: string,
+  organization: string
+): Promise<{ valid: boolean; displayName?: string; email?: string }> {
+  const authHeader = buildBasicAuth(pat);
+
+  // Try projects endpoint first (most reliable)
+  try {
+    const projectsResponse = await fetch(
+      `https://dev.azure.com/${organization}/_apis/projects?api-version=7.1&$top=1`,
+      {
+        headers: { Authorization: authHeader },
+        cache: "no-store",
+      }
+    );
+
+    if (projectsResponse.status === 401 || projectsResponse.status === 403) {
+      return { valid: false };
+    }
+
+    if (projectsResponse.status === 404) {
+      return { valid: false };
+    }
+
+    // Try to get user profile for display name
+    let displayName: string | undefined;
+    let email: string | undefined;
+
+    try {
+      const profileResponse = await fetch(
+        `https://dev.azure.com/${organization}/_apis/connectiondata?api-version=7.1`,
+        {
+          headers: { Authorization: authHeader },
+          cache: "no-store",
+        }
+      );
+
+      if (profileResponse.ok) {
+        const data = await profileResponse.json();
+        displayName = data.authenticatedUser?.providerDisplayName;
+        email = data.authenticatedUser?.properties?.Account?.$value;
+      }
+    } catch {
+      // Profile fetch is non-critical
+    }
+
+    if (projectsResponse.ok) {
+      return { valid: true, displayName, email };
+    }
+
+    // If projects returned something unexpected but not auth error, still valid
+    const text = await projectsResponse.text();
+    console.log("[Azure DevOps] Unexpected response:", projectsResponse.status, text.substring(0, 200));
+    return { valid: projectsResponse.status < 400, displayName, email };
+  } catch (err) {
+    console.error("[Azure DevOps] Validation error:", err);
+    return { valid: false };
   }
 }
 

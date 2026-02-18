@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { integrations } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { auth } from "@/lib/auth";
+import { encrypt } from "@/lib/encryption";
 
 export async function GET(request: NextRequest) {
   try {
@@ -50,14 +51,14 @@ export async function GET(request: NextRequest) {
     const clientSecret = process.env.GITHUB_CLIENT_SECRET;
     
     if (!clientId || !clientSecret) {
-      console.error("[GitHub Callback] Missing GitHub credentials:", { hasClientId: !!clientId, hasClientSecret: !!clientSecret });
+      console.error("[GitHub Callback] Missing GitHub credentials");
       return NextResponse.redirect(
         new URL(`/en/app/dashboard?error=github_not_configured`, request.url)
       );
     }
 
     // Exchange code for access token
-    console.log("[GitHub Callback] Exchanging code for token...");
+    // Exchange code for access token
     const tokenResponse = await fetch("https://github.com/login/oauth/access_token", {
       method: "POST",
       headers: {
@@ -72,14 +73,13 @@ export async function GET(request: NextRequest) {
     });
 
     const tokenData = await tokenResponse.json();
-    console.log("[GitHub Callback] Token response:", { 
-      error: tokenData.error,
-      hasAccessToken: !!tokenData.access_token,
-      scope: tokenData.scope 
+    console.log("[GitHub Callback] Token exchange completed:", { 
+      hasError: !!tokenData.error,
+      hasAccessToken: !!tokenData.access_token
     });
 
     if (tokenData.error) {
-      console.error("[GitHub Callback] Token error:", tokenData.error, tokenData.error_description);
+      console.error("[GitHub Callback] Token exchange error");
       return NextResponse.redirect(
         new URL(`/en/app/dashboard?error=token_exchange_failed&message=${encodeURIComponent(tokenData.error_description || tokenData.error)}`, request.url)
       );
@@ -125,8 +125,8 @@ export async function GET(request: NextRequest) {
         await db
           .update(integrations)
           .set({
-            accessToken: access_token,
-            refreshToken: refresh_token,
+            accessToken: encrypt(access_token),
+            refreshToken: refresh_token ? encrypt(refresh_token) : null,
             tokenExpiresAt,
             scope,
             providerAccountId: userData.id?.toString(),
@@ -158,8 +158,8 @@ export async function GET(request: NextRequest) {
           userId: session.user.id,
           workspaceId: state && state !== "global" ? state : null,
           provider: "github" as const,
-          accessToken: access_token,
-          refreshToken: refresh_token || null,
+          accessToken: encrypt(access_token),
+          refreshToken: refresh_token ? encrypt(refresh_token) : null,
           tokenExpiresAt: tokenExpiresAt || null,
           scope: scope || null,
           providerAccountId: userData.id?.toString() || null,

@@ -2,9 +2,10 @@
 
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { integrations, tasks, activityLogs } from "@/lib/db/schema";
+import { integrations, tasks, activityLogs, taskAssignees } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { encrypt, decrypt } from "@/lib/encryption";
 import {
   getJiraProjects,
   getJiraIssues,
@@ -46,13 +47,12 @@ async function refreshJiraToken(integration: any): Promise<string | null> {
         grant_type: "refresh_token",
         client_id: clientId,
         client_secret: clientSecret,
-        refresh_token: integration.refreshToken,
+        refresh_token: decrypt(integration.refreshToken),
       }),
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error("[Jira] Token refresh failed:", response.status, errorText);
+      console.error("[Jira] Token refresh failed:", response.status);
       return null;
     }
 
@@ -66,8 +66,8 @@ async function refreshJiraToken(integration: any): Promise<string | null> {
 
     // Update the integration with new tokens
     await db.update(integrations).set({
-      accessToken: access_token,
-      refreshToken: refresh_token || integration.refreshToken,
+      accessToken: encrypt(access_token),
+      refreshToken: refresh_token ? encrypt(refresh_token) : integration.refreshToken,
       tokenExpiresAt,
       updatedAt: new Date(),
     }).where(eq(integrations.id, integration.id));
@@ -99,13 +99,11 @@ export async function getJiraToken() {
     return { success: false, error: "Jira not connected" };
   }
 
-  // Check if token is expired or about to expire (within 5 minutes)
-  let accessToken = integration.accessToken;
+  let accessToken = integration.accessToken ? decrypt(integration.accessToken) : null;
   const tokenExpiry = integration.tokenExpiresAt;
   const fiveMinutesFromNow = new Date(Date.now() + 5 * 60 * 1000);
 
   if (tokenExpiry && new Date(tokenExpiry) < fiveMinutesFromNow) {
-    console.log("[Jira] Token expired or expiring soon, refreshing...");
     const newToken = await refreshJiraToken(integration);
     if (newToken) {
       accessToken = newToken;
@@ -114,20 +112,15 @@ export async function getJiraToken() {
     }
   }
 
-  // Parse metadata to get cloudId
   let cloudId = integration.providerAccountId;
   if (integration.metadata) {
     try {
       const metadata = JSON.parse(integration.metadata as string);
       cloudId = metadata.cloudId || cloudId;
-      console.log("[Jira] Metadata:", metadata);
-    } catch (e) {
-      console.error("[Jira] Error parsing metadata:", e);
+    } catch {
+      // Ignore metadata parse errors
     }
   }
-
-  console.log("[Jira] Using cloudId:", cloudId);
-  console.log("[Jira] Provider Account ID:", integration.providerAccountId);
 
   return {
     success: true,
@@ -237,15 +230,6 @@ export async function importJiraIssuesAsTasks(data: {
       // Map priority
       const priority = mapJiraPriorityToTaskPriority(issue.fields.priority?.name);
       
-      console.log(`[Jira Import] Issue ${issueKey}:`, {
-        summary: issue.fields.summary,
-        priority: issue.fields.priority?.name,
-        duedate: issue.fields.duedate,
-        duedateType: typeof issue.fields.duedate,
-        hasDescription: !!issue.fields.description,
-        descriptionType: typeof issue.fields.description,
-        allFieldKeys: Object.keys(issue.fields),
-      });
 
       // Extract description text
       let description = "";
@@ -257,22 +241,6 @@ export async function importJiraIssuesAsTasks(data: {
         }
       }
       
-      console.log(`[Jira Import] Extracted description (${description.length} chars):`, description.substring(0, 100));
-      
-      const taskData = {
-        workspaceId: data.workspaceId,
-        title: issue.fields.summary,
-        description: description || null,
-        status: status as any,
-        priority: priority as any,
-        dueDate: issue.fields.duedate || null,
-        createdBy: session.user.id,
-      };
-      console.log(`[Jira Import] Creating task with data:`, {
-        ...taskData,
-        descriptionLength: taskData.description?.length || 0,
-      });
-
       // Create task
       const [newTask] = await db.insert(tasks).values({
         workspaceId: data.workspaceId,
@@ -293,7 +261,16 @@ export async function importJiraIssuesAsTasks(data: {
         }),
       }).returning();
 
-      // Log activity
+      try {
+        await db.insert(taskAssignees).values({
+          taskId: newTask.id,
+          userId: session.user.id,
+          assignedBy: session.user.id,
+        });
+      } catch (e) {
+        console.error("Failed to auto-assign task:", e);
+      }
+
       await db.insert(activityLogs).values({
         workspaceId: data.workspaceId,
         userId: session.user.id,

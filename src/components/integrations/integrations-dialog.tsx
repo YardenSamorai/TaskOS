@@ -37,6 +37,7 @@ import {
   toggleIntegration 
 } from "@/lib/actions/integration";
 import type { Integration } from "@/lib/db/schema";
+import { AzureDevOpsConnectDialog } from "@/components/azure-devops/azure-devops-connect-dialog";
 
 interface IntegrationsDialogProps {
   open: boolean;
@@ -150,6 +151,7 @@ export const IntegrationsDialog = ({
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState<string | null>(null);
+  const [azureConnectOpen, setAzureConnectOpen] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -199,13 +201,10 @@ export const IntegrationsDialog = ({
       return;
     }
 
-    // For Azure DevOps, redirect to our API route which handles the OAuth flow
+    // For Azure DevOps, open PAT dialog
     if (provider.id === "azure_devops") {
-      const apiUrl = new URL("/api/integrations/azure-devops", window.location.origin);
-      if (workspaceId) {
-        apiUrl.searchParams.set("workspaceId", workspaceId);
-      }
-      window.location.href = apiUrl.toString();
+      setConnecting(null);
+      setAzureConnectOpen(true);
       return;
     }
 
@@ -449,6 +448,15 @@ export const IntegrationsDialog = ({
           </TabsContent>
         </Tabs>
       </ResponsiveDialogContent>
+
+      <AzureDevOpsConnectDialog
+        open={azureConnectOpen}
+        onOpenChange={setAzureConnectOpen}
+        workspaceId={workspaceId}
+        onConnected={() => {
+          loadIntegrations();
+        }}
+      />
     </ResponsiveDialog>
   );
 };

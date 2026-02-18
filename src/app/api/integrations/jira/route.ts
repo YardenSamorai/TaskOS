@@ -41,7 +41,5 @@ export async function GET(request: NextRequest) {
   authUrl.searchParams.set("response_type", "code");
   authUrl.searchParams.set("prompt", "consent");
 
-  console.log("[Jira OAuth] Redirecting to:", authUrl.toString());
-
   return NextResponse.redirect(authUrl.toString());
 }

@@ -8,14 +8,11 @@ import {
   Download,
   AlertCircle,
   Loader2,
-  Check,
   Circle,
   CheckCircle2,
-  Tag,
   User,
   Calendar,
   ExternalLink,
-  ChevronDown,
 } from "lucide-react";
 import {
   ResponsiveDialog,
@@ -37,12 +34,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
@@ -102,7 +93,7 @@ export function ImportIssuesDialog({
 
     try {
       const result = await getLinkedRepositoriesForWorkspace(workspaceId);
-      
+
       if (result.repositories.length === 0) {
         setError("No repositories linked. Link a repository first.");
         setLoading(false);
@@ -114,7 +105,7 @@ export function ImportIssuesDialog({
         name: r.name,
         fullName: r.fullName,
       }));
-      
+
       setLinkedRepos(repos);
       setSelectedRepoId(repos[0].id);
     } catch (error) {
@@ -153,12 +144,12 @@ export function ImportIssuesDialog({
     if (selectedIssues.size === filteredIssues.length) {
       setSelectedIssues(new Set());
     } else {
-      setSelectedIssues(new Set(filteredIssues.map(i => i.id)));
+      setSelectedIssues(new Set(filteredIssues.map((i) => i.id)));
     }
   };
 
   const handleToggleIssue = (issueId: number) => {
-    setSelectedIssues(prev => {
+    setSelectedIssues((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(issueId)) {
         newSet.delete(issueId);
@@ -183,7 +174,6 @@ export function ImportIssuesDialog({
 
       if (result.success) {
         toast.success(`Imported ${result.count} issues as tasks`);
-        // Invalidate tasks cache so the new tasks appear immediately
         await queryClient.invalidateQueries({ queryKey: taskKeys.all });
         onImportSuccess?.();
         onOpenChange(false);
@@ -197,17 +187,20 @@ export function ImportIssuesDialog({
     }
   };
 
-  const filteredIssues = issues.filter(issue =>
-    issue.title.toLowerCase().includes(search.toLowerCase()) ||
-    issue.body?.toLowerCase().includes(search.toLowerCase())
+  const filteredIssues = issues.filter(
+    (issue) =>
+      issue.title.toLowerCase().includes(search.toLowerCase()) ||
+      issue.body?.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
     <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
-      <ResponsiveDialogContent className="sm:max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
+      <ResponsiveDialogContent className="sm:max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
         <ResponsiveDialogHeader>
-          <ResponsiveDialogTitle className="flex items-center gap-2">
-            <Download className="w-5 h-5" />
+          <ResponsiveDialogTitle className="flex items-center gap-2 text-lg">
+            <div className="p-2 rounded-lg bg-[#24292e]/10 dark:bg-white/10">
+              <Github className="w-4 h-4" />
+            </div>
             Import GitHub Issues
           </ResponsiveDialogTitle>
           <ResponsiveDialogDescription>
@@ -216,14 +209,14 @@ export function ImportIssuesDialog({
         </ResponsiveDialogHeader>
 
         {/* Repository selector and filters */}
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-2">
           <Select
             value={selectedRepoId || ""}
             onValueChange={setSelectedRepoId}
             disabled={linkedRepos.length === 0}
           >
-            <SelectTrigger className="w-[250px]">
-              <Github className="w-4 h-4 mr-2" />
+            <SelectTrigger className="w-[220px]">
+              <Github className="w-3.5 h-3.5 mr-1.5" />
               <SelectValue placeholder="Select repository" />
             </SelectTrigger>
             <SelectContent>
@@ -239,18 +232,18 @@ export function ImportIssuesDialog({
             value={stateFilter}
             onValueChange={(v) => setStateFilter(v as typeof stateFilter)}
           >
-            <SelectTrigger className="w-[130px]">
+            <SelectTrigger className="w-[120px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="open">
-                <span className="flex items-center gap-2">
+                <span className="flex items-center gap-1.5">
                   <Circle className="w-3 h-3 text-green-500" />
                   Open
                 </span>
               </SelectItem>
               <SelectItem value="closed">
-                <span className="flex items-center gap-2">
+                <span className="flex items-center gap-1.5">
                   <CheckCircle2 className="w-3 h-3 text-purple-500" />
                   Closed
                 </span>
@@ -259,7 +252,7 @@ export function ImportIssuesDialog({
             </SelectContent>
           </Select>
 
-          <div className="relative flex-1 min-w-[200px]">
+          <div className="relative flex-1 min-w-[180px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Search issues..."
@@ -272,47 +265,124 @@ export function ImportIssuesDialog({
 
         {/* Issues list */}
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
         ) : error ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <AlertCircle className="w-12 h-12 text-destructive/50 mb-4" />
-            <h3 className="font-semibold mb-1">Error</h3>
-            <p className="text-muted-foreground text-sm">{error}</p>
+          <div className="text-center py-12">
+            <AlertCircle className="w-10 h-10 mx-auto text-destructive/50 mb-3" />
+            <h3 className="font-semibold text-sm mb-1">Error</h3>
+            <p className="text-muted-foreground text-xs">{error}</p>
           </div>
         ) : filteredIssues.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <Github className="w-12 h-12 text-muted-foreground/30 mb-4" />
-            <h3 className="font-semibold mb-1">No issues found</h3>
-            <p className="text-muted-foreground text-sm">
+          <div className="text-center py-12">
+            <Github className="w-10 h-10 mx-auto text-muted-foreground/30 mb-3" />
+            <h3 className="font-semibold text-sm mb-1">No issues found</h3>
+            <p className="text-muted-foreground text-xs">
               {search ? "Try a different search term" : "This repository has no issues"}
             </p>
           </div>
         ) : (
           <>
-            {/* Select all header */}
-            <div className="flex items-center justify-between py-2 border-b">
-              <div className="flex items-center gap-2">
+            {/* Select all */}
+            <div className="flex items-center justify-between py-1">
+              <button
+                onClick={handleSelectAll}
+                className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
                 <Checkbox
                   checked={selectedIssues.size === filteredIssues.length && filteredIssues.length > 0}
                   onCheckedChange={handleSelectAll}
                 />
-                <span className="text-sm text-muted-foreground">
-                  {selectedIssues.size} of {filteredIssues.length} selected
-                </span>
-              </div>
+                Select All ({filteredIssues.length})
+              </button>
+              {selectedIssues.size > 0 && (
+                <Badge variant="secondary" className="text-xs">
+                  {selectedIssues.size} selected
+                </Badge>
+              )}
             </div>
 
             <ScrollArea className="flex-1 min-h-0 -mx-6 px-6">
-              <div className="space-y-2 py-2">
+              <div className="space-y-2">
                 {filteredIssues.map((issue) => (
-                  <IssueCard
+                  <div
                     key={issue.id}
-                    issue={issue}
-                    selected={selectedIssues.has(issue.id)}
-                    onToggle={() => handleToggleIssue(issue.id)}
-                  />
+                    className={cn(
+                      "p-3 rounded-lg border cursor-pointer transition-all",
+                      selectedIssues.has(issue.id)
+                        ? "border-primary bg-primary/5"
+                        : "hover:border-primary/30 hover:bg-muted/50"
+                    )}
+                    onClick={() => handleToggleIssue(issue.id)}
+                  >
+                    <div className="flex items-start gap-3">
+                      <Checkbox
+                        checked={selectedIssues.has(issue.id)}
+                        onCheckedChange={() => handleToggleIssue(issue.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="mt-0.5"
+                      />
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {issue.state === "open" ? (
+                              <Circle className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                            ) : (
+                              <CheckCircle2 className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                            )}
+                            <span className="font-medium text-sm">{issue.title}</span>
+                            <span className="text-muted-foreground text-xs">#{issue.number}</span>
+                          </div>
+                          <a
+                            href={issue.html_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-muted-foreground hover:text-primary shrink-0"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                        </div>
+
+                        {issue.labels.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mb-1.5">
+                            {issue.labels.map((label) => (
+                              <Badge
+                                key={label.id}
+                                variant="outline"
+                                className="text-[10px] px-1.5 py-0 h-4"
+                                style={{
+                                  backgroundColor: `#${label.color}15`,
+                                  borderColor: `#${label.color}50`,
+                                  color: `#${label.color}`,
+                                }}
+                              >
+                                {label.name}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <User className="w-3 h-3" />
+                            {issue.user.login}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            {formatDistanceToNow(new Date(issue.created_at), { addSuffix: true })}
+                          </span>
+                          {issue.assignees.length > 0 && (
+                            <span>
+                              Assigned to {issue.assignees.map((a) => a.login).join(", ")}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 ))}
               </div>
             </ScrollArea>
@@ -337,92 +407,5 @@ export function ImportIssuesDialog({
         </ResponsiveDialogFooter>
       </ResponsiveDialogContent>
     </ResponsiveDialog>
-  );
-}
-
-interface IssueCardProps {
-  issue: GitHubIssue;
-  selected: boolean;
-  onToggle: () => void;
-}
-
-function IssueCard({ issue, selected, onToggle }: IssueCardProps) {
-  return (
-    <div
-      className={cn(
-        "p-4 rounded-lg border cursor-pointer transition-all",
-        selected ? "border-primary bg-primary/5" : "hover:border-primary/30"
-      )}
-      onClick={onToggle}
-    >
-      <div className="flex items-start gap-3">
-        <Checkbox
-          checked={selected}
-          onCheckedChange={onToggle}
-          onClick={(e) => e.stopPropagation()}
-          className="mt-1"
-        />
-
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2 mb-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              {issue.state === "open" ? (
-                <Circle className="w-4 h-4 text-green-500 flex-shrink-0" />
-              ) : (
-                <CheckCircle2 className="w-4 h-4 text-purple-500 flex-shrink-0" />
-              )}
-              <span className="font-medium">{issue.title}</span>
-              <span className="text-muted-foreground text-sm">#{issue.number}</span>
-            </div>
-            <a
-              href={issue.html_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-muted-foreground hover:text-primary"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <ExternalLink className="w-4 h-4" />
-            </a>
-          </div>
-
-          {/* Labels */}
-          {issue.labels.length > 0 && (
-            <div className="flex flex-wrap gap-1 mb-2">
-              {issue.labels.map((label) => (
-                <Badge
-                  key={label.id}
-                  variant="outline"
-                  className="text-xs"
-                  style={{
-                    backgroundColor: `#${label.color}20`,
-                    borderColor: `#${label.color}`,
-                    color: `#${label.color}`,
-                  }}
-                >
-                  {label.name}
-                </Badge>
-              ))}
-            </div>
-          )}
-
-          {/* Meta info */}
-          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <User className="w-3.5 h-3.5" />
-              {issue.user.login}
-            </span>
-            <span className="flex items-center gap-1">
-              <Calendar className="w-3.5 h-3.5" />
-              {formatDistanceToNow(new Date(issue.created_at), { addSuffix: true })}
-            </span>
-            {issue.assignees.length > 0 && (
-              <span className="flex items-center gap-1">
-                Assigned to {issue.assignees.map(a => a.login).join(", ")}
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
   );
 }

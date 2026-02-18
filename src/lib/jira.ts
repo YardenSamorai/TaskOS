@@ -5,7 +5,6 @@ const JIRA_API_BASE = "https://api.atlassian.com/ex/jira";
 // Helper to make authenticated Jira API requests
 async function jiraFetch(cloudId: string, path: string, accessToken: string, options?: RequestInit) {
   const url = `${JIRA_API_BASE}/${cloudId}${path}`;
-  console.log("[Jira API] Calling:", url);
   
   const response = await fetch(url, {
     ...options,
@@ -15,14 +14,11 @@ async function jiraFetch(cloudId: string, path: string, accessToken: string, opt
       "Content-Type": "application/json",
       ...options?.headers,
     },
-    cache: "no-store", // Always fetch fresh data from Jira
+    cache: "no-store",
   });
   
-  console.log("[Jira API] Response status:", response.status);
-  
   if (!response.ok) {
-    const errorText = await response.text();
-    console.error("[Jira API] Error:", response.status, errorText);
+    console.error("[Jira API] Error:", response.status);
     throw new Error(`Jira API error: ${response.status} ${response.statusText}`);
   }
   
@@ -107,10 +103,7 @@ export async function getJiraProjects(
   accessToken: string,
   cloudId: string
 ): Promise<JiraProject[]> {
-  console.log("[Jira] Fetching projects for cloudId:", cloudId);
-  
   const data = await jiraFetch(cloudId, "/rest/api/3/project/search", accessToken);
-  console.log("[Jira] Found projects:", data.values?.length || 0);
   
   return data.values || [];
 }
@@ -130,34 +123,23 @@ export async function getJiraIssues(
   const { maxResults = 50, startAt = 0, status, jql } = options || {};
 
   // Build JQL query
-  let query = jql || `project = ${projectKey}`;
+  const sanitizeJql = (val: string) => val.replace(/["\\]/g, "");
+  let query = jql || `project = ${sanitizeJql(projectKey)}`;
   if (status && !jql) {
-    query += ` AND status = "${status}"`;
+    query += ` AND status = "${sanitizeJql(status)}"`;
   }
   
-  console.log("[Jira API] Fetching issues with JQL:", query);
-  console.log("[Jira] Fetching issues for cloudId:", cloudId, "project:", projectKey);
-  
-  // Use the new /search/jql endpoint (POST method)
   const url = `${JIRA_API_BASE}/${cloudId}/rest/api/3/search/jql`;
-  console.log("[Jira API] Calling:", url);
   
-  // Use EXACTLY the same format as debug endpoint that works
-  // Don't include startAt if it's 0 (default)
   const requestBody: Record<string, unknown> = {
     jql: query,
     maxResults,
     fields: ["summary", "status", "issuetype"],
   };
   
-  // Only add startAt if it's not 0
   if (startAt > 0) {
     requestBody.startAt = startAt;
   }
-  
-  console.log("[Jira API] Request body:", JSON.stringify(requestBody));
-  console.log("[Jira API] CloudId:", cloudId);
-  console.log("[Jira API] Token length:", accessToken?.length);
   
   const response = await fetch(url, {
     method: "POST",
@@ -170,17 +152,12 @@ export async function getJiraIssues(
     cache: "no-store", // Ensure fresh data from Jira
   });
 
-  console.log("[Jira API] Response status:", response.status);
-
   if (!response.ok) {
-    const errorText = await response.text();
-    console.error("[Jira API] Error:", response.status, errorText);
-    console.error("[Jira API] Full error details - URL:", url, "Body:", JSON.stringify(requestBody));
+    console.error("[Jira API] Error:", response.status);
     throw new Error(`Jira API error: ${response.status} ${response.statusText}`);
   }
 
   const data = await response.json();
-  console.log("[Jira] Found", data.total, "issues");
   
   return {
     issues: data.issues || [],

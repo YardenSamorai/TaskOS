@@ -30,6 +30,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
+import { RemindersCard } from "@/components/dashboard/reminders-card";
+import { TodosCard } from "@/components/dashboard/todos-card";
 
 type TimerMode = "work" | "break";
 
@@ -427,6 +429,12 @@ const FocusModePage = () => {
             <span>{message}</span>
           </div>
         )}
+      </div>
+
+      {/* Personal tools */}
+      <div className="grid md:grid-cols-2 gap-4 mt-8 max-w-3xl mx-auto w-full">
+        <RemindersCard />
+        <TodosCard />
       </div>
     </div>
   );

@@ -32,9 +32,6 @@ export const ourFileRouter = {
   })
     .middleware(authMiddleware)
     .onUploadComplete(async ({ metadata, file }) => {
-      console.log("Upload complete for userId:", metadata.userId);
-      console.log("File url:", file.url);
-      
       return { uploadedBy: metadata.userId, url: file.url };
     }),
 

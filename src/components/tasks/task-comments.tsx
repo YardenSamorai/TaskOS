@@ -87,7 +87,7 @@ export const TaskComments = ({ task, currentUserId }: TaskCommentsProps) => {
     const key = process.env.NEXT_PUBLIC_PUSHER_KEY;
     const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
 
-    console.log("[TaskComments] Pusher ENV - key:", key, "cluster:", cluster);
+    // Pusher config check
 
     if (!key || !cluster) {
       console.error("[TaskComments] Missing Pusher env vars!");

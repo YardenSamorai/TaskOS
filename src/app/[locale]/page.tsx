@@ -1102,9 +1102,9 @@ const LandingPage = () => {
               © {new Date().getFullYear()} TaskOS. All rights reserved.
             </p>
             <div className="flex items-center gap-6 text-sm text-slate-500">
-              <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
-              <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
-              <a href="#" className="hover:text-white transition-colors">Cookies</a>
+              <a href="/en/privacy" className="hover:text-white transition-colors">Privacy Policy</a>
+              <a href="/en/terms" className="hover:text-white transition-colors">Terms of Service</a>
+              <a href="/en/privacy#cookies" className="hover:text-white transition-colors">Cookies</a>
             </div>
           </div>
         </div>

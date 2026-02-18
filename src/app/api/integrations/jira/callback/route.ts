@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { integrations } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
+import { encrypt } from "@/lib/encryption";
 
 // Jira OAuth token endpoint
 const JIRA_TOKEN_URL = "https://auth.atlassian.com/oauth/token";
@@ -15,7 +16,7 @@ export async function GET(request: NextRequest) {
     const state = searchParams.get("state");
     const error = searchParams.get("error");
 
-    console.log("[Jira Callback] Received callback with code:", code ? "present" : "missing");
+    // Process Jira OAuth callback
 
     if (error) {
       console.error("[Jira Callback] OAuth error:", error);
@@ -40,7 +41,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log("[Jira Callback] User authenticated:", session.user.id);
+    // User authenticated
 
     // Get credentials
     const clientId = process.env.JIRA_CLIENT_ID;
@@ -55,7 +56,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Exchange code for access token
-    console.log("[Jira Callback] Exchanging code for token...");
+    // Exchange authorization code for token
     
     const tokenResponse = await fetch(JIRA_TOKEN_URL, {
       method: "POST",
@@ -72,15 +73,14 @@ export async function GET(request: NextRequest) {
     });
 
     if (!tokenResponse.ok) {
-      const errorText = await tokenResponse.text();
-      console.error("[Jira Callback] Token exchange failed:", errorText);
+      console.error("[Jira Callback] Token exchange failed");
       return NextResponse.redirect(
         new URL("/en/app/dashboard?error=token_exchange_failed", request.url)
       );
     }
 
     const tokenData = await tokenResponse.json();
-    console.log("[Jira Callback] Token received successfully");
+    // Token received successfully
 
     const {
       access_token,
@@ -95,7 +95,7 @@ export async function GET(request: NextRequest) {
       : null;
 
     // Get accessible resources (Jira sites)
-    console.log("[Jira Callback] Fetching accessible resources...");
+    // Fetch accessible resources
     
     const resourcesResponse = await fetch(JIRA_RESOURCES_URL, {
       headers: {
@@ -112,7 +112,6 @@ export async function GET(request: NextRequest) {
     }
 
     const resources = await resourcesResponse.json();
-    console.log("[Jira Callback] Found", resources.length, "accessible resources");
 
     // Use the first resource (Jira site)
     const primaryResource = resources[0];
@@ -122,10 +121,6 @@ export async function GET(request: NextRequest) {
         new URL("/en/app/dashboard?error=no_jira_sites", request.url)
       );
     }
-
-    console.log("[Jira Callback] Primary site:", primaryResource.name);
-    console.log("[Jira Callback] Cloud ID:", primaryResource.id);
-    console.log("[Jira Callback] Full resource:", JSON.stringify(primaryResource));
 
     // Check if integration already exists
     const existingIntegration = await db.query.integrations.findFirst({
@@ -137,11 +132,10 @@ export async function GET(request: NextRequest) {
 
     if (existingIntegration) {
       // Update existing integration
-      console.log("[Jira Callback] Updating existing integration");
       
       await db.update(integrations).set({
-        accessToken: access_token,
-        refreshToken: refresh_token || null,
+        accessToken: encrypt(access_token),
+        refreshToken: refresh_token ? encrypt(refresh_token) : null,
         tokenExpiresAt,
         scope: scope || null,
         providerAccountId: primaryResource.id,
@@ -160,14 +154,13 @@ export async function GET(request: NextRequest) {
       }).where(eq(integrations.id, existingIntegration.id));
     } else {
       // Create new integration
-      console.log("[Jira Callback] Creating new integration");
       
       await db.insert(integrations).values({
         userId: session.user.id,
         workspaceId: state && state !== "global" ? state : null,
         provider: "jira",
-        accessToken: access_token,
-        refreshToken: refresh_token || null,
+        accessToken: encrypt(access_token),
+        refreshToken: refresh_token ? encrypt(refresh_token) : null,
         tokenExpiresAt,
         scope: scope || null,
         providerAccountId: primaryResource.id,
@@ -191,7 +184,6 @@ export async function GET(request: NextRequest) {
       ? `/en/app/${state}/dashboard?integration=jira&status=connected${isNewConnection ? '&new=true' : ''}`
       : `/en/app/dashboard?integration=jira&status=connected${isNewConnection ? '&new=true' : ''}`;
 
-    console.log("[Jira Callback] Success! Redirecting to:", redirectUrl);
     return NextResponse.redirect(new URL(redirectUrl, request.url));
   } catch (error) {
     console.error("[Jira Callback] Error:", error);

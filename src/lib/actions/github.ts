@@ -7,11 +7,13 @@ import {
   tasks, 
   workspaceMembers,
   activityLogs,
+  taskAssignees,
   LinkedRepository 
 } from "@/lib/db/schema";
 import { eq, and, desc, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth/permissions";
+import { decrypt } from "@/lib/encryption";
 import {
   getGitHubToken,
   getUserRepositories,
@@ -30,12 +32,18 @@ import {
   GitHubPullRequest,
 } from "@/lib/github";
 
+async function getDecryptedGitHubToken(userId: string): Promise<string | null> {
+  const encryptedToken = await getGitHubToken(userId);
+  if (!encryptedToken) return null;
+  return decrypt(encryptedToken);
+}
+
 // ============== REPOSITORIES ==============
 
 export async function fetchUserRepositories() {
   try {
     const user = await getCurrentUser();
-    const token = await getGitHubToken(user.id);
+    const token = await getDecryptedGitHubToken(user.id);
 
     if (!token) {
       return { success: false, error: "GitHub not connected", repositories: [] };
@@ -153,7 +161,7 @@ export async function fetchRepositoryIssues(
 ) {
   try {
     const user = await getCurrentUser();
-    const token = await getGitHubToken(user.id);
+    const token = await getDecryptedGitHubToken(user.id);
 
     if (!token) {
       return { success: false, error: "GitHub not connected", issues: [] };
@@ -187,7 +195,7 @@ export async function importIssuesAsTasks(data: {
 }) {
   try {
     const user = await getCurrentUser();
-    const token = await getGitHubToken(user.id);
+    const token = await getDecryptedGitHubToken(user.id);
 
     if (!token) {
       return { success: false, error: "GitHub not connected" };
@@ -230,8 +238,16 @@ export async function importIssuesAsTasks(data: {
         dueDate: issue.milestone?.due_on ? issue.milestone.due_on.split("T")[0] : null,
       }).returning();
       
-      // Store GitHub reference in activity log for now
-      // TODO: Add metadata field to tasks table for proper GitHub linking
+      try {
+        await db.insert(taskAssignees).values({
+          taskId: task.id,
+          userId: user.id,
+          assignedBy: user.id,
+        });
+      } catch (e) {
+        console.error("Failed to auto-assign task:", e);
+      }
+
       await db.insert(activityLogs).values({
         workspaceId: data.workspaceId,
         userId: user.id,
@@ -298,7 +314,7 @@ export async function getTaskGitHubInfo(taskId: string) {
 export async function syncTaskToGitHub(taskId: string) {
   try {
     const user = await getCurrentUser();
-    const token = await getGitHubToken(user.id);
+    const token = await getDecryptedGitHubToken(user.id);
 
     if (!token) {
       return { success: false, error: "GitHub not connected" };
@@ -341,7 +357,7 @@ export async function createGitHubIssueFromTask(data: {
 }) {
   try {
     const user = await getCurrentUser();
-    const token = await getGitHubToken(user.id);
+    const token = await getDecryptedGitHubToken(user.id);
 
     if (!token) {
       return { success: false, error: "GitHub not connected" };
@@ -404,7 +420,7 @@ export async function createGitHubIssueFromTask(data: {
 export async function fetchCommitsForTask(taskId: string) {
   try {
     const user = await getCurrentUser();
-    const token = await getGitHubToken(user.id);
+    const token = await getDecryptedGitHubToken(user.id);
 
     if (!token) {
       return { success: false, error: "GitHub not connected", commits: [] };
@@ -452,7 +468,7 @@ export async function fetchCommitsForTask(taskId: string) {
 export async function fetchPullRequestsForTask(taskId: string) {
   try {
     const user = await getCurrentUser();
-    const token = await getGitHubToken(user.id);
+    const token = await getDecryptedGitHubToken(user.id);
 
     if (!token) {
       return { success: false, error: "GitHub not connected", pullRequests: [] };
@@ -508,7 +524,7 @@ export async function fetchCommitDetails(data: {
 }) {
   try {
     const user = await getCurrentUser();
-    const token = await getGitHubToken(user.id);
+    const token = await getDecryptedGitHubToken(user.id);
 
     if (!token) {
       return { success: false, error: "GitHub not connected", commit: null };
@@ -531,7 +547,7 @@ export async function fetchPullRequestDetails(data: {
 }) {
   try {
     const user = await getCurrentUser();
-    const token = await getGitHubToken(user.id);
+    const token = await getDecryptedGitHubToken(user.id);
 
     if (!token) {
       return { success: false, error: "GitHub not connected", pullRequest: null };
@@ -550,7 +566,7 @@ export async function fetchPullRequestDetails(data: {
 export async function fetchAllIssuesForWorkspace(workspaceId: string, state: "open" | "closed" | "all" = "all") {
   try {
     const user = await getCurrentUser();
-    const token = await getGitHubToken(user.id);
+    const token = await getDecryptedGitHubToken(user.id);
 
     if (!token) {
       return { success: false, error: "GitHub not connected", issues: [] };
@@ -606,7 +622,7 @@ export async function fetchAllIssuesForWorkspace(workspaceId: string, state: "op
 export async function fetchAllPullRequestsForWorkspace(workspaceId: string, state: "open" | "closed" | "all" = "all") {
   try {
     const user = await getCurrentUser();
-    const token = await getGitHubToken(user.id);
+    const token = await getDecryptedGitHubToken(user.id);
 
     if (!token) {
       return { success: false, error: "GitHub not connected", pullRequests: [] };
@@ -660,7 +676,7 @@ export async function fetchAllPullRequestsForWorkspace(workspaceId: string, stat
 export async function fetchRecentActivityForWorkspace(workspaceId: string) {
   try {
     const user = await getCurrentUser();
-    const token = await getGitHubToken(user.id);
+    const token = await getDecryptedGitHubToken(user.id);
 
     if (!token) {
       return { success: false, error: "GitHub not connected", activity: [] };

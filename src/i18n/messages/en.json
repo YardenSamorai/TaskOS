@@ -27,7 +27,8 @@
     "noResults": "No results found",
     "selectAll": "Select all",
     "deselectAll": "Deselect all",
-    "members": "Members"
+    "members": "Members",
+    "manage": "Manage"
   },
   "landing": {
     "title": "TaskOS",

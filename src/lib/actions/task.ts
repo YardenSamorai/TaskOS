@@ -732,6 +732,46 @@ export const deleteTask = async (taskId: string) => {
   }
 };
 
+// Bulk delete tasks by status within a workspace
+export const deleteTasksByStatus = async (workspaceId: string, status: TaskStatus) => {
+  try {
+    const { user } = await requireWorkspaceEditor(workspaceId);
+
+    const tasksToDelete = await db.query.tasks.findMany({
+      where: and(eq(tasks.workspaceId, workspaceId), eq(tasks.status, status)),
+      columns: { id: true, title: true },
+    });
+
+    if (tasksToDelete.length === 0) {
+      return { success: true, deletedCount: 0 };
+    }
+
+    const taskIds = tasksToDelete.map((t) => t.id);
+
+    await db.delete(tasks).where(inArray(tasks.id, taskIds));
+
+    await logActivity(
+      workspaceId,
+      user.id,
+      "deleted",
+      "task",
+      undefined,
+      undefined,
+      { bulkDelete: true, status, count: tasksToDelete.length }
+    );
+
+    revalidateTag(CACHE_TAGS.tasks(workspaceId));
+    revalidateTag(CACHE_TAGS.stats(workspaceId));
+    revalidateTag(CACHE_TAGS.activity(workspaceId));
+    revalidatePath(`/app/${workspaceId}`);
+
+    return { success: true, deletedCount: tasksToDelete.length };
+  } catch (error) {
+    console.error("Error bulk deleting tasks:", error);
+    return { success: false, error: "Failed to delete tasks" };
+  }
+};
+
 // Add assignee
 export const addAssignee = async (taskId: string, userId: string) => {
   try {

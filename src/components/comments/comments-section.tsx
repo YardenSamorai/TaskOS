@@ -160,7 +160,7 @@ export const CommentsSection = ({
     const key = process.env.NEXT_PUBLIC_PUSHER_KEY;
     const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
 
-    console.log("[Pusher] ENV vars - key:", key, "cluster:", cluster);
+    // Pusher config check
 
     if (!key || !cluster) {
       console.error("[Pusher] ❌ Missing env vars!");

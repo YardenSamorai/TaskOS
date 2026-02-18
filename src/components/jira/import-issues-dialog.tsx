@@ -6,11 +6,8 @@ import {
   Search,
   Download,
   Loader2,
-  CheckSquare,
-  Square,
   AlertCircle,
   ArrowLeft,
-  ExternalLink,
   Filter,
   RefreshCw,
 } from "lucide-react";
@@ -44,10 +41,9 @@ import {
 } from "@/lib/actions/jira";
 import type { JiraProject, JiraIssue } from "@/lib/jira";
 
-// Jira icon
 const JiraIcon = ({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
-    <path d="M11.571 11.513H0a5.218 5.218 0 0 0 5.232 5.215h2.13v2.057A5.215 5.215 0 0 0 12.575 24V12.518a1.005 1.005 0 0 0-1.005-1.005zm5.723-5.756H5.736a5.215 5.215 0 0 0 5.215 5.214h2.129v2.058a5.218 5.218 0 0 0 5.215 5.214V6.758a1.001 1.001 0 0 0-1.001-1.001zM23.013 0H11.455a5.215 5.215 0 0 0 5.215 5.215h2.129v2.057A5.215 5.215 0 0 0 24 12.483V1.005A1.005 1.005 0 0 0 23.013 0z"/>
+    <path d="M11.571 11.513H0a5.218 5.218 0 0 0 5.232 5.215h2.13v2.057A5.215 5.215 0 0 0 12.575 24V12.518a1.005 1.005 0 0 0-1.005-1.005zm5.723-5.756H5.736a5.215 5.215 0 0 0 5.215 5.214h2.129v2.058a5.218 5.218 0 0 0 5.215 5.214V6.758a1.001 1.001 0 0 0-1.001-1.001zM23.013 0H11.455a5.215 5.215 0 0 0 5.215 5.215h2.129v2.057A5.215 5.215 0 0 0 24 12.483V1.005A1.005 1.005 0 0 0 23.013 0z" />
   </svg>
 );
 
@@ -68,13 +64,11 @@ export function ImportJiraIssuesDialog({
   const [step, setStep] = useState<"projects" | "issues">("projects");
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
-  
-  // Projects
+
   const [projects, setProjects] = useState<JiraProject[]>([]);
   const [selectedProject, setSelectedProject] = useState<JiraProject | null>(null);
   const [projectSearch, setProjectSearch] = useState("");
-  
-  // Issues
+
   const [issues, setIssues] = useState<JiraIssue[]>([]);
   const [selectedIssues, setSelectedIssues] = useState<Set<string>>(new Set());
   const [issueSearch, setIssueSearch] = useState("");
@@ -86,7 +80,7 @@ export function ImportJiraIssuesDialog({
       setStep("projects");
       setSelectedProject(null);
       setSelectedIssues(new Set());
-      setIssues([]); // Clear issues to ensure fresh data
+      setIssues([]);
       setError(null);
       fetchProjects();
     }
@@ -174,7 +168,6 @@ export function ImportJiraIssuesDialog({
 
       if (result.success) {
         toast.success(`Imported ${result.imported} issues as tasks!`);
-        // Invalidate tasks cache so the new tasks appear immediately
         await queryClient.invalidateQueries({ queryKey: taskKeys.all });
         onImportSuccess?.();
         onOpenChange(false);
@@ -198,7 +191,7 @@ export function ImportJiraIssuesDialog({
     const matchesSearch =
       issue.fields.summary.toLowerCase().includes(issueSearch.toLowerCase()) ||
       issue.key.toLowerCase().includes(issueSearch.toLowerCase());
-    
+
     const matchesStatus =
       statusFilter === "all" ||
       issue.fields.status.statusCategory.key === statusFilter;
@@ -206,34 +199,41 @@ export function ImportJiraIssuesDialog({
     return matchesSearch && matchesStatus;
   });
 
+  const statusColor: Record<string, string> = {
+    new: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+    indeterminate: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+    done: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
+  };
+
   return (
     <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
-      <ResponsiveDialogContent className="sm:max-w-2xl">
+      <ResponsiveDialogContent className="sm:max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
         <ResponsiveDialogHeader>
-          <ResponsiveDialogTitle className="flex items-center gap-2">
+          <ResponsiveDialogTitle className="flex items-center gap-2 text-lg">
             {step === "issues" && (
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 mr-1"
+                className="h-8 w-8 -ml-1"
                 onClick={() => setStep("projects")}
               >
                 <ArrowLeft className="w-4 h-4" />
               </Button>
             )}
-            <JiraIcon className="w-5 h-5 text-[#0052CC]" />
-            {step === "projects" ? "Select Project" : `Import from ${selectedProject?.name}`}
+            <div className="p-2 rounded-lg bg-[#0052CC]/10">
+              <JiraIcon className="w-4 h-4 text-[#0052CC]" />
+            </div>
+            {step === "projects" ? "Import from Jira" : `Import from ${selectedProject?.name}`}
           </ResponsiveDialogTitle>
           <ResponsiveDialogDescription>
             {step === "projects"
-              ? "Choose a project to import issues"
+              ? "Choose a project to import issues from"
               : "Select issues to import as tasks"}
           </ResponsiveDialogDescription>
         </ResponsiveDialogHeader>
 
         {step === "projects" ? (
-          <>
-            {/* Project Search */}
+          <div className="flex-1 flex flex-col overflow-hidden gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
@@ -245,52 +245,57 @@ export function ImportJiraIssuesDialog({
             </div>
 
             {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-[#0052CC]" />
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
               </div>
             ) : error ? (
-              <div className="text-center py-8">
-                <AlertCircle className="w-12 h-12 mx-auto text-red-500/50 mb-3" />
+              <div className="text-center py-12">
+                <AlertCircle className="w-10 h-10 mx-auto text-destructive/50 mb-3" />
                 <p className="text-sm text-muted-foreground">{error}</p>
               </div>
             ) : (
-              <ScrollArea className="h-[400px] pr-4">
+              <ScrollArea className="flex-1 -mx-6 px-6">
                 <div className="space-y-2">
                   {filteredProjects.map((project) => (
-                    <div
+                    <button
                       key={project.id}
-                      className={cn(
-                        "flex items-center gap-3 p-3 rounded-lg border bg-card",
-                        "hover:border-[#0052CC]/30 hover:bg-[#0052CC]/5 transition-all cursor-pointer"
-                      )}
+                      className="w-full flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 hover:border-primary/30 transition-colors text-left"
                       onClick={() => handleSelectProject(project)}
                     >
                       {project.avatarUrls?.["32x32"] ? (
                         <img
                           src={project.avatarUrls["32x32"]}
                           alt={project.name}
-                          className="w-8 h-8 rounded"
+                          className="w-9 h-9 rounded-lg"
                         />
                       ) : (
-                        <div className="w-8 h-8 rounded bg-[#0052CC]/10 flex items-center justify-center">
+                        <div className="w-9 h-9 rounded-lg bg-[#0052CC]/10 flex items-center justify-center shrink-0">
                           <JiraIcon className="w-4 h-4 text-[#0052CC]" />
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
-                        <span className="font-medium">{project.name}</span>
-                        <Badge variant="secondary" className="ml-2 text-xs">
-                          {project.key}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-sm">{project.name}</span>
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
+                            {project.key}
+                          </Badge>
+                        </div>
                       </div>
-                    </div>
+                    </button>
                   ))}
+                  {filteredProjects.length === 0 && (
+                    <div className="text-center py-12">
+                      <JiraIcon className="w-10 h-10 mx-auto text-muted-foreground/30 mb-3" />
+                      <p className="text-sm text-muted-foreground">No projects found</p>
+                    </div>
+                  )}
                 </div>
               </ScrollArea>
             )}
-          </>
+          </div>
         ) : (
-          <>
-            {/* Issue Filters */}
+          <div className="flex-1 flex flex-col overflow-hidden gap-3">
+            {/* Filters */}
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -302,8 +307,8 @@ export function ImportJiraIssuesDialog({
                 />
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[140px]">
-                  <Filter className="w-4 h-4 mr-2" />
+                <SelectTrigger className="w-[130px]">
+                  <Filter className="w-3.5 h-3.5 mr-1.5" />
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -316,69 +321,122 @@ export function ImportJiraIssuesDialog({
               <Button
                 variant="outline"
                 size="icon"
+                className="shrink-0"
                 onClick={handleRefreshIssues}
                 disabled={loading}
-                title="Refresh issues from Jira"
               >
                 <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
               </Button>
             </div>
 
             {/* Select All */}
-            <div className="flex items-center justify-between py-2 border-b">
+            <div className="flex items-center justify-between py-1">
               <button
                 onClick={handleSelectAll}
-                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+                className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
-                {selectedIssues.size === filteredIssues.length && filteredIssues.length > 0 ? (
-                  <CheckSquare className="w-4 h-4 text-[#0052CC]" />
-                ) : (
-                  <Square className="w-4 h-4" />
-                )}
+                <Checkbox
+                  checked={selectedIssues.size === filteredIssues.length && filteredIssues.length > 0}
+                  onCheckedChange={handleSelectAll}
+                />
                 Select All ({filteredIssues.length})
               </button>
-              <Badge variant="secondary">
-                {selectedIssues.size} selected
-              </Badge>
+              {selectedIssues.size > 0 && (
+                <Badge variant="secondary" className="text-xs">
+                  {selectedIssues.size} selected
+                </Badge>
+              )}
             </div>
 
             {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-[#0052CC]" />
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
               </div>
             ) : error ? (
-              <div className="text-center py-8">
-                <AlertCircle className="w-12 h-12 mx-auto text-red-500/50 mb-3" />
+              <div className="text-center py-12">
+                <AlertCircle className="w-10 h-10 mx-auto text-destructive/50 mb-3" />
                 <p className="text-sm text-muted-foreground">{error}</p>
               </div>
             ) : filteredIssues.length === 0 ? (
-              <div className="text-center py-8">
-                <JiraIcon className="w-12 h-12 mx-auto text-muted-foreground/30 mb-3" />
+              <div className="text-center py-12">
+                <JiraIcon className="w-10 h-10 mx-auto text-muted-foreground/30 mb-3" />
                 <p className="text-sm text-muted-foreground">No issues found</p>
               </div>
             ) : (
-              <ScrollArea className="h-[350px] pr-4">
+              <ScrollArea className="flex-1 -mx-6 px-6">
                 <div className="space-y-2">
                   {filteredIssues.map((issue) => (
-                    <IssueCard
+                    <div
                       key={issue.id}
-                      issue={issue}
-                      selected={selectedIssues.has(issue.key)}
-                      onToggle={() => handleToggleIssue(issue.key)}
-                    />
+                      className={cn(
+                        "flex items-start gap-3 p-3 rounded-lg border transition-all cursor-pointer",
+                        selectedIssues.has(issue.key)
+                          ? "border-primary bg-primary/5"
+                          : "hover:border-primary/30 hover:bg-muted/50"
+                      )}
+                      onClick={() => handleToggleIssue(issue.key)}
+                    >
+                      <Checkbox
+                        checked={selectedIssues.has(issue.key)}
+                        onCheckedChange={() => handleToggleIssue(issue.key)}
+                        className="mt-0.5"
+                      />
+                      {issue.fields.issuetype.iconUrl && (
+                        <img
+                          src={issue.fields.issuetype.iconUrl}
+                          alt={issue.fields.issuetype.name}
+                          className="w-4 h-4 mt-0.5 shrink-0"
+                        />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-mono text-muted-foreground">
+                            {issue.key}
+                          </span>
+                          <Badge
+                            className={cn(
+                              "text-[10px] px-1.5 py-0 h-4 border-0",
+                              statusColor[issue.fields.status.statusCategory.key] || "bg-gray-100 text-gray-700"
+                            )}
+                          >
+                            {issue.fields.status.name}
+                          </Badge>
+                          {issue.fields.priority && (
+                            <img
+                              src={issue.fields.priority.iconUrl}
+                              alt={issue.fields.priority.name}
+                              className="w-4 h-4"
+                              title={issue.fields.priority.name}
+                            />
+                          )}
+                        </div>
+                        <p className="font-medium text-sm mt-1 line-clamp-2">
+                          {issue.fields.summary}
+                        </p>
+                        {issue.fields.assignee && (
+                          <div className="flex items-center gap-1.5 mt-1.5 text-xs text-muted-foreground">
+                            <img
+                              src={issue.fields.assignee.avatarUrls["48x48"]}
+                              alt={issue.fields.assignee.displayName}
+                              className="w-4 h-4 rounded-full"
+                            />
+                            <span>{issue.fields.assignee.displayName}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   ))}
                 </div>
               </ScrollArea>
             )}
 
-            <ResponsiveDialogFooter>
+            <ResponsiveDialogFooter className="border-t pt-4">
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
               <Button
                 onClick={handleImport}
                 disabled={selectedIssues.size === 0 || importing}
-                className="bg-[#0052CC] hover:bg-[#0052CC]/90"
               >
                 {importing ? (
                   <Loader2 className="w-4 h-4 animate-spin mr-2" />
@@ -388,83 +446,9 @@ export function ImportJiraIssuesDialog({
                 Import {selectedIssues.size} Issue{selectedIssues.size !== 1 ? "s" : ""}
               </Button>
             </ResponsiveDialogFooter>
-          </>
+          </div>
         )}
       </ResponsiveDialogContent>
     </ResponsiveDialog>
-  );
-}
-
-function IssueCard({
-  issue,
-  selected,
-  onToggle,
-}: {
-  issue: JiraIssue;
-  selected: boolean;
-  onToggle: () => void;
-}) {
-  const statusColor = {
-    new: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-    indeterminate: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
-    done: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-  }[issue.fields.status.statusCategory.key] || "bg-gray-100 text-gray-700";
-
-  return (
-    <div
-      className={cn(
-        "flex items-start gap-3 p-3 rounded-lg border transition-all cursor-pointer",
-        selected
-          ? "border-[#0052CC] bg-[#0052CC]/5"
-          : "border-border hover:border-[#0052CC]/30"
-      )}
-      onClick={onToggle}
-    >
-      <Checkbox
-        checked={selected}
-        onCheckedChange={onToggle}
-        className="mt-1"
-      />
-
-      {/* Issue Type Icon */}
-      {issue.fields.issuetype.iconUrl && (
-        <img
-          src={issue.fields.issuetype.iconUrl}
-          alt={issue.fields.issuetype.name}
-          className="w-4 h-4 mt-1"
-        />
-      )}
-
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs font-mono text-muted-foreground">
-            {issue.key}
-          </span>
-          <Badge className={cn("text-xs", statusColor)}>
-            {issue.fields.status.name}
-          </Badge>
-          {issue.fields.priority && (
-            <img
-              src={issue.fields.priority.iconUrl}
-              alt={issue.fields.priority.name}
-              className="w-4 h-4"
-              title={issue.fields.priority.name}
-            />
-          )}
-        </div>
-        <p className="font-medium mt-1 line-clamp-2">{issue.fields.summary}</p>
-        
-        {issue.fields.assignee && (
-          <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-            <img
-              src={issue.fields.assignee.avatarUrls["48x48"]}
-              alt={issue.fields.assignee.displayName}
-              className="w-4 h-4 rounded-full"
-            />
-            <span>{issue.fields.assignee.displayName}</span>
-          </div>
-        )}
-      </div>
-    </div>
   );
 }

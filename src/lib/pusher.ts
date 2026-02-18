@@ -6,12 +6,7 @@ let pusherServerInstance: Pusher | null = null;
 
 export const getPusherServer = () => {
   if (!pusherServerInstance) {
-    console.log("[Pusher] Creating server instance with:", {
-      appId: process.env.PUSHER_APP_ID,
-      key: process.env.NEXT_PUBLIC_PUSHER_KEY,
-      secret: process.env.PUSHER_SECRET ? "SET" : "NOT SET",
-      cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER,
-    });
+    console.log("[Pusher] Creating server instance");
     
     pusherServerInstance = new Pusher({
       appId: process.env.PUSHER_APP_ID!,
@@ -39,10 +34,8 @@ export const getPusherClient = () => {
     const key = process.env.NEXT_PUBLIC_PUSHER_KEY;
     const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
     
-    console.log("[Pusher] Creating client instance with key:", key, "cluster:", cluster);
-    
     if (!key || !cluster) {
-      console.error("[Pusher] ❌ Missing env vars! key:", key, "cluster:", cluster);
+      console.error("[Pusher] Missing required configuration");
       throw new Error("Missing Pusher configuration");
     }
     

@@ -19,19 +19,29 @@ import {
   Search,
   Target,
   Plus,
-  Users,
   ChevronRight,
   Home,
   Code2,
+  ChevronsUpDown,
+  Check,
+  Building2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/lib/store";
 import { CommandPalette } from "@/components/search/command-palette";
 import { NotificationsDropdown } from "@/components/notifications/notifications-dropdown";
 import { CreateTaskDialog } from "@/components/tasks/create-task-dialog";
 import { InstallPrompt } from "@/components/pwa/install-prompt";
-import { useWorkspace } from "@/lib/hooks/use-workspaces";
+import { useWorkspace, useWorkspaces } from "@/lib/hooks/use-workspaces";
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -57,8 +67,7 @@ const workspaceNavItems: NavItem[] = [
   { icon: ListTodo, labelKey: "tasks", href: "/tasks", requiresWorkspace: true },
   { icon: Calendar, labelKey: "calendar", href: "/calendar", requiresWorkspace: true },
   { icon: Target, labelKey: "focus", href: "/focus-mode", requiresWorkspace: true },
-  { icon: Users, labelKey: "members", href: "/members", requiresWorkspace: true },
-  { icon: Settings, labelKey: "settings", href: "/settings", requiresWorkspace: true },
+  { icon: Settings, labelKey: "manage", href: "/settings", requiresWorkspace: true },
 ];
 
 const mobileNavItems = [
@@ -155,6 +164,9 @@ export const AppShell = ({ children, locale }: AppShellProps) => {
   const { data: workspaceData } = useWorkspace(workspaceId || "");
   const workspaceName = workspaceData?.workspace?.name;
 
+  // Fetch all workspaces for the switcher
+  const { data: allWorkspaces = [] } = useWorkspaces();
+
   // Fast navigation - use replace for same-workspace navigation
   const navigateTo = useCallback((href: string) => {
     setSidebarOpen(false);
@@ -196,6 +208,7 @@ export const AppShell = ({ children, locale }: AppShellProps) => {
     focus: t("focus.title"),
     templates: t("templates.title"),
     settings: t("settings.title"),
+    manage: t("common.manage") || "Manage",
     members: t("common.members") || "Members",
     profile: t("common.profile") || "Profile",
     extensions: t("common.extensions") || "Extensions",
@@ -236,8 +249,7 @@ export const AppShell = ({ children, locale }: AppShellProps) => {
         tasks: { label: navLabels.tasks, icon: ListTodo },
         calendar: { label: navLabels.calendar, icon: Calendar },
         focus: { label: navLabels.focus, icon: Target },
-        members: { label: navLabels.members, icon: Users },
-        settings: { label: navLabels.settings, icon: Settings },
+        settings: { label: navLabels.manage, icon: Settings },
       };
 
       // Add workspace name - clicking goes to dashboard
@@ -308,6 +320,72 @@ export const AppShell = ({ children, locale }: AppShellProps) => {
               <X className="w-5 h-5" />
             </Button>
           </div>
+
+          {/* Workspace Switcher */}
+          {(allWorkspaces as any[]).length > 0 && (
+            <div className="px-3 pt-3">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-xl border border-border bg-muted/30 hover:bg-muted/60 transition-colors text-left">
+                    {isInWorkspace && workspaceName ? (
+                      <>
+                        <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                          <span className="text-xs font-bold text-primary">
+                            {workspaceName.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{workspaceName}</p>
+                          <p className="text-[10px] text-muted-foreground">Workspace</p>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                          <Building2 className="w-3.5 h-3.5 text-muted-foreground" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium">Workspaces</p>
+                          <p className="text-[10px] text-muted-foreground">Select one</p>
+                        </div>
+                      </>
+                    )}
+                    <ChevronsUpDown className="w-4 h-4 text-muted-foreground shrink-0" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-56 z-[60]" sideOffset={4}>
+                  <DropdownMenuLabel className="text-xs text-muted-foreground">Switch Workspace</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {(allWorkspaces as any[]).map((ws: any) => {
+                    const isCurrent = ws.id === workspaceId;
+                    return (
+                      <DropdownMenuItem
+                        key={ws.id}
+                        onClick={() => navigateTo(`/${locale}/app/${ws.id}/dashboard`)}
+                        className="gap-2.5 cursor-pointer"
+                      >
+                        <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+                          <span className="text-[10px] font-bold text-primary">
+                            {ws.name.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                        <span className="flex-1 truncate text-sm">{ws.name}</span>
+                        {isCurrent && <Check className="w-4 h-4 text-primary shrink-0" />}
+                      </DropdownMenuItem>
+                    );
+                  })}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => navigateTo(`/${locale}/app/dashboard`)}
+                    className="gap-2.5 cursor-pointer text-muted-foreground"
+                  >
+                    <Home className="w-4 h-4" />
+                    <span className="text-sm">All Workspaces</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
 
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-6 overflow-y-auto">
