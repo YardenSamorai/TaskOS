@@ -43,7 +43,7 @@ export async function POST(
     const schema = z.object({
       action: z.string().min(1).max(100),
       entityType: z.string().min(1).max(50).default("task"),
-      metadata: z.record(z.unknown()).optional(),
+      metadata: z.record(z.string(), z.unknown()).optional(),
     });
 
     const data = schema.parse(body);
