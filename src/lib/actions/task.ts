@@ -1160,6 +1160,48 @@ export const deleteStage = async (stageId: string) => {
   }
 };
 
+// Get a single activity log entry by ID
+export const getActivityDetail = async (taskId: string, activityId: string) => {
+  try {
+    const activity = await db.query.activityLogs.findFirst({
+      where: and(
+        eq(activityLogs.id, activityId),
+        eq(activityLogs.taskId, taskId),
+      ),
+      with: {
+        user: {
+          columns: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+          },
+        },
+      },
+    });
+
+    if (!activity) {
+      return { success: false, error: "Activity not found" };
+    }
+
+    return {
+      success: true,
+      activity: {
+        id: activity.id,
+        action: activity.action,
+        entityType: activity.entityType,
+        entityId: activity.entityId,
+        metadata: activity.metadata ? JSON.parse(activity.metadata) : null,
+        createdAt: activity.createdAt,
+        user: activity.user,
+      },
+    };
+  } catch (error) {
+    console.error("Error fetching activity detail:", error);
+    return { success: false, error: "Failed to fetch activity detail" };
+  }
+};
+
 // Get activity count for a task
 export const getTaskActivityCount = async (taskId: string) => {
   try {

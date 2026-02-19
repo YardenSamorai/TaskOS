@@ -86,15 +86,41 @@ function loadContext(taskId) {
   );
 }
 
-function getApiKey() {
-  const key = process.env.TASKOS_API_KEY;
-  if (!key) {
-    die(
-      "TASKOS_API_KEY environment variable is not set.\n" +
-      "  Set it with: export TASKOS_API_KEY=taskos_your_key_here"
-    );
+function readCursorSettings() {
+  const home = process.env.HOME || process.env.USERPROFILE;
+  if (!home) return null;
+
+  const paths = [
+    join(process.env.APPDATA || join(home, "AppData", "Roaming"), "Cursor", "User", "settings.json"),
+    join(home, "Library", "Application Support", "Cursor", "User", "settings.json"),
+    join(home, ".config", "Cursor", "User", "settings.json"),
+  ];
+
+  for (const p of paths) {
+    try {
+      if (existsSync(p)) {
+        return JSON.parse(readFileSync(p, "utf8"));
+      }
+    } catch { /* try next */ }
   }
-  return key;
+  return null;
+}
+
+function getApiKey() {
+  if (process.env.TASKOS_API_KEY) {
+    return process.env.TASKOS_API_KEY;
+  }
+
+  const settings = readCursorSettings();
+  if (settings?.["taskos.apiKey"]) {
+    return settings["taskos.apiKey"];
+  }
+
+  die(
+    "API key not found.\n" +
+    "  Set it in the TaskOS extension settings (taskos.apiKey) or\n" +
+    "  set TASKOS_API_KEY environment variable."
+  );
 }
 
 // ───────── Pending queue ─────────
