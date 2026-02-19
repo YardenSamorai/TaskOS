@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import {
   Activity,
@@ -10,10 +11,13 @@ import {
   Paperclip,
   User,
   Edit,
+  Loader2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
+import { getTaskActivityCount } from "@/lib/actions/task";
 import type { Task, ActivityLog, User as UserType } from "@/lib/db/schema";
 
 interface ActivityWithUser extends ActivityLog {
@@ -84,6 +88,44 @@ const getActivityDescription = (activity: ActivityWithUser) => {
   }
 };
 
+function ActivityCountBadge({ taskId }: { taskId: string }) {
+  const [count, setCount] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    getTaskActivityCount(taskId).then((result) => {
+      if (!cancelled) {
+        setCount(result.count);
+        setLoading(false);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [taskId]);
+
+  if (loading) {
+    return (
+      <Badge variant="secondary" className="ml-auto text-xs px-1.5 py-0 h-5 min-w-[20px] justify-center">
+        <Loader2 className="w-3 h-3 animate-spin" />
+      </Badge>
+    );
+  }
+
+  if (count === null || count === 0) {
+    return (
+      <Badge variant="outline" className="ml-auto text-xs px-1.5 py-0 h-5 min-w-[20px] justify-center text-muted-foreground">
+        0
+      </Badge>
+    );
+  }
+
+  return (
+    <Badge variant="secondary" className="ml-auto text-xs px-1.5 py-0 h-5 min-w-[20px] justify-center">
+      {count}
+    </Badge>
+  );
+}
+
 export const TaskActivity = ({ task }: TaskActivityProps) => {
   return (
     <Card className="sticky top-24">
@@ -91,6 +133,7 @@ export const TaskActivity = ({ task }: TaskActivityProps) => {
         <CardTitle className="flex items-center gap-2 text-lg">
           <Activity className="w-5 h-5" />
           Activity
+          <ActivityCountBadge taskId={task.id} />
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -102,7 +145,6 @@ export const TaskActivity = ({ task }: TaskActivityProps) => {
         ) : (
           <ScrollArea className="h-[400px] pe-4">
             <div className="relative">
-              {/* Timeline line */}
               <div className="absolute start-4 top-0 bottom-0 w-px bg-border" />
 
               <div className="space-y-4">
@@ -112,14 +154,12 @@ export const TaskActivity = ({ task }: TaskActivityProps) => {
 
                   return (
                     <div key={activity.id} className="relative flex gap-3 ps-10">
-                      {/* Icon */}
                       <div
                         className={`absolute start-0 w-8 h-8 rounded-full flex items-center justify-center ${color}`}
                       >
                         <Icon className="w-4 h-4" />
                       </div>
 
-                      {/* Content */}
                       <div className="flex-1 min-w-0 pt-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <Avatar className="w-5 h-5">

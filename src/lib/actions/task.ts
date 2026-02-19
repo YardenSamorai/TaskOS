@@ -1159,3 +1159,18 @@ export const deleteStage = async (stageId: string) => {
     return { success: false, error: "Failed to delete stage" };
   }
 };
+
+// Get activity count for a task
+export const getTaskActivityCount = async (taskId: string) => {
+  try {
+    const [result] = await db
+      .select({ value: sql<number>`count(*)` })
+      .from(activityLogs)
+      .where(eq(activityLogs.taskId, taskId));
+
+    return { success: true, count: Number(result?.value ?? 0) };
+  } catch (error) {
+    console.error("Error getting activity count:", error);
+    return { success: false, count: 0 };
+  }
+};
