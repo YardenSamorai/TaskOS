@@ -42,3 +42,6 @@ next-env.d.ts
 
 # OS
 Thumbs.db
+
+# TaskOS Agent context (written by VS Code extension, contains API keys)
+.taskos-current-task.json

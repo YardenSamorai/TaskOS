@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as path from 'path';
 import { Task } from '../api/client';
 import { GitService } from './gitService';
 import { CodeStyleProfile, CodeReviewProfile } from '../profiles/types';
@@ -7,6 +9,17 @@ import {
   renderConvention,
   DEFAULT_BRANCH_CONVENTION,
 } from './branchConvention';
+
+/** Written to .taskos-current-task.json so Cursor Agent can identify and update the task */
+export interface CurrentTaskContext {
+  taskId: string;
+  title: string;
+  workspaceId: string;
+  apiUrl: string;
+  apiKey: string;
+  branchName?: string;
+  sentAt: string;
+}
 
 export class AgentService {
   private gitService: GitService;
@@ -182,9 +195,64 @@ export class AgentService {
     }
 
     lines.push('');
+    lines.push('## TaskOS Agent Integration');
+    lines.push('');
+    lines.push('A file `.taskos-current-task.json` exists in the workspace root with the task context.');
+    lines.push('');
+    lines.push('**FIRST ACTION:** Before starting implementation, run:');
+    lines.push('```');
+    lines.push('node taskos-update-task.mjs in_progress "Starting implementation"');
+    lines.push('```');
+    lines.push('');
+    lines.push('**LAST ACTION:** After completing implementation, run:');
+    lines.push('```');
+    lines.push('node taskos-update-task.mjs done "Brief summary of what was implemented"');
+    lines.push('```');
+    lines.push('');
     lines.push('After completing the implementation, provide a summary of all changes made.');
 
     return lines.join('\n');
+  }
+
+  /**
+   * Write .taskos-current-task.json to workspace root so Cursor Agent knows which task it's working on
+   */
+  private writeCurrentTaskContext(task: Task, branchName?: string): void {
+    const folders = vscode.workspace.workspaceFolders;
+    if (!folders || folders.length === 0) return;
+
+    const config = vscode.workspace.getConfiguration('taskos');
+    const apiUrl = config.get<string>('apiUrl') || 'https://www.task-os.app/api/v1';
+    const apiKey = config.get<string>('apiKey') || '';
+
+    const context: CurrentTaskContext = {
+      taskId: task.id,
+      title: task.title,
+      workspaceId: task.workspaceId,
+      apiUrl,
+      apiKey,
+      branchName,
+      sentAt: new Date().toISOString(),
+    };
+
+    const filePath = path.join(folders[0].uri.fsPath, '.taskos-current-task.json');
+    try {
+      fs.writeFileSync(filePath, JSON.stringify(context, null, 2), 'utf8');
+    } catch (err) {
+      console.error('TaskOS: Failed to write .taskos-current-task.json:', err);
+    }
+  }
+
+  /**
+   * Remove .taskos-current-task.json when no longer relevant
+   */
+  clearCurrentTaskContext(): void {
+    const folders = vscode.workspace.workspaceFolders;
+    if (!folders || folders.length === 0) return;
+    const filePath = path.join(folders[0].uri.fsPath, '.taskos-current-task.json');
+    try {
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    } catch { /* ignore */ }
   }
 
   /**
@@ -270,7 +338,10 @@ export class AgentService {
       console.log('TaskOS: Git branch creation failed (non-fatal):', error);
     }
 
-    // Step 2: Send prompt to Cursor's Composer/Agent
+    // Step 2: Write current task context so Agent can identify and update the task
+    this.writeCurrentTaskContext(task, branchName);
+
+    // Step 3: Send prompt to Cursor's Composer/Agent
     const autoSend = vscode.workspace.getConfiguration('taskos').get<boolean>('autoSendPrompt', true);
     let method = 'clipboard';
 
