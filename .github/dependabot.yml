@@ -8,6 +8,9 @@ updates:
     labels:
       - "dependencies"
       - "security"
+    ignore:
+      - dependency-name: "tailwindcss"
+        versions: [">=4.0.0"]
     groups:
       production-dependencies:
         dependency-type: "production"
