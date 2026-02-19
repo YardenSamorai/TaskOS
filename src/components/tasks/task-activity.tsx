@@ -12,8 +12,6 @@ import {
   User,
   Edit,
   Loader2,
-  Clock,
-  Tag,
   GitCommit,
   FileText,
   AlertCircle,
@@ -129,32 +127,49 @@ const getActivityDescription = (activity: ActivityWithUser) => {
   }
 };
 
-// ── Metadata key/value renderer ──
+const getActivityDescriptionFull = (activity: { action: string; metadata?: Record<string, unknown> | null }) => {
+  const metadata = activity.metadata ?? null;
+  switch (activity.action) {
+    case "created":
+      return "This task was created.";
+    case "moved":
+      if (metadata?.from && metadata?.to) {
+        return `Status changed from "${String(metadata.from).replace("_", " ")}" to "${String(metadata.to).replace("_", " ")}".`;
+      }
+      return "This task was moved.";
+    case "assigned":
+      return metadata?.assignee ? `Assigned to ${String(metadata.assignee)}.` : "An assignee was added.";
+    case "updated":
+      if (metadata?.status) return `Status changed to ${String((metadata.status as Record<string, unknown>)?.to ?? metadata.status)}.`;
+      if (metadata?.priority) return `Priority changed to ${String((metadata.priority as Record<string, unknown>)?.to ?? metadata.priority)}.`;
+      return "This task was updated.";
+    case "completed":
+      return "This task was marked as completed.";
+    case "commented":
+      return "A comment was added.";
+    case "attached":
+      return "A file was attached.";
+    default:
+      return activity.action;
+  }
+};
 
-const HIDDEN_METADATA_KEYS = new Set(["_dedupeKey"]);
+// ── Metadata helpers ──
 
-function MetadataSection({ metadata }: { metadata: Record<string, unknown> }) {
-  const entries = Object.entries(metadata).filter(
-    ([key]) => !HIDDEN_METADATA_KEYS.has(key)
-  );
+const PROMOTED_KEYS = new Set(["summary", "gitHead", "changedFiles", "agent", "tests", "_dedupeKey"]);
 
-  if (entries.length === 0) return null;
+function ExtraMetadata({ metadata }: { metadata: Record<string, unknown> }) {
+  const extras = Object.entries(metadata).filter(([key]) => !PROMOTED_KEYS.has(key));
+  if (extras.length === 0) return null;
 
   return (
-    <div className="space-y-2">
-      <h4 className="text-sm font-medium flex items-center gap-1.5">
-        <Tag className="w-3.5 h-3.5" />
-        Metadata
-      </h4>
-      <div className="rounded-lg border bg-muted/40 divide-y">
-        {entries.map(([key, value]) => (
-          <div key={key} className="flex gap-3 px-3 py-2 text-sm">
-            <span className="font-mono text-muted-foreground min-w-[100px] shrink-0">
-              {key}
-            </span>
-            <span className="break-all">
-              {renderMetadataValue(value)}
-            </span>
+    <div className="space-y-1.5">
+      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Details</p>
+      <div className="rounded-lg border bg-muted/30 divide-y divide-border/50">
+        {extras.map(([key, value]) => (
+          <div key={key} className="flex items-start gap-3 px-3 py-2 text-sm">
+            <span className="text-muted-foreground text-xs min-w-[80px] pt-0.5">{key}</span>
+            <span className="break-all text-sm">{formatValue(value)}</span>
           </div>
         ))}
       </div>
@@ -162,28 +177,13 @@ function MetadataSection({ metadata }: { metadata: Record<string, unknown> }) {
   );
 }
 
-function renderMetadataValue(value: unknown): React.ReactNode {
+function formatValue(value: unknown): React.ReactNode {
   if (value === null || value === undefined) {
-    return <span className="text-muted-foreground italic">null</span>;
+    return <span className="text-muted-foreground">—</span>;
   }
-  if (typeof value === "boolean") {
-    return <Badge variant={value ? "default" : "secondary"}>{String(value)}</Badge>;
-  }
-  if (Array.isArray(value)) {
-    if (value.length === 0) return <span className="text-muted-foreground italic">[]</span>;
+  if (typeof value === "object" && !Array.isArray(value)) {
     return (
-      <div className="flex flex-wrap gap-1">
-        {value.map((item, i) => (
-          <Badge key={i} variant="outline" className="font-mono text-xs">
-            {String(item)}
-          </Badge>
-        ))}
-      </div>
-    );
-  }
-  if (typeof value === "object") {
-    return (
-      <pre className="text-xs bg-muted rounded p-1.5 overflow-x-auto whitespace-pre-wrap">
+      <pre className="text-xs font-mono bg-muted rounded p-1.5 overflow-x-auto whitespace-pre-wrap">
         {JSON.stringify(value, null, 2)}
       </pre>
     );
@@ -251,101 +251,153 @@ function ActivityDetailDialog({
   const color = data ? (actionColors[data.action] || "text-slate-500 bg-slate-500/10") : "";
   const label = data ? (actionLabels[data.action] || data.action) : "Activity";
 
+  const meta = data?.metadata ?? {};
+  const changedFiles = Array.isArray(meta.changedFiles) ? (meta.changedFiles as string[]) : [];
+  const testStatus = meta.tests ? String(meta.tests) : null;
+  const isAgent = data?.action?.startsWith("agent.") ?? false;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[520px]">
+      <DialogContent className="sm:max-w-[540px] gap-0">
+        {/* ── Header ── */}
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2.5">
             {data && (
-              <span className={`inline-flex w-7 h-7 rounded-full items-center justify-center shrink-0 ${color}`}>
+              <span className={`inline-flex w-8 h-8 rounded-full items-center justify-center shrink-0 ${color}`}>
                 <Icon className="w-4 h-4" />
               </span>
             )}
-            {label}
+            <div className="flex flex-col gap-0.5">
+              <span>{label}</span>
+              {data && (
+                <span className="text-xs font-normal text-muted-foreground">
+                  {format(new Date(data.createdAt), "MMM d, yyyy · HH:mm:ss")}
+                  {" · "}
+                  {formatDistanceToNow(new Date(data.createdAt), { addSuffix: true })}
+                </span>
+              )}
+            </div>
           </DialogTitle>
-          <DialogDescription>
-            {data?.user && (
-              <span>
-                By {data.user.name || data.user.email}
-              </span>
-            )}
+          <DialogDescription className="sr-only">
+            Activity log detail
           </DialogDescription>
         </DialogHeader>
 
+        {/* ── Loading ── */}
         {loading && (
-          <div className="flex items-center justify-center py-10">
+          <div className="flex flex-col items-center justify-center py-12 gap-2">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">Loading activity...</p>
           </div>
         )}
 
+        {/* ── Error ── */}
         {error && (
-          <div className="flex items-center gap-2 text-destructive py-4">
+          <div className="flex items-center gap-2 text-destructive py-6 px-1">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <p className="text-sm">{error}</p>
           </div>
         )}
 
+        {/* ── Content ── */}
         {data && !loading && (
-          <div className="space-y-4">
-            {/* Timestamp */}
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Clock className="w-3.5 h-3.5" />
-              <span>
-                {format(new Date(data.createdAt), "MMMM d, yyyy 'at' HH:mm:ss")}
-              </span>
-              <span className="text-xs">
-                ({formatDistanceToNow(new Date(data.createdAt), { addSuffix: true })})
-              </span>
-            </div>
+          <div className="space-y-4 pt-2">
 
-            {/* Event info */}
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div>
-                <span className="text-muted-foreground block text-xs mb-0.5">Event Type</span>
-                <Badge variant="outline">{data.action}</Badge>
+            {/* Who performed it */}
+            {data.user && (
+              <div className="flex items-center gap-2.5">
+                <Avatar className="w-7 h-7">
+                  <AvatarImage src={data.user.image || undefined} />
+                  <AvatarFallback className="text-xs">
+                    {data.user.name?.[0] || data.user.email[0]}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="text-sm font-medium leading-none">{data.user.name || data.user.email}</p>
+                  {isAgent && (
+                    <p className="text-xs text-muted-foreground mt-0.5">via Cursor Agent</p>
+                  )}
+                </div>
               </div>
-              <div>
-                <span className="text-muted-foreground block text-xs mb-0.5">Entity Type</span>
-                <Badge variant="outline">{data.entityType}</Badge>
-              </div>
-            </div>
+            )}
 
-            {/* Summary / message (agent logs) */}
-            {!!data.metadata?.summary && (
-              <div className="space-y-1">
-                <h4 className="text-sm font-medium flex items-center gap-1.5">
-                  <MessageSquare className="w-3.5 h-3.5" />
-                  Message
-                </h4>
-                <p className="text-sm bg-muted/50 rounded-lg px-3 py-2 whitespace-pre-wrap">
-                  {String(data.metadata.summary)}
+            {/* Main message / summary */}
+            {!!meta.summary && (
+              <div className="rounded-lg border bg-muted/30 px-4 py-3">
+                <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                  {String(meta.summary)}
                 </p>
               </div>
             )}
 
-            {/* Git info (agent logs) */}
-            {!!data.metadata?.gitHead && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <GitCommit className="w-3.5 h-3.5 shrink-0" />
-                <span className="font-mono text-xs">{String(data.metadata.gitHead).substring(0, 12)}</span>
+            {/* Non-agent: description for standard actions */}
+            {!meta.summary && (
+              <div className="rounded-lg border bg-muted/30 px-4 py-3">
+                <p className="text-sm text-muted-foreground">
+                  {getActivityDescriptionFull(data)}
+                </p>
               </div>
             )}
 
-            {/* Full metadata */}
-            {data.metadata && <MetadataSection metadata={data.metadata} />}
-
-            {/* User card */}
-            {data.user && (
-              <div className="flex items-center gap-2 pt-2 border-t">
-                <Avatar className="w-6 h-6">
-                  <AvatarImage src={data.user.image || undefined} />
-                  <AvatarFallback className="text-[10px]">
-                    {data.user.name?.[0] || data.user.email[0]}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="text-sm font-medium">{data.user.name || data.user.email}</span>
+            {/* Git & files section (agent events) */}
+            {(!!meta.gitHead || changedFiles.length > 0) && (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                  <GitCommit className="w-3 h-3" />
+                  Source Control
+                </p>
+                <div className="rounded-lg border bg-muted/30 divide-y divide-border/50">
+                  {!!meta.gitHead && (
+                    <div className="flex items-center gap-2 px-3 py-2">
+                      <span className="text-xs text-muted-foreground w-14">Commit</span>
+                      <code className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">
+                        {String(meta.gitHead).substring(0, 12)}
+                      </code>
+                    </div>
+                  )}
+                  {changedFiles.length > 0 && (
+                    <div className="px-3 py-2">
+                      <span className="text-xs text-muted-foreground block mb-1.5">
+                        {changedFiles.length} file{changedFiles.length !== 1 ? "s" : ""} changed
+                      </span>
+                      <div className="space-y-0.5 max-h-[120px] overflow-y-auto">
+                        {changedFiles.map((file, i) => (
+                          <div key={i} className="flex items-center gap-1.5 text-xs">
+                            <FileText className="w-3 h-3 text-muted-foreground shrink-0" />
+                            <span className="font-mono truncate">{file}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
+
+            {/* Test status (agent events) */}
+            {testStatus && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Tests:</span>
+                <Badge
+                  variant={testStatus === "passed" ? "default" : testStatus === "fail" ? "destructive" : "secondary"}
+                  className="text-xs"
+                >
+                  {testStatus === "not_run" ? "Not Run" : testStatus === "passed" ? "Passed" : testStatus === "fail" ? "Failed" : testStatus}
+                </Badge>
+              </div>
+            )}
+
+            {/* Extra metadata (anything not already displayed above) */}
+            {data.metadata && <ExtraMetadata metadata={data.metadata} />}
+
+            {/* Event type pill - subtle, at the bottom */}
+            <div className="flex items-center gap-2 pt-1 border-t text-xs text-muted-foreground">
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
+                {data.action}
+              </Badge>
+              <span>·</span>
+              <span>{data.entityType}</span>
+            </div>
           </div>
         )}
       </DialogContent>
