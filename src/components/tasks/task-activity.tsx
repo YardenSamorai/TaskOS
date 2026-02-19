@@ -311,7 +311,7 @@ function ActivityDetailDialog({
             </div>
 
             {/* Summary / message (agent logs) */}
-            {data.metadata?.summary && (
+            {!!data.metadata?.summary && (
               <div className="space-y-1">
                 <h4 className="text-sm font-medium flex items-center gap-1.5">
                   <MessageSquare className="w-3.5 h-3.5" />
@@ -324,7 +324,7 @@ function ActivityDetailDialog({
             )}
 
             {/* Git info (agent logs) */}
-            {data.metadata?.gitHead && (
+            {!!data.metadata?.gitHead && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <GitCommit className="w-3.5 h-3.5 shrink-0" />
                 <span className="font-mono text-xs">{String(data.metadata.gitHead).substring(0, 12)}</span>
