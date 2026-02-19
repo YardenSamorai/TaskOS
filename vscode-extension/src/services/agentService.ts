@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { Task } from '../api/client';
+import { Task, TaskOSApiClient } from '../api/client';
 import { GitService } from './gitService';
 import { CodeStyleProfile, CodeReviewProfile } from '../profiles/types';
 import {
@@ -10,13 +10,11 @@ import {
   DEFAULT_BRANCH_CONVENTION,
 } from './branchConvention';
 
-/** Written to .taskos-current-task.json so Cursor Agent can identify and update the task */
-export interface CurrentTaskContext {
+export interface TaskContextFile {
   taskId: string;
-  title: string;
   workspaceId: string;
-  apiUrl: string;
-  apiKey: string;
+  baseUrl: string;
+  title: string;
   branchName?: string;
   sentAt: string;
 }
@@ -33,16 +31,10 @@ export class AgentService {
     );
   }
 
-  /**
-   * Generate a comprehensive prompt from a task (basic, backward-compatible)
-   */
   generatePrompt(task: Task): string {
     return this.generateEnhancedPrompt(task);
   }
 
-  /**
-   * Generate an enhanced prompt with profile-driven instructions
-   */
   generateEnhancedPrompt(
     task: Task,
     styleProfile?: CodeStyleProfile,
@@ -50,34 +42,31 @@ export class AgentService {
   ): string {
     const lines: string[] = [];
 
-    // Header
     lines.push(`# Task: ${task.title}`);
     lines.push('');
 
-    // Description
     if (task.description) {
       lines.push('## Description');
       lines.push(task.description);
       lines.push('');
     }
 
-    // Priority & Status context
     lines.push(`## Context`);
     lines.push(`- **Priority:** ${task.priority.toUpperCase()}`);
     lines.push(`- **Status:** ${task.status.replace('_', ' ')}`);
+    lines.push(`- **Task ID:** \`${task.id}\``);
     if (task.dueDate) {
       lines.push(`- **Due Date:** ${new Date(task.dueDate).toLocaleDateString()}`);
     }
     lines.push('');
 
-    // Subtasks / Steps as requirements
     if (task.steps && task.steps.length > 0) {
       lines.push('## Requirements / Checklist');
       task.steps
         .sort((a, b) => a.orderIndex - b.orderIndex)
         .forEach((step, index) => {
           const checkbox = step.completed ? '✅' : '☐';
-          lines.push(`${index + 1}. ${checkbox} ${step.content}`);
+          lines.push(`${index + 1}. ${checkbox} ${step.content} (stepId: \`${step.id}\`)`);
         });
       lines.push('');
 
@@ -88,14 +77,12 @@ export class AgentService {
       }
     }
 
-    // Tags as context
     if (task.tags && task.tags.length > 0) {
       lines.push(`## Tags`);
       lines.push(task.tags.map(t => `\`${t.name}\``).join(', '));
       lines.push('');
     }
 
-    // Code Style Profile instructions
     if (styleProfile) {
       lines.push('## Code Style Requirements (MANDATORY)');
       lines.push('');
@@ -134,7 +121,6 @@ export class AgentService {
         lines.push('');
       }
 
-      // Testing requirements from profile
       const tp = styleProfile.testing_policy;
       if (tp) {
         lines.push('**Testing Requirements:**');
@@ -150,7 +136,7 @@ export class AgentService {
         if (tp.test_types_required.length > 0) {
           lines.push(`- Required test types: ${tp.test_types_required.join(', ')}`);
         }
-        tp.minimum_expectations.forEach(e => lines.push(`- ${e}`));
+        tp.minimum_expectations.forEach((e: string) => lines.push(`- ${e}`));
         if (!tp.allow_skip_with_reason) {
           lines.push('- Tests CANNOT be skipped under any circumstances');
         }
@@ -158,7 +144,6 @@ export class AgentService {
       }
     }
 
-    // Review awareness (so AI knows what will be checked)
     if (reviewProfile) {
       lines.push('## Code Review Standards (your code WILL be reviewed against these)');
       lines.push('');
@@ -179,7 +164,6 @@ export class AgentService {
       }
     }
 
-    // Base instructions
     lines.push('## Instructions');
     lines.push('Please implement this task following these guidelines:');
     lines.push('1. Follow the existing code patterns and conventions in this project');
@@ -197,76 +181,116 @@ export class AgentService {
     lines.push('');
     lines.push('## TaskOS Agent Integration');
     lines.push('');
-    lines.push('A file `.taskos-current-task.json` exists in the workspace root with the task context.');
+    lines.push(`Task context is in \`.taskos/task-${task.id}.json\`. Status was set to **in_progress** when this task was dispatched.`);
     lines.push('');
-    lines.push('**FIRST ACTION:** Before starting implementation, run:');
-    lines.push('```');
-    lines.push('node taskos-update-task.mjs in_progress "Starting implementation"');
-    lines.push('```');
-    lines.push('');
-    lines.push('**LAST ACTION:** After completing implementation, run:');
-    lines.push('```');
-    lines.push('node taskos-update-task.mjs done "Brief summary of what was implemented"');
+    lines.push('**AFTER completing implementation**, run:');
+    lines.push('```bash');
+    lines.push(`node taskos-update-task.mjs done "${task.id}" "Brief summary of what was implemented"`);
     lines.push('```');
     lines.push('');
+    lines.push('To log progress notes during work:');
+    lines.push('```bash');
+    lines.push(`node taskos-update-task.mjs log "${task.id}" "Description of progress"`);
+    lines.push('```');
+    lines.push('');
+    if (task.steps && task.steps.length > 0) {
+      lines.push('To mark a step as completed:');
+      lines.push('```bash');
+      lines.push(`node taskos-update-task.mjs step "${task.id}" "<stepId>" completed`);
+      lines.push('```');
+      lines.push('');
+    }
     lines.push('After completing the implementation, provide a summary of all changes made.');
 
     return lines.join('\n');
   }
 
-  /**
-   * Write .taskos-current-task.json to workspace root so Cursor Agent knows which task it's working on
-   */
-  private writeCurrentTaskContext(task: Task, branchName?: string): void {
+  // --------------- .taskos/ directory management ---------------
+
+  private getTaskosDir(): string | null {
+    const folders = vscode.workspace.workspaceFolders;
+    if (!folders || folders.length === 0) return null;
+    return path.join(folders[0].uri.fsPath, '.taskos');
+  }
+
+  private ensureTaskosDir(): string | null {
+    const dir = this.getTaskosDir();
+    if (!dir) return null;
+    try {
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      return dir;
+    } catch (err) {
+      console.error('TaskOS: Failed to create .taskos dir:', err);
+      return null;
+    }
+  }
+
+  private ensureGitignore(): void {
     const folders = vscode.workspace.workspaceFolders;
     if (!folders || folders.length === 0) return;
 
+    const gitignorePath = path.join(folders[0].uri.fsPath, '.gitignore');
+    const entry = '.taskos/';
+
+    try {
+      let content = '';
+      if (fs.existsSync(gitignorePath)) {
+        content = fs.readFileSync(gitignorePath, 'utf8');
+      }
+      if (!content.split('\n').some(line => line.trim() === entry)) {
+        const sep = content.endsWith('\n') || content.length === 0 ? '' : '\n';
+        fs.appendFileSync(gitignorePath, `${sep}\n# TaskOS agent context (contains no secrets)\n${entry}\n`);
+      }
+    } catch (err) {
+      console.error('TaskOS: Failed to update .gitignore:', err);
+    }
+  }
+
+  private writeTaskContext(task: Task, branchName?: string): void {
+    const dir = this.ensureTaskosDir();
+    if (!dir) return;
+
+    this.ensureGitignore();
+
     const config = vscode.workspace.getConfiguration('taskos');
     const apiUrl = config.get<string>('apiUrl') || 'https://www.task-os.app/api/v1';
-    const apiKey = config.get<string>('apiKey') || '';
 
-    const context: CurrentTaskContext = {
+    const context: TaskContextFile = {
       taskId: task.id,
-      title: task.title,
       workspaceId: task.workspaceId,
-      apiUrl,
-      apiKey,
+      baseUrl: apiUrl,
+      title: task.title,
       branchName,
       sentAt: new Date().toISOString(),
     };
 
-    const filePath = path.join(folders[0].uri.fsPath, '.taskos-current-task.json');
+    const filePath = path.join(dir, `task-${task.id}.json`);
     try {
       fs.writeFileSync(filePath, JSON.stringify(context, null, 2), 'utf8');
     } catch (err) {
-      console.error('TaskOS: Failed to write .taskos-current-task.json:', err);
+      console.error('TaskOS: Failed to write task context:', err);
     }
   }
 
-  /**
-   * Remove .taskos-current-task.json when no longer relevant
-   */
-  clearCurrentTaskContext(): void {
-    const folders = vscode.workspace.workspaceFolders;
-    if (!folders || folders.length === 0) return;
-    const filePath = path.join(folders[0].uri.fsPath, '.taskos-current-task.json');
+  removeTaskContext(taskId: string): void {
+    const dir = this.getTaskosDir();
+    if (!dir) return;
+    const filePath = path.join(dir, `task-${taskId}.json`);
     try {
       if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     } catch { /* ignore */ }
   }
 
-  /**
-   * Send a task to Cursor's AI agent
-   */
+  // --------------- Send to Agent ---------------
+
   async sendToAgent(task: Task): Promise<{ success: boolean; method: string; branchName?: string }> {
     const prompt = this.generatePrompt(task);
-    
-    // Step 1: Create a git branch for this task
+
+    // Step 1: Create git branch
     let branchName: string | undefined;
     try {
       const isGit = await this.gitService.isGitRepo();
       if (isGit) {
-        // Generate suggested branch name from convention
         const config = vscode.workspace.getConfiguration('taskos');
         const workspaceId = config.get<string>('defaultWorkspaceId', '');
         let suggestedBranch = `taskos/${task.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').substring(0, 50)}-${task.id.substring(0, 8)}`;
@@ -284,7 +308,6 @@ export class AgentService {
           suggestedBranch = rendered.branchName;
         } catch { /* use fallback */ }
 
-        // Let user edit the branch name
         const userBranch = await vscode.window.showInputBox({
           prompt: 'Branch name for this task',
           value: suggestedBranch,
@@ -317,17 +340,14 @@ export class AgentService {
           }
         }
 
-        // Create branch with user's chosen name
         try {
           await this._runGitCommand(`checkout -b ${userBranch}`);
           branchName = userBranch;
         } catch {
-          // Branch might already exist — try switching to it
           try {
             await this._runGitCommand(`checkout ${userBranch}`);
             branchName = userBranch;
           } catch {
-            // Fall back to auto-generated
             branchName = await this.gitService.createTaskBranch(task.id, task.title);
           }
         }
@@ -338,17 +358,26 @@ export class AgentService {
       console.log('TaskOS: Git branch creation failed (non-fatal):', error);
     }
 
-    // Step 2: Write current task context so Agent can identify and update the task
-    this.writeCurrentTaskContext(task, branchName);
+    // Step 2: Write .taskos/task-<id>.json (no API key!)
+    this.writeTaskContext(task, branchName);
 
-    // Step 3: Send prompt to Cursor's Composer/Agent
+    // Step 3: Set status to in_progress immediately via API
+    try {
+      const config = vscode.workspace.getConfiguration('taskos');
+      const apiKey = config.get<string>('apiKey') || '';
+      const apiUrl = config.get<string>('apiUrl') || 'https://www.task-os.app/api/v1';
+      const client = new TaskOSApiClient(apiKey, apiUrl);
+      await client.updateTask(task.id, { status: 'in_progress' });
+    } catch (err) {
+      console.error('TaskOS: Failed to set in_progress:', err);
+    }
+
+    // Step 4: Send prompt to Cursor's Composer/Agent
     const autoSend = vscode.workspace.getConfiguration('taskos').get<boolean>('autoSendPrompt', true);
     let method = 'clipboard';
 
-    // Copy prompt to clipboard first
     await vscode.env.clipboard.writeText(prompt);
 
-    // Try to open Cursor Composer and paste
     const composerCommands = [
       'composerMode.agent',
       'cursor.newComposer',
@@ -362,28 +391,20 @@ export class AgentService {
         await vscode.commands.executeCommand(cmd);
         method = cmd;
 
-        // Wait for composer to open
         await new Promise(resolve => setTimeout(resolve, 600));
 
-        // Paste the prompt
         try {
           await vscode.commands.executeCommand('editor.action.clipboardPasteAction');
-        } catch {
-          // Paste might not work in some chat UIs
-        }
+        } catch { /* ignore */ }
 
-        // Auto-send: simulate Enter to submit the prompt
         if (autoSend) {
           await new Promise(resolve => setTimeout(resolve, 300));
           try {
             await vscode.commands.executeCommand('workbench.action.chat.submit');
           } catch {
-            // Fallback: try to simulate Enter key
             try {
               await vscode.commands.executeCommand('default:type', { text: '\n' });
-            } catch {
-              // User will need to press Enter manually
-            }
+            } catch { /* user presses Enter */ }
           }
         }
 
@@ -400,17 +421,14 @@ export class AgentService {
     const { exec } = require('child_process');
     const { promisify } = require('util');
     const execAsync = promisify(exec);
-    
+
     const folders = vscode.workspace.workspaceFolders;
     const cwd = folders?.[0]?.uri.fsPath || '';
-    
+
     const { stdout } = await execAsync(`git ${command}`, { cwd, timeout: 15000 });
     return stdout.trim();
   }
 
-  /**
-   * Get the git service instance
-   */
   getGitService(): GitService {
     return this.gitService;
   }

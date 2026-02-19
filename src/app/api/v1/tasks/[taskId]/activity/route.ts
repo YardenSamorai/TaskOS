@@ -3,7 +3,7 @@ import { authenticateApiRequest } from "@/lib/middleware/api-auth";
 import { rateLimitApiRequest } from "@/lib/middleware/rate-limit";
 import { db } from "@/lib/db";
 import { tasks, activityLogs } from "@/lib/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { z } from "zod";
 
 // POST /api/v1/tasks/:taskId/activity - Log activity for a task
@@ -39,16 +39,15 @@ export async function POST(
     const { taskId } = await params;
     const body = await request.json();
 
-    // Validate input
     const schema = z.object({
       action: z.string().min(1).max(100),
       entityType: z.string().min(1).max(50).default("task"),
       metadata: z.record(z.string(), z.unknown()).optional(),
+      dedupeKey: z.string().max(128).optional(),
     });
 
     const data = schema.parse(body);
 
-    // Check if task exists
     const task = await db.query.tasks.findFirst({
       where: eq(tasks.id, taskId),
     });
@@ -57,7 +56,43 @@ export async function POST(
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 
-    // Create activity log
+    // Idempotency: if dedupeKey is provided, check for existing entry
+    if (data.dedupeKey) {
+      const existing = await db.query.activityLogs.findFirst({
+        where: and(
+          eq(activityLogs.taskId, taskId),
+          eq(activityLogs.action, data.action),
+        ),
+      });
+
+      if (existing?.metadata) {
+        try {
+          const meta = JSON.parse(existing.metadata);
+          if (meta._dedupeKey === data.dedupeKey) {
+            return NextResponse.json(
+              {
+                success: true,
+                deduplicated: true,
+                activity: {
+                  id: existing.id,
+                  action: existing.action,
+                  entityType: existing.entityType,
+                  metadata: meta,
+                  createdAt: existing.createdAt,
+                },
+              },
+              { status: 200, headers: responseHeaders }
+            );
+          }
+        } catch { /* not JSON, continue */ }
+      }
+    }
+
+    const metadataObj = data.metadata || {};
+    if (data.dedupeKey) {
+      (metadataObj as Record<string, unknown>)._dedupeKey = data.dedupeKey;
+    }
+
     const [activity] = await db
       .insert(activityLogs)
       .values({
@@ -67,7 +102,7 @@ export async function POST(
         action: data.action,
         entityType: data.entityType,
         entityId: taskId,
-        metadata: data.metadata ? JSON.stringify(data.metadata) : null,
+        metadata: Object.keys(metadataObj).length > 0 ? JSON.stringify(metadataObj) : null,
       })
       .returning();
 

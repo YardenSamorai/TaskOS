@@ -436,3 +436,73 @@ export async function DELETE(
     );
   }
 }
+
+// PATCH /api/v1/tasks/:id - Lightweight status update
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ taskId: string }> }
+) {
+  try {
+    const auth = await authenticateApiRequest(request);
+    if (!auth.authenticated || !auth.request) {
+      return NextResponse.json(
+        { error: auth.error || "Unauthorized" },
+        { status: auth.status || 401 }
+      );
+    }
+
+    const { apiKeyId, userPlan } = auth.request;
+
+    const scopeCheck = requireScope(auth.request, "write:tasks");
+    if (!scopeCheck.allowed) {
+      return NextResponse.json({ error: scopeCheck.error }, { status: 403 });
+    }
+
+    const rateLimit = await rateLimitApiRequest(apiKeyId, userPlan);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: rateLimit.error },
+        { status: rateLimit.status || 429, headers: rateLimit.headers }
+      );
+    }
+
+    const responseHeaders = rateLimit.headers || {};
+    const { taskId } = await params;
+
+    const taskAccess = await requireApiTaskAccess(auth.request, taskId, "update");
+    if (!taskAccess.allowed) {
+      return NextResponse.json({ error: taskAccess.error }, { status: taskAccess.status || 403 });
+    }
+
+    const body = await request.json();
+    const schema = z.object({
+      status: z.enum(["backlog", "todo", "in_progress", "review", "done"]).optional(),
+      priority: z.enum(["low", "medium", "high", "urgent"]).optional(),
+    });
+
+    const data = schema.parse(body);
+
+    const updateData: Record<string, unknown> = { updatedAt: new Date() };
+    if (data.status) updateData.status = data.status;
+    if (data.priority) updateData.priority = data.priority;
+
+    await db.update(tasks).set(updateData).where(eq(tasks.id, taskId));
+
+    return NextResponse.json(
+      { success: true, taskId, ...data },
+      { headers: responseHeaders }
+    );
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: "Validation error", details: error.errors },
+        { status: 400 }
+      );
+    }
+    console.error("Error patching task:", error);
+    return NextResponse.json(
+      { error: "Failed to update task" },
+      { status: 500 }
+    );
+  }
+}

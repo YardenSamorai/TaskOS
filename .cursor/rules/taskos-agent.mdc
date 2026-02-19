@@ -1,51 +1,56 @@
 ---
-description: TaskOS task lifecycle management - update task status and log activity when working on tasks sent from the TaskOS VS Code extension
+description: TaskOS task lifecycle - update task status and log activity when working on tasks sent from the TaskOS VS Code extension
 globs:
 alwaysApply: true
 ---
 
 # TaskOS Agent Integration
 
-When you receive a task from the TaskOS VS Code extension, a file `.taskos-current-task.json` will exist in the workspace root with the task context.
+When you receive a task from the TaskOS VS Code extension, a context file exists at `.taskos/task-<taskId>.json`.
+The extension already set the task status to **in_progress** when it dispatched the task.
 
-## Required Workflow
+The helper script `taskos-update-task.mjs` communicates with the TaskOS API using the `TASKOS_API_KEY` environment variable.
 
-### When starting work on a task:
+## After completing implementation
 
-If `.taskos-current-task.json` exists in the workspace root, **ALWAYS run this as your first action before writing any code**:
+**ALWAYS** run this as your last action, before presenting your summary:
 
 ```bash
-node taskos-update-task.mjs in_progress "Starting implementation of [brief description]"
+node taskos-update-task.mjs done "<taskId>" "Concise summary: what was implemented, what files changed, key decisions."
 ```
 
-### When finishing work on a task:
+The taskId is included in the prompt context. Use it literally (the full UUID).
 
-After completing the implementation and before presenting your summary, **ALWAYS run**:
+The summary should be 1-3 sentences describing what was actually done. Examples:
+- "Implemented AES-256-GCM encryption with base64url encoding. Added key validation at startup."
+- "Fixed rate limiting to key by IP+identifier. Added logging on rate limit hits."
+
+## To log progress during work (optional)
 
 ```bash
-node taskos-update-task.mjs done "Concise summary: what was implemented, what files changed, any important decisions made"
+node taskos-update-task.mjs log "<taskId>" "Description of what was just done"
 ```
 
-The summary should be 1-3 sentences describing what was actually done. Example:
-- "Implemented AES-256-GCM encryption with base64url encoding. Added key length validation at startup. Supports legacy hex format for backward compatibility."
-- "Fixed authentication rate limiting to key by IP+identifier to prevent NAT lockout. Added logging on rate limit hits."
+## To mark a step/checklist item as completed (optional)
 
-### If you need human review before marking done:
+If the task has steps with stepIds listed in the prompt:
 
 ```bash
-node taskos-update-task.mjs review "Completed implementation, needs review of [specific concern]"
+node taskos-update-task.mjs step "<taskId>" "<stepId>" completed
 ```
 
 ## Rules
 
-1. **Always check** if `.taskos-current-task.json` exists before starting any task from the TaskOS extension
-2. **Never skip** the `in_progress` update -- it lets the team know work has started
-3. **Never skip** the `done` update -- it closes the loop in TaskOS
-4. **The summary matters** -- write something meaningful that would be useful in a changelog
-5. If `node taskos-update-task.mjs` fails (network error, etc.), log the error but **continue with your task** -- don't block on it
+1. **Never skip** the `done` command -- it closes the feedback loop in TaskOS
+2. **The summary matters** -- write something meaningful, not "done" or "completed"
+3. If `taskos-update-task.mjs` fails (missing env var, network error), log the error but **continue with your work** -- don't block on it
+4. The script is **idempotent** -- safe to run twice; duplicate calls produce no duplicate entries
+5. **Multiple tasks**: each task has its own `.taskos/task-<taskId>.json`. Always use the specific taskId from the prompt
 
 ## What the script does
 
-- Updates the task status in TaskOS (`in_progress` / `done` / `review`)
-- Logs an activity entry on the task with your summary
-- These appear in the TaskOS web app and VS Code extension in real time
+- `done` -- sets task status to "done" in TaskOS and logs a completion activity with git metadata
+- `log` -- appends an activity log entry visible in the TaskOS web app and extension
+- `step` -- marks a specific checklist step as completed
+
+The API key is read from `TASKOS_API_KEY` env var. It is **never** stored in any file in the repo.

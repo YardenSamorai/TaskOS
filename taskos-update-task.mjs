@@ -1,141 +1,289 @@
 /**
  * TaskOS Agent Helper Script
  *
- * Used by the Cursor AI Agent to update task status and log activity.
- * Reads task context from .taskos-current-task.json written by the VS Code extension.
+ * Updates task status, logs activity, and marks steps as completed.
+ * Reads task context from .taskos/task-<taskId>.json.
+ * Reads API key from TASKOS_API_KEY environment variable ONLY.
  *
  * Usage:
- *   node taskos-update-task.mjs <status> "<summary>"
+ *   node taskos-update-task.mjs log   <taskId> "message"
+ *   node taskos-update-task.mjs done  <taskId> "summary"
+ *   node taskos-update-task.mjs step  <taskId> <stepId> completed
  *
- * Status values:
- *   in_progress  - Agent has started working on the task
- *   done         - Agent has completed the task
- *   review       - Agent finished and wants a human review
- *
- * Examples:
- *   node taskos-update-task.mjs in_progress "Starting implementation of rate limiting"
- *   node taskos-update-task.mjs done "Implemented AES-256-GCM encryption with base64url encoding and key validation"
+ * Environment:
+ *   TASKOS_API_KEY  - Required. Your TaskOS API key (Bearer token).
  */
 
-import { readFileSync, existsSync } from "fs";
+import { readFileSync, writeFileSync, existsSync, readdirSync } from "fs";
 import { join } from "path";
+import { execSync } from "child_process";
+import { createHash } from "crypto";
 
-const CONTEXT_FILE = ".taskos-current-task.json";
-const VALID_STATUSES = ["backlog", "todo", "in_progress", "review", "done"];
+// ───────── Helpers ─────────
 
-function usage() {
-  console.log(`
-Usage: node taskos-update-task.mjs <status> "<summary>"
-
-Status values: ${VALID_STATUSES.join(", ")}
-
-Examples:
-  node taskos-update-task.mjs in_progress "Starting implementation"
-  node taskos-update-task.mjs done "Implemented X, Y, Z. Fixed bug in auth flow."
-  `);
+function die(msg) {
+  console.error(`\n  ERROR: ${msg}\n`);
   process.exit(1);
 }
 
-async function main() {
-  const [, , status, summary] = process.argv;
+function warn(msg) {
+  console.warn(`  WARN: ${msg}`);
+}
 
-  if (!status || !VALID_STATUSES.includes(status)) {
-    console.error(`Error: Invalid status "${status}"`);
-    usage();
-  }
+function sha256(...parts) {
+  return createHash("sha256").update(parts.join(":")).digest("hex").slice(0, 40);
+}
 
-  if (!summary || summary.trim().length === 0) {
-    console.error("Error: Summary is required");
-    usage();
-  }
-
-  // Read task context
-  const contextPath = join(process.cwd(), CONTEXT_FILE);
-  if (!existsSync(contextPath)) {
-    console.error(`Error: ${CONTEXT_FILE} not found in current directory.`);
-    console.error("Make sure you run this from the workspace root and a task was sent via the TaskOS extension.");
-    process.exit(1);
-  }
-
-  let context;
+function gitHead() {
   try {
-    context = JSON.parse(readFileSync(contextPath, "utf8"));
-  } catch (err) {
-    console.error(`Error: Could not parse ${CONTEXT_FILE}:`, err.message);
-    process.exit(1);
+    return execSync("git rev-parse HEAD", { encoding: "utf8", timeout: 5000 }).trim();
+  } catch {
+    return "unknown";
   }
+}
 
-  const { taskId, title, workspaceId, apiUrl, apiKey } = context;
-
-  if (!taskId || !apiUrl || !apiKey) {
-    console.error("Error: Incomplete task context in", CONTEXT_FILE);
-    process.exit(1);
-  }
-
-  const headers = {
-    "Authorization": `Bearer ${apiKey}`,
-    "Content-Type": "application/json",
-  };
-
-  console.log(`\nTaskOS: Updating task "${title}"`);
-  console.log(`  Status: ${status}`);
-  console.log(`  Summary: ${summary}\n`);
-
-  // 1. Update task status
+function changedFiles() {
   try {
-    const statusRes = await fetch(`${apiUrl}/tasks/${taskId}`, {
-      method: "PUT",
-      headers,
-      body: JSON.stringify({ status }),
+    const out = execSync("git diff --name-only HEAD~1..HEAD", {
+      encoding: "utf8",
+      timeout: 5000,
+    }).trim();
+    if (out) return out.split("\n");
+  } catch { /* fallthrough */ }
+  try {
+    const out = execSync("git diff --name-only", {
+      encoding: "utf8",
+      timeout: 5000,
+    }).trim();
+    if (out) return out.split("\n");
+  } catch { /* fallthrough */ }
+  return [];
+}
+
+// ───────── Context loading ─────────
+
+function loadContext(taskId) {
+  const taskosDir = join(process.cwd(), ".taskos");
+
+  // Try exact file first
+  const exact = join(taskosDir, `task-${taskId}.json`);
+  if (existsSync(exact)) {
+    return JSON.parse(readFileSync(exact, "utf8"));
+  }
+
+  // If taskId looks like a short prefix, try to find matching file
+  if (existsSync(taskosDir)) {
+    const files = readdirSync(taskosDir).filter(f => f.startsWith("task-") && f.endsWith(".json"));
+    const match = files.find(f => f.includes(taskId));
+    if (match) {
+      return JSON.parse(readFileSync(join(taskosDir, match), "utf8"));
+    }
+  }
+
+  die(
+    `.taskos/task-${taskId}.json not found.\n` +
+    "  Make sure you sent this task via the TaskOS VS Code extension."
+  );
+}
+
+function getApiKey() {
+  const key = process.env.TASKOS_API_KEY;
+  if (!key) {
+    die(
+      "TASKOS_API_KEY environment variable is not set.\n" +
+      "  Set it with: export TASKOS_API_KEY=taskos_your_key_here"
+    );
+  }
+  return key;
+}
+
+// ───────── Pending queue ─────────
+
+function appendPending(entry) {
+  const pendingPath = join(process.cwd(), ".taskos", "pending.json");
+  let pending = [];
+  try {
+    if (existsSync(pendingPath)) {
+      pending = JSON.parse(readFileSync(pendingPath, "utf8"));
+    }
+  } catch { /* start fresh */ }
+  pending.push({ ...entry, failedAt: new Date().toISOString() });
+  writeFileSync(pendingPath, JSON.stringify(pending, null, 2), "utf8");
+  warn(`Saved to .taskos/pending.json for retry`);
+}
+
+// ───────── API calls ─────────
+
+async function apiCall(baseUrl, apiKey, method, path, body) {
+  const url = `${baseUrl}${path}`;
+  const res = await fetch(url, {
+    method,
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    throw new Error(`API ${res.status}: ${data.error || res.statusText}`);
+  }
+
+  return data;
+}
+
+// ───────── Commands ─────────
+
+async function cmdLog(context, apiKey, message) {
+  const head = gitHead();
+  const dedupeKey = sha256(context.taskId, message, head, "log");
+  const files = changedFiles();
+
+  console.log(`\n  TaskOS: Logging activity for "${context.title || context.taskId}"`);
+  console.log(`  Message: ${message}\n`);
+
+  try {
+    const result = await apiCall(context.baseUrl, apiKey, "POST", `/tasks/${context.taskId}/activity`, {
+      action: "agent.log",
+      entityType: "task",
+      dedupeKey,
+      metadata: {
+        summary: message,
+        agent: "cursor",
+        gitHead: head,
+        changedFiles: files,
+        tests: "not_run",
+      },
     });
 
-    if (!statusRes.ok) {
-      const err = await statusRes.json().catch(() => ({}));
-      console.error(`Error updating status (${statusRes.status}):`, err.error || statusRes.statusText);
-      process.exit(1);
+    if (result.deduplicated) {
+      console.log("  ✓ Already logged (idempotent, no duplicate created)");
+    } else {
+      console.log("  ✓ Activity logged");
     }
-
-    console.log(`✓ Status updated to "${status}"`);
   } catch (err) {
-    console.error("Error calling TaskOS API:", err.message);
+    console.error(`  ✗ Failed: ${err.message}`);
+    appendPending({ command: "log", taskId: context.taskId, message, dedupeKey });
+    process.exit(1);
+  }
+}
+
+async function cmdDone(context, apiKey, summary) {
+  const head = gitHead();
+  const dedupeKey = sha256(context.taskId, "done", head);
+  const files = changedFiles();
+
+  console.log(`\n  TaskOS: Completing task "${context.title || context.taskId}"`);
+  console.log(`  Summary: ${summary}\n`);
+
+  // 1. Update status to done
+  try {
+    await apiCall(context.baseUrl, apiKey, "PATCH", `/tasks/${context.taskId}`, {
+      status: "done",
+    });
+    console.log('  ✓ Status → done');
+  } catch (err) {
+    console.error(`  ✗ Status update failed: ${err.message}`);
+    appendPending({ command: "done_status", taskId: context.taskId, dedupeKey });
     process.exit(1);
   }
 
   // 2. Log activity
   try {
-    const actionMap = {
-      in_progress: "agent.started",
-      done: "agent.completed",
-      review: "agent.review_requested",
-    };
-    const action = actionMap[status] || `agent.status_changed_to_${status}`;
-
-    const activityRes = await fetch(`${apiUrl}/tasks/${taskId}/activity`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        action,
-        entityType: "task",
-        metadata: {
-          summary,
-          status,
-          agent: "cursor",
-          updatedAt: new Date().toISOString(),
-        },
-      }),
+    const result = await apiCall(context.baseUrl, apiKey, "POST", `/tasks/${context.taskId}/activity`, {
+      action: "agent.completed",
+      entityType: "task",
+      dedupeKey,
+      metadata: {
+        summary,
+        agent: "cursor",
+        gitHead: head,
+        changedFiles: files,
+        tests: "not_run",
+      },
     });
 
-    if (!activityRes.ok) {
-      const err = await activityRes.json().catch(() => ({}));
-      console.warn(`Warning: Could not log activity (${activityRes.status}):`, err.error || activityRes.statusText);
+    if (result.deduplicated) {
+      console.log("  ✓ Already logged (idempotent)");
     } else {
-      console.log(`✓ Activity logged: "${action}"`);
+      console.log("  ✓ Completion activity logged");
     }
   } catch (err) {
-    console.warn("Warning: Could not log activity:", err.message);
+    warn(`Activity log failed: ${err.message}`);
+    appendPending({ command: "done_activity", taskId: context.taskId, summary, dedupeKey });
   }
 
-  console.log("\nDone! Task updated in TaskOS.\n");
+  console.log("\n  Done! Task marked as complete in TaskOS.\n");
+}
+
+async function cmdStep(context, apiKey, stepId, state) {
+  if (state !== "completed") {
+    die(`Unknown step state: "${state}". Use "completed".`);
+  }
+
+  console.log(`\n  TaskOS: Marking step ${stepId} as completed`);
+
+  try {
+    await apiCall(context.baseUrl, apiKey, "PATCH", `/tasks/${context.taskId}/steps/${stepId}`, {
+      completed: true,
+    });
+    console.log("  ✓ Step marked as completed");
+  } catch (err) {
+    console.error(`  ✗ Failed: ${err.message}`);
+    appendPending({ command: "step", taskId: context.taskId, stepId, state });
+    process.exit(1);
+  }
+}
+
+// ───────── Main ─────────
+
+function usage() {
+  console.log(`
+  TaskOS Agent Helper
+
+  Usage:
+    node taskos-update-task.mjs log   <taskId> "message"
+    node taskos-update-task.mjs done  <taskId> "summary"
+    node taskos-update-task.mjs step  <taskId> <stepId> completed
+
+  Environment:
+    TASKOS_API_KEY - Required. Your TaskOS API key.
+  `);
+  process.exit(1);
+}
+
+async function main() {
+  const [, , command, taskId, ...rest] = process.argv;
+
+  if (!command || !taskId) usage();
+
+  const apiKey = getApiKey();
+  const context = loadContext(taskId);
+
+  switch (command) {
+    case "log": {
+      const message = rest.join(" ");
+      if (!message) die("Message is required. Usage: node taskos-update-task.mjs log <taskId> \"message\"");
+      await cmdLog(context, apiKey, message);
+      break;
+    }
+    case "done": {
+      const summary = rest.join(" ");
+      if (!summary) die("Summary is required. Usage: node taskos-update-task.mjs done <taskId> \"summary\"");
+      await cmdDone(context, apiKey, summary);
+      break;
+    }
+    case "step": {
+      const [stepId, state] = rest;
+      if (!stepId || !state) die("Usage: node taskos-update-task.mjs step <taskId> <stepId> completed");
+      await cmdStep(context, apiKey, stepId, state);
+      break;
+    }
+    default:
+      die(`Unknown command: "${command}". Use log, done, or step.`);
+  }
 }
 
 main();
